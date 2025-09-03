@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { authService } from './auth.service.js';
 import { RegisterSchema, LoginSchema, RefreshSchema } from './auth.validators.js';
 import type { AuthRequest } from '../../middlewares/auth.middleware.js';

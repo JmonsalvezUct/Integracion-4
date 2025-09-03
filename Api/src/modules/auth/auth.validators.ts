@@ -1,4 +1,3 @@
-// src/modules/auth/auth.validators.ts
 import { z } from 'zod';
 
 export const RegisterSchema = z.object({
