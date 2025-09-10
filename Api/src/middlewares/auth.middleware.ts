@@ -1,6 +1,7 @@
 import {type Request, type Response, type NextFunction } from 'express';
 import jwt from 'jsonwebtoken'
 import { env } from '../config/env.js';
+import { body, validationResult } from "express-validator";
 
 export interface AuthRequest extends Request {
   user?: { id: number };
@@ -21,3 +22,14 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
 };
+
+export const validateRecoverPassword = [
+  body("email").isEmail().withMessage("Email inválido"),
+  (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  },
+];

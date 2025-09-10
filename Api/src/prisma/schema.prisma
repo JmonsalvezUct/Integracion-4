@@ -26,6 +26,8 @@ model User {
   history         ChangeHistory[]
 
   refreshTokens RefreshToken[]
+  resetToken         String?   @db.VarChar(255)
+  resetTokenExpires  DateTime?
   createdAt    DateTime     @default(now())
 }
 

@@ -63,3 +63,14 @@ export const logout = async (req: Request, res: Response) => {
   await authService.logout(parse.data.refreshToken);
   return res.json({ ok: true });
 };
+
+export const recoverPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    const result = await authService.recoverPassword(email);
+    res.json(result);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+};

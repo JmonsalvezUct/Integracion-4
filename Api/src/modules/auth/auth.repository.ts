@@ -21,4 +21,7 @@ export const authRepository = {
 
   deleteAllUserRefreshTokens: (userId: number) =>
     prisma.refreshToken.deleteMany({ where: { userId } }),
+
+  saveResetToken: (email: string, token: string, expires: Date) =>
+    prisma.user.update({where: { email }, data: {resetToken: token, resetTokenExpires: expires}})
 };
