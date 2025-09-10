@@ -118,5 +118,18 @@ export const authService = {
     await sendRecoveryEmail(email, resetLink);
 
     return { message: "Si el correo existe, enviaremos un enlace de recuperación." };
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await authRepository.findUserByResetToken(token);
+
+    if (!user) {
+      throw new Error("Token inválido o expirado");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await authRepository.updatePassword(user.id, hashedPassword);
+
+    return { message: "Contraseña actualizada correctamente" };
   }
 };

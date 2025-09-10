@@ -23,5 +23,11 @@ export const authRepository = {
     prisma.refreshToken.deleteMany({ where: { userId } }),
 
   saveResetToken: (email: string, token: string, expires: Date) =>
-    prisma.user.update({where: { email }, data: {resetToken: token, resetTokenExpires: expires}})
+    prisma.user.update({where: { email }, data: {resetToken: token, resetTokenExpires: expires}}),
+
+  findUserByResetToken: (token: string) => 
+   prisma.user.findFirst({where: {resetToken: token, resetTokenExpires: { gte: new Date() }}}),
+  
+  updatePassword: (userId: number, hashedPassword: string) =>
+    prisma.user.update({where: { id: userId }, data: {password: hashedPassword, resetToken: null, resetTokenExpires: null}})
 };

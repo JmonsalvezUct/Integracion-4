@@ -33,3 +33,17 @@ export const validateRecoverPassword = [
     next();
   },
 ];
+
+export const validateResetPassword = [
+  body("token").notEmpty().withMessage("El token es obligatorio"),
+  body("newPassword")
+    .isLength({ min: 6 })
+    .withMessage("La contraseña debe tener al menos 6 caracteres"),
+  (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    next();
+  },
+];

@@ -5,7 +5,7 @@ client.setApiKey(brevo.TransactionalEmailsApiApiKeys.apiKey, process.env.BREVO_A
 
 export async function sendRecoveryEmail(to: string, link: string) {
   await client.sendTransacEmail({
-    sender: { email: "smtp-relay.brevo.com", name: "FastPlanner" },
+    sender: { email: process.env.BREVO_SENDER, name: "FastPlanner" },
     to: [{ email: to }],
     subject: "Recuperación de contraseña",
     htmlContent: `

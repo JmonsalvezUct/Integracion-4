@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { register, login, me, refresh, logout, recoverPassword} from './auth.controller.js';
-import { authMiddleware, validateRecoverPassword } from '../../middlewares/auth.middleware.js';
+import { register, login, me, refresh, logout, recoverPassword, resetPassword} from './auth.controller.js';
+import { authMiddleware, validateRecoverPassword, validateResetPassword} from '../../middlewares/auth.middleware.js';
 
 const router = Router();
 
@@ -11,5 +11,6 @@ router.post('/logout', logout);
 
 router.get('/me', authMiddleware, me);
 router.post("/recover-password", validateRecoverPassword, recoverPassword);
+router.post("/reset-password", validateResetPassword, resetPassword);
 
 export default router;
