@@ -25,31 +25,28 @@ model Project {
 }
 
 model Task {
-  id          Int       @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   title       String
   description String?
+  status      String?      @default("PENDING")
   projectId   Int
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   attachments Attachment[]
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   @@index([projectId])
-  @@index([title])
 }
 
 model Attachment {
   id        Int      @id @default(autoincrement())
   taskId    Int
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  filename  String   // nombre físico guardado
+  filename  String
+  originalName String
   mimetype  String
-  size      Int
-  url       String   // ruta pública: /uploads/<filename>
-
+  size      Int      // en bytes
+  path      String   // ruta interna del archivo
   createdAt DateTime @default(now())
 
   @@index([taskId])
