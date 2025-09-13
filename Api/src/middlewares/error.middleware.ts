@@ -10,7 +10,7 @@ export function errorHandler(
   res: Response,
   next: NextFunction
 ) {
-  console.error("Error capturado:", err);
+  console.error(`Error en [${req.method}] ${req.originalUrl}: ${err.message}`);
 
   const statusCode = err.statusCode || 500;
 
