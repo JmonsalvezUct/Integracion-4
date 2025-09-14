@@ -13,7 +13,7 @@
     "skipLibCheck": true
   },
   
-  "include": ["src/**/*", "prisma/seed.ts"],
+  "include": ["src/**/*"],
   "exclude": ["dist","node_modules"],
   "strict": true
 }
