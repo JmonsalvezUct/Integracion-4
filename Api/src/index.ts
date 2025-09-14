@@ -1,25 +1,10 @@
-import "dotenv/config";
-import express from "express";
-import { prisma } from "./lib/prisma";
-import tasksRoutes from "./modules/tasks/tasks.routes"; 
+import { createApp } from './app/loaders/express.js';
+import { env } from './config/env.js';
 
-const app = express();
-const port = process.env.PORT ?? 3000;
+const app = createApp();
 
-app.use(express.json());
-
-app.get("/", (_req, res) => {
-  res.send("Hello World!");
+app.listen(env.PORT, () => {
+  console.log(`API escuchando en http://localhost:${env.PORT}`);
 });
 
-app.get("/test", async (_req, res) => {
-  const users = await prisma.user.findMany();
-  res.json(users);
-});
-
-
-app.use("/api/tasks", tasksRoutes);
-
-app.listen(port, () => {
-  console.log(`API listening on http://localhost:${port}`);
-});
+export default app;

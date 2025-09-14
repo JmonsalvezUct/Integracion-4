@@ -1,7 +1,19 @@
-import { Router } from "express";
-import tasksRoutes from "../modules/tasks/tasks.routes"; 
+import { Router } from 'express';
+import authRoutes from '../modules/auth/auth.routes.js';
+import healthRoutes from '../modules/health/health.routes.js'
+import tasksRoutes from "../modules/tasks/tasks.routes.js"; 
+import swaggerUI from 'swagger-ui-express'
+import specs from '../swagger/swagger.js';
 
-const routes = Router();
-routes.use("/tasks", tasksRoutes);
+const router = Router();
 
-export default routes;
+router.use('/auth', authRoutes);
+router.use('/health', healthRoutes)
+router.use('/docs', swaggerUI.serve, swaggerUI.setup(specs))
+router.use("/tasks", tasksRoutes);
+// router.use('/users', usersRoutes);
+// router.use('/projects', projectsRoutes);
+// router.use('/tasks', tasksRoutes);
+// router.use('/notifications', notificationsRoutes);
+
+export default router;
