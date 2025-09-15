@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { validate } from "../../middlewares/validate.middleware";
-import { authorizeProject } from "./authorize.middleware";
-import { getProjectTasks as getProjectTasksVal } from "./projects.validators";
-import { getProjectTasks } from "./projects.controller";
+import { validate } from "../../middlewares/validate.middleware.js";
+import { authorizeProject } from "./authorize.middleware.js";
+import { getProjectTasks as getProjectTasksVal } from "./projects.validators.js";
+import { getProjectTasks } from "./projects.controller.js";
 
 import { projectController } from './projects.controller.js';
 

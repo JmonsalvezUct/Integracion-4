@@ -1,5 +1,5 @@
-import { prisma } from "../../lib/prisma";
-import type { Role } from "./project.membership";
+import { prisma } from "../../app/loaders/prisma.js";
+import type { Role } from "./project.membership.js";
 
 export async function getRoleId(name: string): Promise<number> {
   const r = await prisma.projectRole.findUnique({

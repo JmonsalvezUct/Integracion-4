@@ -1,6 +1,8 @@
 
-import { Request, Response, NextFunction } from "express";
-import { prisma } from "../../lib/prisma";
+import express, { type Request, type Response, type NextFunction } from "express";
+
+import { prisma } from "../../app/loaders/prisma.js";
+
 
 export type Role = "owner" | "admin" | "member";
 

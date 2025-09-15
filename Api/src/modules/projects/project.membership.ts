@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from "../../app/loaders/prisma.js";
 
 export type Role = "owner" | "admin" | "member";
 

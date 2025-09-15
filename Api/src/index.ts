@@ -1,14 +1,15 @@
 import "dotenv/config";
-import express, { Request, Response, NextFunction } from "express";
+import express, { type Request, type Response, type NextFunction } from "express";
+
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
-import tasksRoutes from "./modules/tasks/tasks.routes";
-import projectsRoutes from "./modules/projects/projects.routes";
+import tasksRoutes from "./modules/tasks/tasks.routes.js";
+import projectsRoutes from "./modules/projects/projects.routes.js";
 import swaggerUi from "swagger-ui-express";
-import { swaggerSpec } from "./config/swagger";
+import { swaggerSpec } from "./config/swagger.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -52,6 +53,5 @@ app.listen(PORT, () => {
   console.log(`Swagger: http://localhost:${PORT}/docs`);
 });
 
-export default app;
 
 export default app;
