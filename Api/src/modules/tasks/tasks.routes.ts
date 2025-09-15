@@ -1,19 +1,19 @@
 import { Router } from "express";
-import { validate } from "../../middlewares/validate.middleware";
+import { validate } from "../../middlewares/validate.middleware.js";
 import {
   createTask as createTaskVal,
   listTasks as listTasksVal,
   getTaskById as getTaskByIdVal,
   updateTask as updateTaskVal,
   deleteTask as deleteTaskVal,
-} from "./tasks.validators";
+} from "./tasks.validators.js";
 import {
   createTask,
   listTasks,
   getTaskById,
   updateTask,
   deleteTask,
-} from "./tasks.controller";
+} from "./tasks.controller.js";
 
 const router = Router();
 /**

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
-import { Request, Response } from "express";
-import { prisma } from "../../lib/prisma";
+import type { Request, Response } from "express";
+import {prisma} from '../../app/loaders/prisma.js'
+
 const DEFAULT_PRIORITY_ID = 1;
 export const getTaskById = async (req: Request, res: Response) => {
   const { id } = ((req as any).validatedParams ?? req.params) as any;

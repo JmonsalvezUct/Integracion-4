@@ -1,4 +1,4 @@
-import prisma  from "../../app/loaders/prisma";
+import {prisma}  from "../../app/loaders/prisma.js";
 
 type CreateTaskDTO = {
   title: string;

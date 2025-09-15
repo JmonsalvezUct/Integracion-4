@@ -24,6 +24,11 @@ model User {
   assignedTasks   Task[]           @relation("AssignedTasks")
   notifications   Notification[]
   history         ChangeHistory[]
+
+  refreshTokens RefreshToken[]
+  resetToken         String?   @db.VarChar(255)
+  resetTokenExpires  DateTime?
+  createdAt    DateTime     @default(now())
 }
 
 model Project {
@@ -33,6 +38,7 @@ model Project {
   users       UserProject[]
   tasks       Task[]
   history     ChangeHistory[]
+  createdAt    DateTime     @default(now())
 }
 
 model UserProject {
@@ -85,17 +91,14 @@ model Priority {
 
 model Attachment {
   id       Int          @id @default(autoincrement())
-  url      String
   task     Task         @relation(fields: [taskId], references: [id])
   taskId   Int
-  type     AttachmentType @relation(fields: [typeId], references: [id])
-  typeId   Int
-}
-
-model AttachmentType {
-  id         Int         @id @default(autoincrement())
-  type       String      @unique
-  attachments Attachment[]
+  filename  String
+  originalName String
+  mimetype  String
+  size      Int      // en bytes
+  path      String   // ruta interna del archivo
+  createdAt DateTime @default(now())
 }
 
 model Notification {
@@ -106,6 +109,7 @@ model Notification {
   userId    Int
   type      NotificationType   @relation(fields: [typeId], references: [id])
   typeId    Int
+  createdAt    DateTime     @default(now())
 }
 
 model NotificationType {
@@ -126,10 +130,24 @@ model ChangeHistory {
   projectId   Int?
   action      Action    @relation(fields: [actionId], references: [id])
   actionId    Int
+  createdAt    DateTime     @default(now())
 }
 
 model Action {
   id       Int               @id @default(autoincrement())
   action     String            @unique
   history  ChangeHistory[]
+}
+
+model RefreshToken {
+  id         Int      @id @default(autoincrement())
+  token      String   @unique
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
 }
