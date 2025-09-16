@@ -1,19 +1,10 @@
 import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import { addDays } from 'date-fns';
-import { env } from '../../config/env.js';
 import { PASSWORD, TOKEN } from '../../config/constants.js';
 import { authRepository } from './auth.repository.js';
 import type { RegisterDTO, LoginDTO } from './auth.validators.js';
-
-function signAccessToken(userId: number) {
-  return jwt.sign({ id: userId }, env.JWT_SECRET, { expiresIn: TOKEN.ACCESS_EXPIRES_IN });
-}
-
-function generateRefreshTokenValue() {
-  return crypto.randomBytes(48).toString('hex');
-}
+import { sendRecoveryEmail } from '../services/email.js';
+import { signAccessToken, generateRefreshTokenValue, generateResetToken } from '../../utils/token.js';
 
 export const authService = {
   async register(payload: RegisterDTO) {
@@ -109,5 +100,36 @@ export const authService = {
     } catch (error){
       console.error('Error al intentar obtener perfil', error);
     }
+  },
+
+  async recoverPassword(email: string) {
+    const user = await authRepository.findUserByEmail(email);
+
+    if (!user) {
+      // Respuesta genérica para no revelar información
+      return { message: "Si el correo existe, enviaremos un enlace de recuperación." };
+    }
+
+    const { token, expires } = generateResetToken();
+
+    await authRepository.saveResetToken(email, token, expires);
+
+    const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+    await sendRecoveryEmail(email, resetLink);
+
+    return { message: "Si el correo existe, enviaremos un enlace de recuperación." };
+  },
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await authRepository.findUserByResetToken(token);
+
+    if (!user) {
+      throw new Error("Token inválido o expirado");
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await authRepository.updatePassword(user.id, hashedPassword);
+
+    return { message: "Contraseña actualizada correctamente" };
   }
 };
