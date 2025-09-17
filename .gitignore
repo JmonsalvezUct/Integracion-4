@@ -1,2 +1,2 @@
-Youtrack/*.csv
-Youtrack/*.pdf
+Youtrack/**/*.csv
+Youtrack/**/*.pdf

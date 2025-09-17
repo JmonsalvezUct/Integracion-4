@@ -5,7 +5,7 @@ from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
 # Leer CSV original
-df = pd.read_csv("incidencias_semana3.csv")
+df = pd.read_csv("incidencias (4).csv")
 
 # 🔄 Reemplazar valores en todo el DataFrame
 df = df.replace({
@@ -21,7 +21,7 @@ cols_principal = [
     "ID de la incidencia",
     "Usuario asignado",
     "Estado",
-    "Tiempo empleado (min)",
+    "Prioridad",
     "Estimación (min)"
 ]
 cols_resumen = [
@@ -36,7 +36,7 @@ styles = getSampleStyleSheet()
 elements = []
 
 # Título
-elements.append(Paragraph("Reporte de tareas - Semana 3", styles["Title"]))
+elements.append(Paragraph("Tareas asignadas - Semana 4", styles["Title"]))
 elements.append(Spacer(1, 20))
 
 # ==============================
