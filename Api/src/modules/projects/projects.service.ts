@@ -1,9 +1,13 @@
 // Mock data for testing
+
+import { prisma } from "../../app/loaders/prisma.js"; 
 let projects: any[] = [
   { id: 1, name: "Proyecto Alpha", description: "Proyecto inicial", createdAt: new Date(), updatedAt: new Date() },
   { id: 2, name: "Proyecto Beta", description: "Segundo proyecto", createdAt: new Date(), updatedAt: new Date() }
 ];
 let nextId = 3;
+
+
 
 export const projectService = {
   // TDI-79: Crear proyecto
@@ -18,6 +22,21 @@ export const projectService = {
     projects.push(project);
     return project;
   },
+
+    cloneProject: async (id: number, opts?: { name?: string }) => {
+  const src = projects.find(p => p.id === id);
+  if (!src) return null;
+
+  const copy = {
+    id: nextId++,
+    name: opts?.name ?? `${src.name} (copia)`,
+    description: src.description || '',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+  projects.push(copy);
+  return copy;
+},
 
   // TDI-80: Obtener todos los proyectos
   getAllProjects: async () => {
@@ -51,4 +70,7 @@ export const projectService = {
     projects.splice(projectIndex, 1);
     return true;
   }
+
+
 };
+//----------------------------------------------------

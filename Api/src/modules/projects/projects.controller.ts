@@ -78,6 +78,16 @@ export const getProjectTasks = async (req: Request, res: Response) => {
     },
   });
 };
+export const cloneProjectController = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { name } = (req as any).body ?? {};
+  // Si más adelante usas Prisma con RBAC:
+  // const userId = (req as AuthRequest).user?.id;
+
+  const copy = await projectService.cloneProject(id, { name });
+  if (!copy) return res.status(404).json({ message: "Proyecto no existe" });
+  return res.status(201).json({ message: "Proyecto clonado", project: copy });
+};
 
 export const projectController = {
   // TDI-79: Crear proyecto
@@ -169,4 +179,5 @@ export const projectController = {
       res.status(500).json({ error: "Error al eliminar el proyecto" });
     }
   },
+
 };

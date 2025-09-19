@@ -19,3 +19,16 @@ export const getProjectTasks = {
     order: z.enum(["asc","desc"]).default("desc"),
   }),
 };
+
+export const cloneProjectSchema = {
+  params: z.object({
+    id: z.coerce.number().int().positive(),
+  }),
+  body: z
+    .object({
+      name: z.string().min(1).max(120).optional(),
+      copyMembers: z.boolean().optional().default(false),
+      copyAttachments: z.boolean().optional().default(false),
+    })
+    .optional(),
+};

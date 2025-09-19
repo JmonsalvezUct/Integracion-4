@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+
+    "prisma": {
+    "schema": "./src/prisma/schema.prisma"
+  },
+
   "scripts": {
+    
     "dev": "tsx --watch --env-file .env src/index.ts",
     "start": "node --env-file .env dist/index.js",
-    "build": "tsc",
+    "build": "tsc", 
     "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
@@ -48,6 +54,8 @@
     "swagger-ui-express": "^5.0.1",
     "zod": "^4.1.5"
   },
+  
+  
   "devDependencies": {
     "@tsconfig/node22": "^22.0.2",
     "@types/cors": "^2.8.19",
@@ -68,4 +76,6 @@
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
+
+  
 }
