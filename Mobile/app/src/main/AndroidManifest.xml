@@ -31,7 +31,7 @@
             </intent-filter>
         </activity>
 
-        <!--Mantén MainActivity pero NO como launcher -->
+        <!--MainActivity pero NO como launcher -->
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"

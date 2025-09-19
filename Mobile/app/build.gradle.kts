@@ -57,6 +57,10 @@ dependencies {
     // Material 3
     implementation("androidx.compose.material3:material3")
 
+    // 🔹 Icons de Material (pack extendido: Person, Lock, Email, Visibility, etc.)
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
+
     // Activity + Lifecycle
     implementation("androidx.activity:activity-compose:1.9.2")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
