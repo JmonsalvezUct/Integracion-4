@@ -1,13 +1,16 @@
 
 
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../../app/loaders/prisma.js";
-import type { Prisma } from "@prisma/client";
+import type { Prisma,PrismaClient  } from "@prisma/client";
 import { projectService } from "./projects.service.js";
+
 
 /**
  * GET /projects/:id/tasks
  */
+
+    
 export const getProjectTasks = async (req: Request, res: Response) => {
   const { id } = ((req as any).validatedParams ?? req.params) as any;
   const q = ((req as any).validatedQuery ?? req.query) as any;
@@ -78,6 +81,12 @@ export const getProjectTasks = async (req: Request, res: Response) => {
     },
   });
 };
+
+
+
+
+
+
 export const cloneProjectController = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { name } = (req as any).body ?? {};
@@ -88,7 +97,8 @@ export const cloneProjectController = async (req: Request, res: Response) => {
   if (!copy) return res.status(404).json({ message: "Proyecto no existe" });
   return res.status(201).json({ message: "Proyecto clonado", project: copy });
 };
-
+type SortBy = "name" | "date" | "activity";
+type Order = "asc" | "desc";
 export const projectController = {
   // TDI-79: Crear proyecto
   createProject: async (req: Request, res: Response) => {
@@ -108,10 +118,20 @@ export const projectController = {
     }
   },
 
+
+
+
+
   // TDI-80: Obtener todos los proyectos
-  getAllProjects: async (_req: Request, res: Response) => {
+  async getAllProjects(req: Request, res: Response) {
     try {
-      const projects = await projectService.getAllProjects();
+      const sortBy = (req.query.sortBy as SortBy) ?? "date";
+      const order: Order =
+        req.query.order === "asc" || req.query.order === "desc"
+          ? (req.query.order as Order)
+          : "asc";
+
+      const projects = await projectService.getAllProjects({ sortBy, order });
       res.json(projects);
     } catch (error) {
       res.status(500).json({ error: "Error al obtener los proyectos" });

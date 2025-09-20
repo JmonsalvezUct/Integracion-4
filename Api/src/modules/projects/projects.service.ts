@@ -6,8 +6,16 @@ let projects: any[] = [
   { id: 2, name: "Proyecto Beta", description: "Segundo proyecto", createdAt: new Date(), updatedAt: new Date() }
 ];
 let nextId = 3;
-
-
+export type SortBy = "name" | "date" | "activity";
+export type Order  = "asc" | "desc";
+export interface Project {
+  id: number;
+  name: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  tasksCount?: number;
+}
 
 export const projectService = {
   // TDI-79: Crear proyecto
@@ -39,8 +47,35 @@ export const projectService = {
 },
 
   // TDI-80: Obtener todos los proyectos
-  getAllProjects: async () => {
-    return projects;
+ getAllProjects: async (opts?: { sortBy?: SortBy; order?: Order }) => {
+    const sortBy: SortBy = opts?.sortBy ?? "date";
+    const order: Order   = opts?.order  ?? "asc";
+    const dir = order === "desc" ? -1 : 1;
+
+    const sorted = [...projects].sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name) * dir;
+
+        case "activity": {
+          const av = a.tasksCount ?? 0;
+          const bv = b.tasksCount ?? 0;
+          if (av === bv) return 0;
+          return av > bv ? dir : -dir;
+        }
+
+        case "date":
+        default: {
+          // Usa createdAt como “fecha” (si prefieres updatedAt, cámbialo aquí).
+          const av = a.createdAt?.getTime?.() ?? 0;
+          const bv = b.createdAt?.getTime?.() ?? 0;
+          if (av === bv) return 0;
+          return av > bv ? dir : -dir;
+        }
+      }
+    });
+
+    return sorted;
   },
 
   // TDI-81: Obtener proyecto por ID
