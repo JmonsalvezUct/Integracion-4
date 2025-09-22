@@ -101,72 +101,39 @@ export const cloneProjectController = async (req: Request, res: Response) => {
 };
 
 export const projectController = {
-  // TDI-79: Crear proyecto
-  createProject: async (req: Request, res: Response) => {
+createProject: async (req: Request, res: Response) => {
+  try {
+    const { name, description } = req.body; // Solo name y description
+    
+    if (!name) {
+      return res.status(400).json({ error: 'El nombre del proyecto es requerido' });
+    }
+
+    const project = await projectService.createProject({ name, description });
+    res.status(201).json(project);
+
+  } catch (error) {
+    console.error('Error in createProject:', error);
+    res.status(500).json({ error: 'Error al crear el proyecto' });
+  }
+},
+
+  getAllProjects: async (req: Request, res: Response) => {
     try {
-      const { name, description } = req.body;
-
-      if (!name) {
-        return res
-          .status(400)
-          .json({ error: "El nombre del proyecto es requerido" });
-      }
-
-      const project = await projectService.createProject({ name, description });
-      res.status(201).json(project);
+      const projects = await projectService.getAllProjects();
+      res.json(projects);
     } catch (error) {
-      res.status(500).json({ error: "Error al crear el proyecto" });
+      console.error('Error in getAllProjects:', error);
+      res.status(500).json({ error: 'Error al obtener los proyectos' });
     }
   },
 
-
-
-
-
-  // TDI-80: Obtener todos los proyectos
-async getAllProjects(req: Request, res: Response, next: NextFunction) {
-    try {
-      // lee query params
-      const sortByQ = String(req.query.sortBy ?? 'date').toLowerCase();
-      const orderQ  = String(req.query.order ?? 'desc').toLowerCase();
-      const q       = typeof req.query.q === 'string' ? req.query.q.trim() : '';
-
-      const sortByValue: SortBy =
-        sortByQ === 'name'     ? 'name' :
-        sortByQ === 'activity' ? 'activity' :
-        'date';
-
-      const orderValue: Order = orderQ === 'asc' ? 'asc' : 'desc';
-
-      let list = await projectService.getAllProjects({ sortBy: sortByValue, order: orderValue });
-
-
-      // 2) filtra por q si aplica
-      if (q) {
-        const qlc = q.toLowerCase();
-        list = list.filter(p => p.name.toLowerCase().includes(qlc));
-      }
-
-      // 3) adapta shape de salida
-      const data = list.map(p => ({
-        id: p.id,
-        name: p.name,
-        createdAt: p.createdAt?.toISOString?.() ?? new Date().toISOString(),
-        activity: p.tasksCount ?? 0,
-      }));
-
-      res.json(data);
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  // TDI-81: Obtener proyecto por ID
   getProjectById: async (req: Request, res: Response) => {
     try {
-      const id = Number(req.params.id);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ error: "ID debe ser un número válido" });
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'ID debe ser un número válido' });
       }
 
       const project = await projectService.getProjectById(id);
@@ -176,40 +143,40 @@ async getAllProjects(req: Request, res: Response, next: NextFunction) {
 
       res.json(project);
     } catch (error) {
-      res.status(500).json({ error: "Error al obtener el proyecto" });
+      console.error('Error in getProjectById:', error);
+      res.status(500).json({ error: 'Error al obtener el proyecto' });
     }
   },
 
-  // TDI-82: Actualizar proyecto
   updateProject: async (req: Request, res: Response) => {
     try {
-      const id = Number(req.params.id);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ error: "ID debe ser un número válido" });
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'ID debe ser un número válido' });
       }
 
-      const { name, description } = req.body;
-      const project = await projectService.updateProject(id, {
-        name,
-        description,
-      });
-
+      const { name, description, status } = req.body;
+      
+      const project = await projectService.updateProject(id, { name, description, status });
+      
       if (!project) {
         return res.status(404).json({ error: "Proyecto no encontrado" });
       }
 
       res.json(project);
     } catch (error) {
-      res.status(500).json({ error: "Error al actualizar el proyecto" });
+      console.error('Error in updateProject:', error);
+      res.status(500).json({ error: 'Error al actualizar el proyecto' });
     }
   },
 
-  // TDI-83: Eliminar proyecto
   deleteProject: async (req: Request, res: Response) => {
     try {
-      const id = Number(req.params.id);
-      if (Number.isNaN(id)) {
-        return res.status(400).json({ error: "ID debe ser un número válido" });
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: 'ID debe ser un número válido' });
       }
 
       const deleted = await projectService.deleteProject(id);
@@ -219,7 +186,8 @@ async getAllProjects(req: Request, res: Response, next: NextFunction) {
 
       res.status(204).send();
     } catch (error) {
-      res.status(500).json({ error: "Error al eliminar el proyecto" });
+      console.error('Error in deleteProject:', error);
+      res.status(500).json({ error: 'Error al eliminar el proyecto' });
     }
   },
 
