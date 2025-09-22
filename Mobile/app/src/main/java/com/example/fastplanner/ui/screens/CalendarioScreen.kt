@@ -5,11 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -42,8 +37,9 @@ fun CalendarioScreen(
                 )
             )
         },
+        // 👉 Barra inferior unificada
         bottomBar = {
-            CalendarioBottomBar(
+            AppBottomBar(
                 selected = BottomItem.Calendar,
                 onSelected = onBottomNavSelected
             )
@@ -98,42 +94,4 @@ fun CalendarioScreen(
     }
 }
 
-@Composable
-private fun CalendarioBottomBar(
-    selected: BottomItem,
-    onSelected: (BottomItem) -> Unit
-) {
-    NavigationBar {
-        NavItem(Icons.Filled.Home, "Inicio", selected == BottomItem.Home) {
-            onSelected(BottomItem.Home)
-        }
-        NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) {
-            onSelected(BottomItem.Projects)
-        }
-        NavItem(Icons.AutoMirrored.Filled.ListAlt, "Tareas", selected == BottomItem.Tasks) {
-            onSelected(BottomItem.Tasks)
-        }
-        NavItem(Icons.Filled.CalendarMonth, "Calendario", selected == BottomItem.Calendar) {
-            onSelected(BottomItem.Calendar)
-        }
-        NavItem(Icons.Filled.Person, "Perfil", selected == BottomItem.Profile) {
-            onSelected(BottomItem.Profile)
-        }
-    }
-}
-
-@Composable
-private fun RowScope.NavItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    NavigationBarItem(
-        selected = selected,
-        onClick = onClick,
-        icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label) }
-    )
-}
 

@@ -1,31 +1,20 @@
 package com.example.fastplanner.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,17 +22,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.fastplanner.ui.settings.SettingsViewModel
 import com.example.fastplanner.ui.theme.ContentBgColor
 import com.example.fastplanner.ui.theme.HeaderColor
 import com.example.fastplanner.ui.theme.TextPrimary
-
-// OJO: BottomItem ya está declarado en MainScreen.kt (no lo declares de nuevo aquí)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
     onBottomNavSelected: (BottomItem) -> Unit,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    // ← Añadimos el VM para el switch
+    settingsVm: SettingsViewModel
 ) {
     Scaffold(
         topBar = {
@@ -64,8 +55,9 @@ fun PerfilScreen(
                 )
             )
         },
+        // Barra inferior unificada del proyecto
         bottomBar = {
-            PerfilBottomBar(
+            AppBottomBar(
                 selected = BottomItem.Profile,
                 onSelected = onBottomNavSelected
             )
@@ -126,13 +118,18 @@ fun PerfilScreen(
 
                         Spacer(Modifier.height(24.dp))
 
-                        PerfilRow(Icons.Filled.Notifications, "Notificaciones")
+                        // --- Lista de opciones ---
+                        PreferenceRow(Icons.Filled.Notifications, "Notificaciones")
                         HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
-                        PerfilRow(Icons.Filled.Settings, "Preferencias")
+
+                        // Preferencias: Modo oscuro (Switch)
+                        DarkModePreference(settingsVm = settingsVm)
                         HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
-                        PerfilRow(Icons.Filled.Settings, "Configuraciones")
+
+                        PreferenceRow(Icons.Filled.Settings, "Configuraciones")
                         HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
-                        PerfilRow(Icons.Filled.Share, "Colaboración")
+
+                        PreferenceRow(Icons.Filled.Share, "Colaboración")
 
                         Spacer(Modifier.height(24.dp))
                     }
@@ -143,7 +140,10 @@ fun PerfilScreen(
 }
 
 @Composable
-private fun PerfilRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
+private fun PreferenceRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -157,33 +157,40 @@ private fun PerfilRow(icon: androidx.compose.ui.graphics.vector.ImageVector, tit
     }
 }
 
+/** Preferencia: Modo oscuro (con switch) */
 @Composable
-private fun PerfilBottomBar(
-    selected: BottomItem,
-    onSelected: (BottomItem) -> Unit
+private fun DarkModePreference(
+    settingsVm: SettingsViewModel,
+    modifier: Modifier = Modifier
 ) {
-    NavigationBar {
-        NavItem(Icons.Filled.Home,   "Inicio",    selected == BottomItem.Home)     { onSelected(BottomItem.Home) }
-        NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) { onSelected(BottomItem.Projects) }
-        NavItem(Icons.Filled.ListAlt,"Tareas",    selected == BottomItem.Tasks)    { onSelected(BottomItem.Tasks) }
-        NavItem(Icons.Filled.Person, "Perfil",    selected == BottomItem.Profile)  { onSelected(BottomItem.Profile) }
+    val isDark by settingsVm.isDarkMode.collectAsStateWithLifecycle()
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { settingsVm.setDarkMode(!isDark) }
+            .padding(vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            Icon(Icons.Filled.DarkMode, contentDescription = null)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Modo oscuro", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+            Text(
+                if (isDark) "Activado" else "Desactivado",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = isDark,
+            onCheckedChange = { checked -> settingsVm.setDarkMode(checked) }
+        )
     }
 }
 
-@Composable
-private fun RowScope.NavItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    NavigationBarItem(
-        selected = selected,
-        onClick = onClick,
-        icon = { Icon(icon, contentDescription = label) },
-        label = { Text(label) }
-    )
-}
 
 
 

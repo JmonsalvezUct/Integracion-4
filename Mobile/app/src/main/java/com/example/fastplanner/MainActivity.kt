@@ -4,6 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -11,7 +18,7 @@ import com.example.fastplanner.ui.screens.BottomItem
 import com.example.fastplanner.ui.screens.CalendarioScreen
 import com.example.fastplanner.ui.screens.MainScreen
 import com.example.fastplanner.ui.screens.PerfilScreen
-import com.example.fastplanner.ui.theme.FastPlannerTheme
+import com.example.fastplanner.ui.settings.SettingsViewModel
 
 private object Routes {
     const val HOME = "home"
@@ -24,8 +31,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
         setContent {
-            FastPlannerTheme {
+            // ViewModel que lee/guarda el modo desde DataStore
+            val appCtx = LocalContext.current.applicationContext
+            val settingsVm: SettingsViewModel = viewModel(
+                factory = SettingsViewModel.provideFactory(appCtx)
+            )
+            val isDark by settingsVm.isDarkMode.collectAsStateWithLifecycle()
+
+            // Tema global controlado por el switch
+            MaterialTheme(
+                colorScheme = if (isDark) darkColorScheme() else lightColorScheme()
+            ) {
                 val nav = rememberNavController()
 
                 NavHost(
@@ -39,14 +57,13 @@ class MainActivity : ComponentActivity() {
                                 when (item) {
                                     BottomItem.Home -> Unit // ya estás en Home
                                     BottomItem.Projects -> {
-                                        // TODO: nav.navigate(Routes.PROJECTS) { ... }
+                                        // TODO: nav.navigate(Routes.PROJECTS)
                                     }
                                     BottomItem.Tasks -> {
-                                        // TODO: nav.navigate(Routes.TASKS) { ... }
+                                        // TODO: nav.navigate(Routes.TASKS)
                                     }
                                     BottomItem.Calendar -> {
                                         nav.navigate(Routes.CALENDAR) {
-                                            // evita duplicados y restaura estado
                                             popUpTo(Routes.HOME) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
@@ -76,12 +93,8 @@ class MainActivity : ComponentActivity() {
                                             restoreState = true
                                         }
                                     }
-                                    BottomItem.Projects -> {
-                                        // TODO: nav.navigate(Routes.PROJECTS) { ... }
-                                    }
-                                    BottomItem.Tasks -> {
-                                        // TODO: nav.navigate(Routes.TASKS) { ... }
-                                    }
+                                    BottomItem.Projects -> { /* TODO */ }
+                                    BottomItem.Tasks -> { /* TODO */ }
                                     BottomItem.Calendar -> Unit // ya estás en Calendario
                                     BottomItem.Profile -> {
                                         nav.navigate(Routes.PROFILE) {
@@ -108,12 +121,8 @@ class MainActivity : ComponentActivity() {
                                             restoreState = true
                                         }
                                     }
-                                    BottomItem.Projects -> {
-                                        // TODO: nav.navigate(Routes.PROJECTS) { ... }
-                                    }
-                                    BottomItem.Tasks -> {
-                                        // TODO: nav.navigate(Routes.TASKS) { ... }
-                                    }
+                                    BottomItem.Projects -> { /* TODO */ }
+                                    BottomItem.Tasks -> { /* TODO */ }
                                     BottomItem.Calendar -> {
                                         nav.navigate(Routes.CALENDAR) {
                                             popUpTo(Routes.HOME) { saveState = true }
@@ -124,7 +133,9 @@ class MainActivity : ComponentActivity() {
                                     BottomItem.Profile -> Unit // ya estás en Perfil
                                 }
                             },
-                            onBack = { nav.popBackStack() }
+                            onBack = { nav.popBackStack() },
+                            // 👉 PASAMOS el VM para que el switch funcione
+                            settingsVm = settingsVm
                         )
                     }
                 }
