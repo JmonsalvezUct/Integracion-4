@@ -79,7 +79,7 @@ router.get(
 router.post('/:id/clone',
   authMiddleware,
   validate(cloneProjectSchema),
-  // authorizeProject(['owner','admin']),
+ 
   cloneProjectController
 );
 

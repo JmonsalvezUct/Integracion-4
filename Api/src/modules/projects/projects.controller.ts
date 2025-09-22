@@ -92,8 +92,7 @@ export const getProjectTasks = async (req: Request, res: Response) => {
 export const cloneProjectController = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { name } = (req as any).body ?? {};
-  // Si más adelante usas Prisma con RBAC:
-  // const userId = (req as AuthRequest).user?.id;
+
 
   const copy = await projectService.cloneProject(id, { name });
   if (!copy) return res.status(404).json({ message: "Proyecto no existe" });
@@ -126,7 +125,7 @@ export const projectController = {
   // TDI-80: Obtener todos los proyectos
 async getAllProjects(req: Request, res: Response, next: NextFunction) {
     try {
-      // lee query params
+      
       const sortByQ = String(req.query.sortBy ?? 'date').toLowerCase();
       const orderQ  = String(req.query.order ?? 'desc').toLowerCase();
       const q       = typeof req.query.q === 'string' ? req.query.q.trim() : '';
@@ -141,13 +140,13 @@ async getAllProjects(req: Request, res: Response, next: NextFunction) {
       let list = await projectService.getAllProjects({ sortBy: sortByValue, order: orderValue });
 
 
-      // 2) filtra por q si aplica
+ 
       if (q) {
         const qlc = q.toLowerCase();
         list = list.filter(p => p.name.toLowerCase().includes(qlc));
       }
 
-      // 3) adapta shape de salida
+
       const data = list.map(p => ({
         id: p.id,
         name: p.name,

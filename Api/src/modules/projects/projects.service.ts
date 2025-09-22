@@ -1,4 +1,4 @@
-// Mock data for testing
+
 
 import { prisma } from "../../app/loaders/prisma.js"; 
 let projects: any[] = [
@@ -66,7 +66,7 @@ export const projectService = {
 
         case "date":
         default: {
-          // Usa createdAt como “fecha” (si prefieres updatedAt, cámbialo aquí).
+        
           const av = a.createdAt?.getTime?.() ?? 0;
           const bv = b.createdAt?.getTime?.() ?? 0;
           if (av === bv) return 0;
