@@ -18,22 +18,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.fastplanner.ui.settings.SettingsViewModel
-import com.example.fastplanner.ui.theme.ContentBgColor
-import com.example.fastplanner.ui.theme.HeaderColor
-import com.example.fastplanner.ui.theme.TextPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
     onBottomNavSelected: (BottomItem) -> Unit,
     onBack: () -> Unit = {},
-    // ← Añadimos el VM para el switch
     settingsVm: SettingsViewModel
 ) {
     Scaffold(
@@ -45,45 +39,46 @@ fun PerfilScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Atrás",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HeaderColor,
-                    navigationIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
-        // Barra inferior unificada del proyecto
         bottomBar = {
             AppBottomBar(
                 selected = BottomItem.Profile,
                 onSelected = onBottomNavSelected
             )
         },
-        containerColor = HeaderColor
+        // el header “morado” ahora viene del tema (cambia con claro/oscuro)
+        containerColor = MaterialTheme.colorScheme.primary
     ) { inner ->
         Column(
             modifier = Modifier
                 .padding(inner)
                 .fillMaxSize()
-                .background(HeaderColor)
+                .background(MaterialTheme.colorScheme.primary)
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = Color.White
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color.White)
+                        .background(MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(ContentBgColor)
+                            // antes: ContentBgColor -> ahora background del tema
+                            .background(MaterialTheme.colorScheme.background)
                             .padding(horizontal = 20.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -92,27 +87,27 @@ fun PerfilScreen(
                             modifier = Modifier
                                 .size(84.dp)
                                 .clip(CircleShape)
-                                .background(Color(0xFFEDEBFE)),
+                                // antes: lila fijo -> ahora primaryContainer del tema
+                                .background(MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Person,
                                 contentDescription = null,
-                                tint = HeaderColor,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(44.dp)
                             )
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
                             text = "Jonatan Saldivia",
-                            color = TextPrimary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontSize = 18.sp
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = "jsaldivia@gmail.com",
-                            color = Color(0xFF6B7280),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 14.sp
                         )
 
@@ -120,17 +115,15 @@ fun PerfilScreen(
 
                         // --- Lista de opciones ---
                         PreferenceRow(Icons.Filled.Notifications, "Notificaciones")
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-                        // Preferencias: Modo oscuro (Switch)
                         DarkModePreference(settingsVm = settingsVm)
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                         PreferenceRow(Icons.Filled.Settings, "Configuraciones")
-                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
                         PreferenceRow(Icons.Filled.Share, "Colaboración")
-
                         Spacer(Modifier.height(24.dp))
                     }
                 }
@@ -150,14 +143,19 @@ private fun PreferenceRow(
             .padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null) }
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+        }
         Spacer(Modifier.width(12.dp))
-        Text(text = title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Spacer(Modifier.weight(1f))
     }
 }
 
-/** Preferencia: Modo oscuro (con switch) */
 @Composable
 private fun DarkModePreference(
     settingsVm: SettingsViewModel,
@@ -173,11 +171,11 @@ private fun DarkModePreference(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.DarkMode, contentDescription = null)
+            Icon(Icons.Filled.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Modo oscuro", style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+            Text("Modo oscuro", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
             Text(
                 if (isDark) "Activado" else "Desactivado",
                 style = MaterialTheme.typography.bodySmall,
@@ -190,6 +188,7 @@ private fun DarkModePreference(
         )
     }
 }
+
 
 
 

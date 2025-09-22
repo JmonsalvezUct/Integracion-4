@@ -4,9 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,6 +16,7 @@ import com.example.fastplanner.ui.screens.CalendarioScreen
 import com.example.fastplanner.ui.screens.MainScreen
 import com.example.fastplanner.ui.screens.PerfilScreen
 import com.example.fastplanner.ui.settings.SettingsViewModel
+import com.example.fastplanner.ui.theme.FastPlannerTheme   // <-- usa tu tema
 
 private object Routes {
     const val HOME = "home"
@@ -40,10 +38,8 @@ class MainActivity : ComponentActivity() {
             )
             val isDark by settingsVm.isDarkMode.collectAsStateWithLifecycle()
 
-            // Tema global controlado por el switch
-            MaterialTheme(
-                colorScheme = if (isDark) darkColorScheme() else lightColorScheme()
-            ) {
+            // 👉 Usa tu tema y pasa el booleano
+            FastPlannerTheme(darkTheme = isDark) {
                 val nav = rememberNavController()
 
                 NavHost(
@@ -134,7 +130,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onBack = { nav.popBackStack() },
-                            // 👉 PASAMOS el VM para que el switch funcione
+                            // pasa el VM para que el switch funcione
                             settingsVm = settingsVm
                         )
                     }
@@ -143,6 +139,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 
 
 

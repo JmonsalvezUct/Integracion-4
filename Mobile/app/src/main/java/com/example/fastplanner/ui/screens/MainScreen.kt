@@ -26,10 +26,6 @@ import com.example.fastplanner.ui.theme.BoardBlue
 import com.example.fastplanner.ui.theme.BoardGreen
 import com.example.fastplanner.ui.theme.BoardPink
 import com.example.fastplanner.ui.theme.BoardRed
-import com.example.fastplanner.ui.theme.ContentBgColor
-import com.example.fastplanner.ui.theme.HeaderColor
-import com.example.fastplanner.ui.theme.OutlineGray
-import com.example.fastplanner.ui.theme.TextPrimary
 
 data class BoardUi(val id: String, val title: String, val activitiesCount: Int, val color: Color)
 
@@ -58,44 +54,55 @@ fun MainScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Filled.Menu, contentDescription = "Menú", tint = Color.White)
+                        Icon(
+                            Icons.Filled.Menu,
+                            contentDescription = "Menú",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
                 actions = {
                     IconButton(onClick = { /* abrir perfil */ }) {
-                        Icon(Icons.Filled.AccountCircle, contentDescription = "Perfil", tint = Color.White)
+                        Icon(
+                            Icons.Filled.AccountCircle,
+                            contentDescription = "Perfil",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HeaderColor,
-                    navigationIconContentColor = Color.White,
-                    actionIconContentColor = Color.White
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },
-        // 👉 barra inferior unificada
+        // barra inferior unificada
         bottomBar = {
             AppBottomBar(
                 selected = BottomItem.Home,
                 onSelected = onBottomNavSelected
             )
         },
-        containerColor = HeaderColor
+        // header/background superior (morado en claro, tono en oscuro)
+        containerColor = MaterialTheme.colorScheme.primary
     ) { inner ->
         Column(
             modifier = Modifier
                 .padding(inner)
                 .fillMaxSize()
-                .background(HeaderColor)
+                .background(MaterialTheme.colorScheme.primary)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .background(Color.White)
+                    .background(MaterialTheme.colorScheme.surface)
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Spacer(Modifier.height(16.dp))
+
+                    // BUSCADOR
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -105,7 +112,13 @@ fun MainScreen(
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = "Buscar") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Filled.Search,
+                                    contentDescription = "Buscar",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
                             placeholder = { Text("buscar …") },
                             singleLine = true,
                             shape = RoundedCornerShape(24.dp),
@@ -113,17 +126,20 @@ fun MainScreen(
                         )
                     }
 
+                    // CONTENIDO
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(ContentBgColor)
+                            .background(MaterialTheme.colorScheme.background)
                             .padding(horizontal = 16.dp)
                     ) {
                         Spacer(Modifier.height(16.dp))
                         Text(
                             text = "Tableros",
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = TextPrimary
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(Modifier.height(12.dp))
 
@@ -147,10 +163,12 @@ fun MainScreen(
 
 @Composable
 private fun BoardCard(board: BoardUi, onClick: () -> Unit) {
+    // Mantengo el color propio del tablero, pero uso contentColor blanco para buen contraste
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = board.color,
+        contentColor = Color.White,
         modifier = Modifier.height(110.dp)
     ) {
         Column(
@@ -161,7 +179,6 @@ private fun BoardCard(board: BoardUi, onClick: () -> Unit) {
         ) {
             Text(
                 text = board.title,
-                color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -182,18 +199,27 @@ private fun CreateBoardCard(onClick: () -> Unit) {
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = Color.Transparent,
-        border = BorderStroke(2.dp, OutlineGray),
+        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant),
         modifier = Modifier.height(110.dp)
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.Add, contentDescription = "Crear tablero")
+                Icon(
+                    Icons.Filled.Add,
+                    contentDescription = "Crear tablero",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
                 Spacer(Modifier.width(8.dp))
-                Text(text = "crear tablero", fontWeight = FontWeight.Medium)
+                Text(
+                    text = "crear tablero",
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
 }
+
 
 
 
