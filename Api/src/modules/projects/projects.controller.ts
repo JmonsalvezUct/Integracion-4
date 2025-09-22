@@ -1,6 +1,13 @@
 import type { Request, Response } from 'express';
 import { projectService } from './projects.service.js';
 
+// arriba del archivo (o justo antes del export)
+const withProjectDate = (p: any) => ({
+  ...p,
+  projectDate: new Date(p.createdAt).toISOString().slice(0, 10), // YYYY-MM-DD (UTC)
+});
+
+
 export const projectController = {
   // TDI-79: Crear proyecto
   createProject: async (req: Request, res: Response) => {
@@ -11,8 +18,10 @@ export const projectController = {
         return res.status(400).json({ error: 'El nombre del proyecto es requerido' });
       }
 
+// en createProject:
       const project = await projectService.createProject({ name, description });
-      res.status(201).json(project);
+      res.status(201).json(withProjectDate(project));
+
     } catch (error) {
       res.status(500).json({ error: 'Error al crear el proyecto' });
     }
