@@ -8,7 +8,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,23 +23,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.fastplanner.ui.theme.BoardBlue
-import com.example.fastplanner.ui.theme.BoardGreen
-import com.example.fastplanner.ui.theme.BoardPink
-import com.example.fastplanner.ui.theme.BoardRed
-import com.example.fastplanner.ui.theme.ContentBgColor
-import com.example.fastplanner.ui.theme.HeaderColor
-import com.example.fastplanner.ui.theme.OutlineGray
-import com.example.fastplanner.ui.theme.TextPrimary
 
-data class BoardUi(
-    val id: String,
-    val title: String,
-    val activitiesCount: Int,
-    val color: Color
-)
+// Data para los tableros
+data class BoardUi(val id: String, val title: String, val activitiesCount: Int, val color: Color)
 
-enum class BottomItem { Home, Tasks, Share, Settings }
+// Colores temporales (pueden venir de color.kt)
+private val Blue = Color(0xFF2F8BFF)
+private val Green = Color(0xFF4BC19D)
+private val Pink = Color(0xFFF06AB1)
+private val Red  = Color(0xFFEF6A6A)
+private val Header = Color(0xFF3E21FF)
+private val ContentBg = Color(0xFFF1F5F9)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,13 +44,12 @@ fun MainScreen(
     onBottomNavSelected: (BottomItem) -> Unit = {}
 ) {
     var query by remember { mutableStateOf("") }
-
     val boards = remember {
         listOf(
-            BoardUi("1", "Marketing", 3, BoardBlue),
-            BoardUi("2", "Investigación", 2, BoardGreen),
-            BoardUi("3", "Desarrollo", 5, BoardPink),
-            BoardUi("4", "Estadística", 1, BoardRed),
+            BoardUi("1", "Marketing", 3, Blue),
+            BoardUi("2", "Investigación", 2, Green),
+            BoardUi("3", "Desarrollo", 5, Pink),
+            BoardUi("4", "Estadística", 1, Red),
         )
     }
 
@@ -62,29 +59,29 @@ fun MainScreen(
                 title = {},
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menú", tint = Color.White)
+                        Icon(Icons.Default.Home, contentDescription = "Menú", tint = Color.White)
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* perfil */ }) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Perfil", tint = Color.White)
+                    IconButton(onClick = { }) {
+                        Icon(Icons.Default.Person, contentDescription = "Perfil", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HeaderColor,
+                    containerColor = Header,
                     navigationIconContentColor = Color.White,
                     actionIconContentColor = Color.White
                 )
             )
         },
         bottomBar = { MainBottomBar(BottomItem.Home, onBottomNavSelected) },
-        containerColor = HeaderColor
+        containerColor = Header
     ) { inner ->
         Column(
             modifier = Modifier
                 .padding(inner)
                 .fillMaxSize()
-                .background(HeaderColor)
+                .background(Header)
         ) {
             Box(
                 modifier = Modifier
@@ -103,7 +100,7 @@ fun MainScreen(
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                            leadingIcon = { Icon(Icons.Default.Home, null) },
                             placeholder = { Text("buscar …") },
                             singleLine = true,
                             shape = RoundedCornerShape(24.dp),
@@ -114,14 +111,14 @@ fun MainScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(ContentBgColor)
+                            .background(ContentBg)
                             .padding(horizontal = 16.dp)
                     ) {
                         Spacer(Modifier.height(16.dp))
                         Text(
                             text = "Tableros",
                             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = TextPrimary
+                            color = Color(0xFF0F172A)
                         )
                         Spacer(Modifier.height(12.dp))
 
@@ -180,12 +177,12 @@ private fun CreateBoardCard(onClick: () -> Unit) {
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = Color.Transparent,
-        border = BorderStroke(2.dp, OutlineGray),
+        border = BorderStroke(2.dp, Color(0xFFCBD5E1)),
         modifier = Modifier.height(110.dp)
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Add, contentDescription = null)
+                Icon(Icons.Default.Home, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(text = "crear tablero", fontWeight = FontWeight.Medium)
             }
@@ -196,10 +193,11 @@ private fun CreateBoardCard(onClick: () -> Unit) {
 @Composable
 private fun MainBottomBar(selected: BottomItem, onSelected: (BottomItem) -> Unit) {
     NavigationBar {
-        NavItem(Icons.Default.Home, "Inicio", selected == BottomItem.Home) { onSelected(BottomItem.Home) }
-        NavItem(Icons.Default.ListAlt, "Tareas", selected == BottomItem.Tasks) { onSelected(BottomItem.Tasks) }
-        NavItem(Icons.Default.Person, "Perfil", selected == BottomItem.Share) { onSelected(BottomItem.Share) }
-        NavItem(Icons.Default.Settings, "Ajustes", selected == BottomItem.Settings) { onSelected(BottomItem.Settings) }
+        NavItem(Icons.Filled.Home, "Inicio", selected == BottomItem.Home) { onSelected(BottomItem.Home) }
+        NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) { onSelected(BottomItem.Projects) }
+        NavItem(Icons.AutoMirrored.Filled.ListAlt, "Tareas", selected == BottomItem.Tasks) { onSelected(BottomItem.Tasks) }
+        NavItem(Icons.Filled.CalendarMonth, "Calendario", selected == BottomItem.Calendar) { onSelected(BottomItem.Calendar) }
+        NavItem(Icons.Filled.Person, "Perfil", selected == BottomItem.Profile) { onSelected(BottomItem.Profile) }
     }
 }
 
@@ -217,4 +215,6 @@ private fun RowScope.NavItem(
         label = { Text(label) }
     )
 }
+
+
 
