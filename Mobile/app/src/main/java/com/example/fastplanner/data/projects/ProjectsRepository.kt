@@ -12,7 +12,7 @@ class ProjectsRepository(private val api: ProjectsApi) {
             sortBy = sort.by.param,
             order = sort.order.param
         ).map { it.toDomain() }
-    // 🔹 NUEVO: equivalente a “traer todo” con un orden por defecto
+
     suspend fun fetchAll(): List<Project> =
         fetch(q = null, sort = SortOption(SortBy.DATE, SortOrder.DESC))
     fun stream(

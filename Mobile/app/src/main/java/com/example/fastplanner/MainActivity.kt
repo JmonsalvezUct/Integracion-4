@@ -24,7 +24,7 @@ private object Routes {
     const val CALENDAR = "calendar"
 
     const val PROJECTS = "projects"
-    // Futuro: const val PROJECTS = "projects"; const val TASKS = "tasks"
+
 }
 
 class MainActivity : ComponentActivity() {
@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
                 val projectsApi = remember {
                     RetrofitProvider.createProjectsApi(
                         baseUrl = "http://10.0.2.2:3000/api/",
-                        tokenProvider = { null }   // devuelve tu JWT si ya tienes login
+                        tokenProvider = { null }
                     )
                 }
                 val projectsRepo = remember { ProjectsRepository(projectsApi) }
@@ -53,20 +53,20 @@ class MainActivity : ComponentActivity() {
                             projectsRepo = projectsRepo,
                             onProjectChanged = { projectId ->
                                 Log.d("Main", "Proyecto seleccionado: $projectId")
-                                // TODO: notificar a tu TasksViewModel -> /projects/{projectId}/tasks
+
                             },
                             onBottomNavSelected = { item ->
                                 when (item) {
-                                    BottomItem.Home -> Unit // ya estás en Home
+                                    BottomItem.Home -> Unit
                                     BottomItem.Projects -> {
                                         nav.navigate(Routes.PROJECTS) {
-                                            popUpTo(Routes.HOME) { saveState = true } // conserva estado si vuelves
+                                            popUpTo(Routes.HOME) { saveState = true }
                                             launchSingleTop = true
                                             restoreState = true
                                         }
                                     }
                                     BottomItem.Tasks -> {
-                                        // TODO: nav.navigate(Routes.TASKS) { ... }
+
                                     }
                                     BottomItem.Calendar -> {
                                         nav.navigate(Routes.CALENDAR) {
@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
                                     BottomItem.Tasks -> {
                                         // TODO: nav.navigate(Routes.TASKS) { ... }
                                     }
-                                    BottomItem.Calendar -> Unit // ya estás en Calendario
+                                    BottomItem.Calendar -> Unit
                                     BottomItem.Profile -> {
                                         nav.navigate(Routes.PROFILE) {
                                             popUpTo(Routes.HOME) { saveState = true }
@@ -119,14 +119,44 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     // PROJECTS
+
                     composable(Routes.PROJECTS) {
                         ProjectsScreen(
                             projectsRepo = projectsRepo,
                             onAddProject = { /* ... */ },
                             onProjectClick = { p -> /* nav a detalle */ },
-                            onBottomNavSelected = { /* mismo switch que en las otras rutas */ }
+                            onBottomNavSelected = { item ->
+                                when (item) {
+                                    BottomItem.Home -> {
+                                        nav.navigate(Routes.HOME) {
+                                            popUpTo(Routes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                    BottomItem.Projects -> Unit
+                                    BottomItem.Tasks -> {
+                                        // TODO: nav.navigate(Routes.TASKS) { ... }
+                                    }
+                                    BottomItem.Calendar -> {
+                                        nav.navigate(Routes.CALENDAR) {
+                                            popUpTo(Routes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                    BottomItem.Profile -> {
+                                        nav.navigate(Routes.PROFILE) {
+                                            popUpTo(Routes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                }
+                            }
                         )
                     }
+
 
                     // PERFIL
                     composable(Routes.PROFILE) {
@@ -153,7 +183,7 @@ class MainActivity : ComponentActivity() {
                                             restoreState = true
                                         }
                                     }
-                                    BottomItem.Profile -> Unit // ya estás en Perfil
+                                    BottomItem.Profile -> Unit
                                 }
                             },
                             onBack = { nav.popBackStack() }

@@ -47,7 +47,7 @@ class ProjectSwitcherViewModel(
     }
 }
 
-/** Factory para crear el VM con dependencias (repo + callback) */
+
 class ProjectSwitcherVMFactory(
     private val repo: ProjectsRepository,
     private val onProjectChanged: (Long) -> Unit

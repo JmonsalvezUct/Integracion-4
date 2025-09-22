@@ -5,8 +5,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,6 +26,8 @@ import com.example.fastplanner.data.projects.SortBy
 import com.example.fastplanner.data.projects.SortOrder
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.material.icons.filled.Menu
+
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -31,7 +38,7 @@ fun formatDate(iso: String): String {
             .withZone(ZoneId.systemDefault())
         formatter.format(instant)
     } catch (e: Exception) {
-        iso // fallback por si falla
+        iso
     }
 }
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,7 +48,7 @@ fun ProjectsScreen(
     projectsRepo: ProjectsRepository,
     onAddProject: () -> Unit = {},
     onProjectClick: (Project) -> Unit = {},
-    onBottomNavSelected: (BottomItem) -> Unit = {} // si luego agregas la bottom bar
+    onBottomNavSelected: (BottomItem) -> Unit = {}
 )
 
 {
@@ -49,9 +56,25 @@ fun ProjectsScreen(
     val st by vm.state.collectAsState()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Proyectos") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Proyectos") },
+                navigationIcon = {
+                    IconButton(onClick = { /* abrir drawer o menú */ }) {
+                        Icon(Icons.Filled.Menu, contentDescription = "Menú")
+                    }
+                }
+            )
+        },
+
+
         floatingActionButton = { FloatingActionButton(onClick = onAddProject) { Text("+") } },
-        // bottomBar = { MainBottomBar(selected = BottomItem.Projects, onSelected = onBottomNavSelected) }
+        bottomBar = {
+            CalendarioBottomBar(
+                selected = BottomItem.Projects,
+                onSelected = onBottomNavSelected
+            )
+        },
     ) { inner ->
         Column(Modifier.padding(inner).fillMaxSize()) {
 
@@ -67,7 +90,7 @@ fun ProjectsScreen(
                     .fillMaxWidth()
             )
 
-            // Controles de orden
+
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -147,4 +170,34 @@ private fun ProjectCard(project: Project, onClick: () -> Unit) {
             )
         }
     }
+}
+//---------------------botombar-------------
+
+@Composable
+private fun CalendarioBottomBar(
+    selected: BottomItem,
+    onSelected: (BottomItem) -> Unit
+) {
+    NavigationBar {
+        NavItem(Icons.Filled.Home, "Inicio", selected == BottomItem.Home) { onSelected(BottomItem.Home) }
+        NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) { onSelected(BottomItem.Projects) }
+        NavItem(Icons.AutoMirrored.Filled.ListAlt, "Tareas", selected == BottomItem.Tasks) { onSelected(BottomItem.Tasks) }
+        NavItem(Icons.Filled.CalendarMonth, "Calendario", selected == BottomItem.Calendar) { onSelected(BottomItem.Calendar) }
+        NavItem(Icons.Filled.Person, "Perfil", selected == BottomItem.Profile) { onSelected(BottomItem.Profile) }
+    }
+}
+
+@Composable
+private fun RowScope.NavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) }
+    )
 }

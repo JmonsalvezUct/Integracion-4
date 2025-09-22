@@ -1,5 +1,5 @@
 package com.example.fastplanner.ui.screens
-
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -83,8 +83,8 @@ fun MainScreen(
                     Box {
                         IconButton(onClick = { switcherVm.toggleMenu() }) {
                             Icon(
-                                Icons.Default.Home,
-                                contentDescription = "Cambiar proyecto",
+                                Icons.Filled.Menu,            // <--- hamburguesa
+                                contentDescription = "Menú",
                                 tint = Color.White
                             )
                         }
