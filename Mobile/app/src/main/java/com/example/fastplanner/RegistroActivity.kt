@@ -1,15 +1,11 @@
 package com.example.fastplanner
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fastplanner.ui.screens.RegistroScreen
-import com.example.fastplanner.ui.settings.SettingsViewModel
 import com.example.fastplanner.ui.theme.FastPlannerTheme
 
 class RegistroActivity : ComponentActivity() {
@@ -18,22 +14,22 @@ class RegistroActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            // Lee el modo (claro/oscuro) desde DataStore
-            val appCtx = LocalContext.current.applicationContext
-            val settingsVm: SettingsViewModel = viewModel(
-                factory = SettingsViewModel.provideFactory(appCtx)
-            )
-            val isDark by settingsVm.isDarkMode.collectAsStateWithLifecycle()
-
-            // Aplica tu tema con el modo actual
-            FastPlannerTheme(darkTheme = isDark) {
+            // Pantalla de registro fija en tema claro (no depende del botón claro/oscuro)
+            FastPlannerTheme(darkTheme = false) {
                 RegistroScreen(
-                    onRegister = {
-                        // TODO: navegar a Home o volver al Login, según tu flujo
-                        // finish()
+                    onRegisterSuccess = {
+                        startActivity(Intent(this@RegistroActivity, MainActivity::class.java))
+                        finish()
+                    },
+                    onBackToLogin = {
+                        finish()
                     }
                 )
             }
         }
     }
 }
+
+
+
+
