@@ -24,6 +24,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+// imports:
+import com.example.fastplanner.ui.components.ProjectSwitcherTopBar
+import com.example.fastplanner.ui.components.ProjectSwitcherUiState
+import com.example.fastplanner.ui.components.ProjectUi
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.fastplanner.data.projects.ProjectsRepository
+import com.example.fastplanner.ui.screens.ProjectSwitcherViewModel
+import com.example.fastplanner.ui.screens.ProjectSwitcherVMFactory
+
 // Data para los tableros
 data class BoardUi(val id: String, val title: String, val activitiesCount: Int, val color: Color)
 
@@ -38,11 +47,19 @@ private val ContentBg = Color(0xFFF1F5F9)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    projectsRepo: ProjectsRepository,
+    onProjectChanged: (Long) -> Unit,
     onOpenDrawer: () -> Unit = {},
     onBoardClick: (BoardUi) -> Unit = {},
     onCreateBoardClick: () -> Unit = {},
     onBottomNavSelected: (BottomItem) -> Unit = {}
 ) {
+    val switcherVm: ProjectSwitcherViewModel = viewModel(
+        factory = ProjectSwitcherVMFactory(projectsRepo, onProjectChanged)
+    )
+    val ps by switcherVm.state.collectAsState()
+
+    LaunchedEffect(Unit) { switcherVm.load()}
     var query by remember { mutableStateOf("") }
     val boards = remember {
         listOf(
@@ -56,10 +73,37 @@ fun MainScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    Text(
+                        text = ps.selected?.name ?: "",
+                        color = Color.White
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(Icons.Default.Home, contentDescription = "Menú", tint = Color.White)
+                    Box {
+                        IconButton(onClick = { switcherVm.toggleMenu() }) {
+                            Icon(
+                                Icons.Default.Home,
+                                contentDescription = "Cambiar proyecto",
+                                tint = Color.White
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = ps.expanded,
+                            onDismissRequest = { switcherVm.toggleMenu() }
+                        ) {
+                            when {
+                                ps.loading -> Text("Cargando...", modifier = Modifier.padding(12.dp))
+                                ps.error != null -> Text("Error: ${ps.error}", modifier = Modifier.padding(12.dp))
+                                else -> ps.projects.forEach { p ->
+                                    DropdownMenuItem(
+                                        text = { Text(p.name) },
+                                        onClick = { switcherVm.select(p) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 actions = {
@@ -74,6 +118,7 @@ fun MainScreen(
                 )
             )
         },
+
         bottomBar = { MainBottomBar(BottomItem.Home, onBottomNavSelected) },
         containerColor = Header
     ) { inner ->

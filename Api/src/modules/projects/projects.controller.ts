@@ -3,7 +3,9 @@
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "../../app/loaders/prisma.js";
 import type { Prisma,PrismaClient  } from "@prisma/client";
-import { projectService } from "./projects.service.js";
+
+import { projectService } from './projects.service.js';
+import type { SortBy, Order } from './projects.service.js';
 
 
 /**
@@ -97,8 +99,7 @@ export const cloneProjectController = async (req: Request, res: Response) => {
   if (!copy) return res.status(404).json({ message: "Proyecto no existe" });
   return res.status(201).json({ message: "Proyecto clonado", project: copy });
 };
-type SortBy = "name" | "date" | "activity";
-type Order = "asc" | "desc";
+
 export const projectController = {
   // TDI-79: Crear proyecto
   createProject: async (req: Request, res: Response) => {
@@ -123,18 +124,40 @@ export const projectController = {
 
 
   // TDI-80: Obtener todos los proyectos
-  async getAllProjects(req: Request, res: Response) {
+async getAllProjects(req: Request, res: Response, next: NextFunction) {
     try {
-      const sortBy = (req.query.sortBy as SortBy) ?? "date";
-      const order: Order =
-        req.query.order === "asc" || req.query.order === "desc"
-          ? (req.query.order as Order)
-          : "asc";
+      // lee query params
+      const sortByQ = String(req.query.sortBy ?? 'date').toLowerCase();
+      const orderQ  = String(req.query.order ?? 'desc').toLowerCase();
+      const q       = typeof req.query.q === 'string' ? req.query.q.trim() : '';
 
-      const projects = await projectService.getAllProjects({ sortBy, order });
-      res.json(projects);
-    } catch (error) {
-      res.status(500).json({ error: "Error al obtener los proyectos" });
+      const sortByValue: SortBy =
+        sortByQ === 'name'     ? 'name' :
+        sortByQ === 'activity' ? 'activity' :
+        'date';
+
+      const orderValue: Order = orderQ === 'asc' ? 'asc' : 'desc';
+
+      let list = await projectService.getAllProjects({ sortBy: sortByValue, order: orderValue });
+
+
+      // 2) filtra por q si aplica
+      if (q) {
+        const qlc = q.toLowerCase();
+        list = list.filter(p => p.name.toLowerCase().includes(qlc));
+      }
+
+      // 3) adapta shape de salida
+      const data = list.map(p => ({
+        id: p.id,
+        name: p.name,
+        createdAt: p.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        activity: p.tasksCount ?? 0,
+      }));
+
+      res.json(data);
+    } catch (err) {
+      next(err);
     }
   },
 
