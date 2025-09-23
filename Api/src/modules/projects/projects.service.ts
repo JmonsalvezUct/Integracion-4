@@ -6,6 +6,9 @@ let projects: any[] = [
   { id: 2, name: "Proyecto Beta", description: "Segundo proyecto", createdAt: new Date(), updatedAt: new Date() }
 ];
 let nextId = 3;
+
+type CloneOpts = { name?: string };
+
 export type SortBy = "name" | "date" | "activity";
 export type Order  = "asc" | "desc";
 export interface Project {
@@ -31,20 +34,23 @@ export const projectService = {
     return project;
   },
 
-    cloneProject: async (id: number, opts?: { name?: string }) => {
-  const src = projects.find(p => p.id === id);
-  if (!src) return null;
+  async cloneProject(projectId: number, opts: CloneOpts = {}) {
+   
+    const src = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+    if (!src) return null;
 
-  const copy = {
-    id: nextId++,
-    name: opts?.name ?? `${src.name} (copia)`,
-    description: src.description || '',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  projects.push(copy);
-  return copy;
-},
+ 
+    const newProject = await prisma.project.create({
+      data: {
+        name: opts.name ?? `${src.name} (copia)`,
+        description: src.description ?? null,
+      },
+    });
+
+    return newProject;
+  },
 
   // TDI-80: Obtener todos los proyectos
  getAllProjects: async (opts?: { sortBy?: SortBy; order?: Order }) => {
