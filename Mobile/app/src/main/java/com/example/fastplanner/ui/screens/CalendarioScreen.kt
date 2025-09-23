@@ -36,7 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
-import org.json.JSONArray
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.time.DayOfWeek
@@ -62,12 +62,13 @@ fun CalendarioScreen(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var mode by remember { mutableStateOf(CalMode.MONTH) }
 
-    // fecha -> lista de nombres (desde API)
-    var itemsByDate by remember(visibleMonth) { mutableStateOf<Map<LocalDate, List<String>>>(emptyMap()) }
-    var loading by remember(visibleMonth) { mutableStateOf(false) }
-    var error by remember(visibleMonth) { mutableStateOf<String?>(null) }
+    // fecha -> lista de tareas (desde API)
+    var tasksByDate by remember { mutableStateOf<Map<LocalDate, List<TaskApi>>>(emptyMap()) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var allTasks by remember { mutableStateOf<List<TaskApi>>(emptyList()) }
 
-    val itemsForSelected = itemsByDate[selectedDate].orEmpty()
+    val tasksForSelected = tasksByDate[selectedDate].orEmpty()
 
     // rango de la grilla mensual (lunes..domingo)
     val firstOfMonth = visibleMonth.atDay(1)
@@ -82,29 +83,55 @@ fun CalendarioScreen(
         }
     }
 
-    // cargar /api/projects cuando cambia el mes visible
-    LaunchedEffect(visibleMonth) {
-        loading = true; error = null
-        runCatching { withContext(Dispatchers.IO) { fetchProjects() } }
-            .onSuccess { list ->
-                val grouped = list
-                    .filter { it.createdAt != null && it.name != null && it.createdAt!!.length >= 10 }
-                    .map { it.copy(dateOnly = it.createdAt!!.take(10)) } // "YYYY-MM-DD"
-                    .filter {
-                        val d = LocalDate.parse(it.dateOnly!!)
-                        !d.isBefore(firstCell) && !d.isAfter(lastCell)
-                    }
-                    .groupBy(
-                        keySelector = { LocalDate.parse(it.dateOnly!!) },
-                        valueTransform = { it.name!! }
-                    )
-                itemsByDate = grouped
+    // Cargar tareas una vez al iniciar
+    LaunchedEffect(Unit) {
+        loading = true
+        error = null
+        try {
+            val tasksList = withContext(Dispatchers.IO) { fetchTasks() }
+            allTasks = tasksList
+
+            println("=== DEBUG: TAREAS OBTENIDAS DE LA API ===")
+            println("Total de tareas: ${tasksList.size}")
+            tasksList.forEachIndexed { index, task ->
+                println("Tarea $index: '${task.title}' - Fecha: ${task.dueDate}")
             }
-            .onFailure { e ->
-                error = e.message ?: "Error al cargar"
-                itemsByDate = emptyMap()
+
+            // Procesar y agrupar tareas
+            val grouped = processAndGroupTasks(tasksList, firstCell, lastCell)
+            tasksByDate = grouped
+
+            println("=== DEBUG: TAREAS AGRUPADAS ===")
+            grouped.forEach { (date, tasks) ->
+                println("$date: ${tasks.size} tareas")
+                tasks.forEach { task ->
+                    println("  - ${task.title} (${task.dueDate})")
+                }
             }
+
+        } catch (e: Exception) {
+            error = "Error: ${e.message ?: "Error desconocido"}"
+            println("=== DEBUG: ERROR ===")
+            e.printStackTrace()
+        }
         loading = false
+    }
+
+    // Reprocesar tareas cuando cambia el mes visible
+    LaunchedEffect(visibleMonth) {
+        if (allTasks.isNotEmpty()) {
+            val firstOfMonth = visibleMonth.atDay(1)
+            val firstCell = firstOfMonth.minusDays(((firstOfMonth.dayOfWeek.value + 6) % 7).toLong())
+            val lastOfMonth = visibleMonth.atEndOfMonth()
+            val lastCell = lastOfMonth.plusDays((7 - lastOfMonth.dayOfWeek.value) % 7L)
+
+            val grouped = processAndGroupTasks(allTasks, firstCell, lastCell)
+            tasksByDate = grouped
+
+            println("=== DEBUG: MES CAMBIADO A $visibleMonth ===")
+            println("Rango: $firstCell a $lastCell")
+            println("Tareas en este rango: ${grouped.values.flatten().size}")
+        }
     }
 
     // ----- UI -----
@@ -178,7 +205,7 @@ fun CalendarioScreen(
                         MonthGrid(
                             month = visibleMonth,
                             selected = selectedDate,
-                            tasksCountByDate = itemsByDate.mapValues { it.value.size },
+                            tasksCountByDate = tasksByDate.mapValues { it.value.size },
                             onSelect = { selectedDate = it }
                         )
                     } else {
@@ -186,7 +213,7 @@ fun CalendarioScreen(
                         WeekRow(
                             weekStart = weekStart,
                             selected = selectedDate,
-                            tasksCountByDate = itemsByDate.mapValues { it.value.size },
+                            tasksCountByDate = tasksByDate.mapValues { it.value.size },
                             onSelect = { selectedDate = it },
                             onMeasuredWidth = { weekRowWidthPx = it }
                         )
@@ -199,6 +226,23 @@ fun CalendarioScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = TextPrimary
                     )
+
+                    // Información de DEBUG
+                    if (!loading) {
+                        Column {
+                            Text(
+                                "DEBUG: ${allTasks.size} tareas totales, ${tasksForSelected.size} para esta fecha",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                            Text(
+                                "DEBUG: Mes: $visibleMonth, Seleccionado: $selectedDate",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+
                     if (mode == CalMode.WEEK) {
                         Spacer(Modifier.height(4.dp))
                         AssistChip(onClick = {}, enabled = false,
@@ -209,22 +253,21 @@ fun CalendarioScreen(
                     if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
                     error?.let { Text("Error: $it", color = MaterialTheme.colorScheme.error) }
 
-                    if (!loading && itemsForSelected.isEmpty()) {
-                        EmptyCard("Sin elementos para este día")
+                    if (!loading && tasksForSelected.isEmpty()) {
+                        EmptyCard("Sin tareas para este día")
                     } else {
-                        // --- TDI-76: mover por drag horizontal en vista Semanal ---
                         TaskListDraggable(
-                            items = itemsForSelected,
+                            tasks = tasksForSelected,
                             enabled = (mode == CalMode.WEEK && cellWidthPx > 0f),
                             cellWidthPx = cellWidthPx
-                        ) { name, daysDelta ->
+                        ) { task, daysDelta ->
                             if (daysDelta != 0) {
                                 val newDate = selectedDate.plusDays(daysDelta.toLong())
-                                val mutable = itemsByDate.mapValues { it.value.toMutableList() }.toMutableMap()
-                                mutable[selectedDate]?.remove(name)
-                                mutable.getOrPut(newDate) { mutableListOf() }.add(name)
-                                itemsByDate = mutable
-                                selectedDate = newDate // opcional: saltar al nuevo día
+                                val mutable = tasksByDate.mapValues { it.value.toMutableList() }.toMutableMap()
+                                mutable[selectedDate]?.remove(task)
+                                mutable.getOrPut(newDate) { mutableListOf() }.add(task)
+                                tasksByDate = mutable
+                                selectedDate = newDate
                             }
                         }
                     }
@@ -232,6 +275,40 @@ fun CalendarioScreen(
             }
         }
     }
+}
+
+// Función auxiliar para procesar y agrupar tareas
+private fun processAndGroupTasks(
+    tasksList: List<TaskApi>,
+    firstCell: LocalDate,
+    lastCell: LocalDate
+): Map<LocalDate, List<TaskApi>> {
+    return tasksList
+        .filter { it.dueDate != null && it.title != null }
+        .mapNotNull { task ->
+            try {
+                // Extraer solo la parte de la fecha (YYYY-MM-DD) del string completo
+                val dateString = if (task.dueDate!!.contains("T")) {
+                    task.dueDate!!.substringBefore("T")
+                } else {
+                    task.dueDate!!
+                }
+
+                val taskDate = LocalDate.parse(dateString)
+                task to taskDate
+            } catch (e: Exception) {
+                println("ERROR parsing date for task '${task.title}': ${task.dueDate} - ${e.message}")
+                null
+            }
+        }
+        .filter { (_, taskDate) ->
+            // Incluir tareas que estén dentro del rango del calendario visible
+            !taskDate.isBefore(firstCell) && !taskDate.isAfter(lastCell)
+        }
+        .groupBy(
+            keySelector = { it.second },
+            valueTransform = { it.first }
+        )
 }
 
 // ---------- Header + toggle ----------
@@ -308,7 +385,6 @@ private fun MonthGrid(
                 count = tasksCountByDate[day] ?: 0,
                 enabled = inMonth,
                 onClick = { onSelect(day) }
-                // square=true por defecto (cuadrado)
             )
         }
     }
@@ -337,8 +413,8 @@ private fun WeekRow(
                 count = tasksCountByDate[day] ?: 0,
                 enabled = true,
                 onClick = { onSelect(day) },
-                square = false,                 // Semana: rectangular
-                modifier = Modifier.weight(1f)  // 7 columnas iguales
+                square = false,
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -352,16 +428,16 @@ private fun DayCell(
     count: Int,
     enabled: Boolean,
     onClick: () -> Unit,
-    square: Boolean = true,                 // Mes = cuadrado; Semana = rectangular
+    square: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val bg = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f) else Color.White
     val border = if (isSelected) MaterialTheme.colorScheme.primary else Color(0xFFE6E6E6)
 
     val sizeMod = if (square) {
-        modifier.aspectRatio(1f)            // Mes: cuadrado
+        modifier.aspectRatio(1f)
     } else {
-        modifier.height(64.dp)              // Semana: altura fija
+        modifier.height(64.dp)
     }
 
     Surface(
@@ -394,10 +470,10 @@ private fun DayCell(
 // ---------- Lista con drag (TDI-76) ----------
 @Composable
 private fun TaskListDraggable(
-    items: List<String>,
+    tasks: List<TaskApi>,
     enabled: Boolean,
     cellWidthPx: Float,
-    onMoveByDays: (name: String, daysDelta: Int) -> Unit
+    onMoveByDays: (task: TaskApi, daysDelta: Int) -> Unit
 ) {
     Surface(shape = RoundedCornerShape(12.dp), color = Color.White, modifier = Modifier.fillMaxWidth()) {
         LazyColumn(
@@ -405,17 +481,16 @@ private fun TaskListDraggable(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(12.dp)
         ) {
-            items(items.size) { i ->
-                val name = items[i]
+            items(tasks.size) { i ->
+                val task = tasks[i]
                 var dragPx by remember { mutableStateOf(0f) }
 
-                // texto auxiliar mientras arrastras (p.ej. "→ +2d")
                 val deltaDays =
                     if (enabled && cellWidthPx > 0f) (dragPx / cellWidthPx).roundToInt().coerceIn(-6, 6) else 0
                 val suffix = if (enabled && deltaDays != 0) "  (→ ${if (deltaDays>0) "+" else ""}$deltaDays d)" else ""
 
                 Text(
-                    "• $name$suffix",
+                    "• ${task.title ?: "Sin título"}$suffix",
                     color = TextPrimary,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -426,14 +501,14 @@ private fun TaskListDraggable(
                                     state = rememberDraggableState { delta -> dragPx += delta },
                                     onDragStopped = {
                                         val steps = (dragPx / cellWidthPx).roundToInt().coerceIn(-6, 6)
-                                        if (steps != 0) onMoveByDays(name, steps)
+                                        if (steps != 0) onMoveByDays(task, steps)
                                         dragPx = 0f
                                     }
                                 )
                             else Modifier
                         )
                 )
-                if (i < items.lastIndex) Divider()
+                if (i < tasks.lastIndex) Divider()
             }
         }
     }
@@ -446,40 +521,68 @@ private fun EmptyCard(text: String) {
     }
 }
 
-// ---------- HTTP sencillo + parser JSON ----------
-private data class ProjectApi(
+// ---------- HTTP sencillo + parser JSON para TAREAS ----------
+private data class TaskApi(
     val id: Int?,
-    val name: String?,
-    val createdAt: String?,
+    val title: String?,
+    val description: String?,
+    val dueDate: String?,
+    val priority: String?,
+    val status: String?,
+    val projectId: Int?,
     val dateOnly: String? = null
 )
 
-private suspend fun fetchProjects(): List<ProjectApi> = withContext(Dispatchers.IO) {
-    val url = URL("$BASE_URL/api/projects")
+private suspend fun fetchTasks(): List<TaskApi> = withContext(Dispatchers.IO) {
+    val url = URL("$BASE_URL/api/tasks")
     val conn = (url.openConnection() as HttpURLConnection).apply {
         requestMethod = "GET"
         connectTimeout = 8000
         readTimeout = 8000
     }
-    conn.inputStream.use { input ->
-        val text = BufferedReader(InputStreamReader(input)).readText()
-        val arr = JSONArray(text)
-        buildList {
-            for (i in 0 until arr.length()) {
-                val o = arr.getJSONObject(i)
-                add(
-                    ProjectApi(
-                        id = if (o.has("id")) o.optInt("id") else null,
-                        name = if (o.has("name")) o.optString("name") else null,
-                        createdAt = if (o.has("createdAt")) o.optString("createdAt") else null
-                    )
-                )
+
+    try {
+        println("DEBUG: Conectando a: $BASE_URL/api/tasks")
+        val responseCode = conn.responseCode
+        println("DEBUG: Código de respuesta: $responseCode")
+
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            conn.inputStream.use { input ->
+                val text = BufferedReader(InputStreamReader(input)).readText()
+                println("DEBUG: Respuesta JSON completa: $text")
+
+                // IMPORTANTE: Parsear como objeto JSON y extraer el array "items"
+                val jsonObject = JSONObject(text)
+                val itemsArray = jsonObject.getJSONArray("items")
+                println("DEBUG: Número de tareas en 'items': ${itemsArray.length()}")
+
+                return@withContext buildList {
+                    for (i in 0 until itemsArray.length()) {
+                        val o = itemsArray.getJSONObject(i)
+                        val task = TaskApi(
+                            id = if (o.has("id")) o.optInt("id") else null,
+                            title = if (o.has("title")) o.optString("title") else null,
+                            description = if (o.has("description")) o.optString("description") else null,
+                            dueDate = if (o.has("dueDate")) o.optString("dueDate") else null,
+                            priority = if (o.has("priority")) o.optString("priority") else null,
+                            status = if (o.has("status")) o.optString("status") else null,
+                            projectId = if (o.has("projectId")) o.optInt("projectId") else null
+                        )
+                        println("DEBUG: Tarea parseada: ${task.title} - ${task.dueDate}")
+                        add(task)
+                    }
+                }
             }
+        } else {
+            throw Exception("Error HTTP: $responseCode - ${conn.responseMessage}")
         }
+    } catch (e: Exception) {
+        println("DEBUG: Error: ${e.message}")
+        throw e
     }
 }
 
-// ---------- Bottom bar como la tuya ----------
+// ---------- Bottom bar ----------
 @Composable
 private fun CalendarioBottomBar(
     selected: BottomItem,
