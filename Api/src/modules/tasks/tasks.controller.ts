@@ -74,23 +74,44 @@ export const deleteTask = async (req: Request, res: Response) => {
 };
 
 export const createTask = async (req: Request, res: Response) => {
-  const { creatorId, projectId, statusId, priorityId, ...data } = req.body;
-  const userPk: number | undefined = (req as any).user?.id ?? creatorId;
-  if (!userPk)   return res.status(400).json({ message: "creatorId es requerido (temporalmente)" });
-  if (!projectId) return res.status(400).json({ message: "projectId es requerido" });
+  try {
+    const { title, projectId, creatorId, description, assigneeId, statusId, priorityId, dueDate } = req.body;
+    
+    if (!title) return res.status(400).json({ message: "title es requerido" });
+    if (!projectId) return res.status(400).json({ message: "projectId es requerido" });
 
-  const createData: any = {
-    ...data,
-    creator:  { connect: { id: userPk } },
-    project:  { connect: { id: projectId } },
-    priority: { connect: { id: priorityId ?? DEFAULT_PRIORITY_ID } },
-  };
-  if (statusId) createData.status = { connect: { id: statusId } };
+    // TEMPORAL: Si no hay creatorId, usar el primer usuario existente
+    let finalCreatorId = creatorId;
+    if (!finalCreatorId) {
+      const firstUser = await prisma.user.findFirst({
+        select: { id: true }
+      });
+      if (!firstUser) {
+        return res.status(400).json({ message: "No hay usuarios en la base de datos" });
+      }
+      finalCreatorId = firstUser.id;
+      console.log('⚠️  Usando creatorId temporal:', finalCreatorId);
+    }
 
-  const task = await prisma.task.create({ data: createData });
-  res.status(201).json(task);
+    const task = await prisma.task.create({
+      data: {
+        title,
+        description: description || "",
+        project: { connect: { id: projectId } },
+        creator: { connect: { id: finalCreatorId } },
+        assignee: assigneeId ? { connect: { id: assigneeId } } : undefined,
+        status: { connect: { id: statusId || 1 } },
+        priority: { connect: { id: priorityId || 2 } },
+        dueDate: dueDate ? new Date(dueDate) : null,
+      },
+    });
+    
+    res.status(201).json(task);
+  } catch (error: any) {
+    console.error('Error creating task:', error);
+    res.status(500).json({ message: "Error al crear tarea", error: error.message });
+  }
 };
-
 
 export const listTasks = async (req: Request, res: Response) => {
   
