@@ -1,109 +1,98 @@
+import { PrismaClient } from '@prisma/client';
 
-
-import { prisma } from "../../app/loaders/prisma.js"; 
-let projects: any[] = [
-  { id: 1, name: "Proyecto Alpha", description: "Proyecto inicial", createdAt: new Date(), updatedAt: new Date() },
-  { id: 2, name: "Proyecto Beta", description: "Segundo proyecto", createdAt: new Date(), updatedAt: new Date() }
-];
-let nextId = 3;
-export type SortBy = "name" | "date" | "activity";
-export type Order  = "asc" | "desc";
-export interface Project {
-  id: number;
-  name: string;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  tasksCount?: number;
-}
+const prisma = new PrismaClient();
 
 export const projectService = {
-  // TDI-79: Crear proyecto
-  createProject: async (data: { name: string; description?: string }) => {
-    const project = {
-      id: nextId++,
-      name: data.name,
-      description: data.description || '',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    projects.push(project);
-    return project;
+  createProject: async (data: { 
+    name: string; 
+    description?: string;
+  }) => {
+    try {
+      const project = await prisma.project.create({
+        data: {
+          name: data.name,
+          description: data.description || '',
+          // SOLO name y description - son los únicos que sabemos que existen
+        },
+      });
+      return project;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw new Error('Error al crear el proyecto');
+    }
   },
 
-    cloneProject: async (id: number, opts?: { name?: string }) => {
-  const src = projects.find(p => p.id === id);
-  if (!src) return null;
-
-  const copy = {
-    id: nextId++,
-    name: opts?.name ?? `${src.name} (copia)`,
-    description: src.description || '',
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  projects.push(copy);
-  return copy;
-},
-
-  // TDI-80: Obtener todos los proyectos
- getAllProjects: async (opts?: { sortBy?: SortBy; order?: Order }) => {
-    const sortBy: SortBy = opts?.sortBy ?? "date";
-    const order: Order   = opts?.order  ?? "asc";
-    const dir = order === "desc" ? -1 : 1;
-
-    const sorted = [...projects].sort((a, b) => {
-      switch (sortBy) {
-        case "name":
-          return a.name.localeCompare(b.name) * dir;
-
-        case "activity": {
-          const av = a.tasksCount ?? 0;
-          const bv = b.tasksCount ?? 0;
-          if (av === bv) return 0;
-          return av > bv ? dir : -dir;
-        }
-
-        case "date":
-        default: {
-        
-          const av = a.createdAt?.getTime?.() ?? 0;
-          const bv = b.createdAt?.getTime?.() ?? 0;
-          if (av === bv) return 0;
-          return av > bv ? dir : -dir;
-        }
-      }
-    });
-
-    return sorted;
+  getAllProjects: async () => {
+    try {
+      const projects = await prisma.project.findMany({
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+      return projects;
+    } catch (error) {
+      console.error('Error getting projects:', error);
+      throw new Error('Error al obtener los proyectos');
+    }
   },
 
-  // TDI-81: Obtener proyecto por ID
   getProjectById: async (id: number) => {
-    return projects.find(project => project.id === id);
+    try {
+      const project = await prisma.project.findUnique({
+        where: { id },
+      });
+      return project;
+    } catch (error) {
+      console.error('Error getting project by id:', error);
+      throw new Error('Error al obtener el proyecto');
+    }
   },
 
-  // TDI-82: Actualizar proyecto
-  updateProject: async (id: number, data: { name?: string; description?: string }) => {
-    const projectIndex = projects.findIndex(project => project.id === id);
-    if (projectIndex === -1) return null;
+  updateProject: async (id: number, data: { 
+    name?: string; 
+    description?: string;
+  }) => {
+    try {
+      const existingProject = await prisma.project.findUnique({
+        where: { id },
+      });
 
-    projects[projectIndex] = {
-      ...projects[projectIndex],
-      ...data,
-      updatedAt: new Date()
-    };
+      if (!existingProject) {
+        return null;
+      }
 
-    return projects[projectIndex];
+      const project = await prisma.project.update({
+        where: { id },
+        data: {
+          name: data.name,
+          description: data.description,
+        },
+      });
+      return project;
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw new Error('Error al actualizar el proyecto');
+    }
   },
 
-  // TDI-83: Eliminar proyecto
   deleteProject: async (id: number) => {
-    const projectIndex = projects.findIndex(project => project.id === id);
-    if (projectIndex === -1) return false;
+    try {
+      const existingProject = await prisma.project.findUnique({
+        where: { id },
+      });
 
-    projects.splice(projectIndex, 1);
-    return true;
+      if (!existingProject) {
+        return false;
+      }
+
+      await prisma.project.delete({
+        where: { id },
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw new Error('Error al eliminar el proyecto');
+    }
   }
 
 
