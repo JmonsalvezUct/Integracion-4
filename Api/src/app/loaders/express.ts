@@ -5,6 +5,11 @@ import { errorHandler } from '../../middlewares/error.middleware.js';
 import { requestLogger } from "../../middlewares/logger.middleware.js";
 import helmet from 'helmet';
 
+
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from '../../config/swagger.js'; 
+
+
 export const createApp = () => {
   const app = express();
   app.use(helmet()) // Helmet Configura cabeceras HTTP seguras
@@ -18,10 +23,18 @@ export const createApp = () => {
   //     credentials: true,
   //   })
   // );
-  
+
   app.use(express.json());
   app.use(requestLogger); // logger
+
+
+  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec ));
+
+
   app.use('/api', routes);
-  app.use(errorHandler); // Middleware global de errores (debe ir al final)
+
+  app.use('/api', (_req, res) => res.status(404).json({ message: 'Recurso no encontrado' }));
+
+  app.use(errorHandler); 
   return app;
 };
