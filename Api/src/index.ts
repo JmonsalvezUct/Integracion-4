@@ -3,8 +3,9 @@ import { env } from './config/env.js';
 
 const app = createApp();
 
-app.listen(env.PORT, () => {
-  console.log(`API escuchando en http://localhost:${env.PORT}`);
+app.listen(env.PORT ?? 3000, () => {
+  console.log(`API escuchando en http://localhost:${env.PORT ?? 3000}`);
+  console.log(`Swagger:          http://localhost:${env.PORT ?? 3000}/docs`);
 });
 
 export default app;

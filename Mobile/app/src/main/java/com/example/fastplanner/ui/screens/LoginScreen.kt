@@ -27,10 +27,11 @@ import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 
 // Cliente HTTP + modelos
-import com.example.fastplanner.data.remote.HttpClient
+//import com.example.fastplanner.data.remote.HttpClient
 import com.example.fastplanner.data.remote.LoginReq
 // Guardado de tokens (DataStore)
 import com.example.fastplanner.data.AuthPrefs
+import com.example.fastplanner.data.remote.ApiClient
 import kotlinx.coroutines.launch
 
 @Composable
@@ -145,7 +146,7 @@ fun LoginScreen(
                             error = null
 
                             // Llamada al backend
-                            val res = HttpClient.auth.login(LoginReq(email.trim(), pass))
+                            val res = ApiClient.apiService.login(LoginReq(email.trim(), pass))
 
                             // Guardar tokens (Opción B)
                             AuthPrefs.saveTokens(

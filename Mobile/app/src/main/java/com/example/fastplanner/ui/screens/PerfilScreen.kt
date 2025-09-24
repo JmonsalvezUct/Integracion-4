@@ -1,34 +1,49 @@
 package com.example.fastplanner.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.fastplanner.ui.settings.SettingsViewModel
+import com.example.fastplanner.ui.theme.ContentBgColor
+import com.example.fastplanner.ui.theme.HeaderColor
+import com.example.fastplanner.ui.theme.TextPrimary
+
+// OJO: BottomItem ya está declarado en MainScreen.kt (no lo declares de nuevo aquí)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilScreen(
     onBottomNavSelected: (BottomItem) -> Unit,
-    onBack: () -> Unit = {},
-    settingsVm: SettingsViewModel
+    onBack: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -39,46 +54,44 @@ fun PerfilScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Atrás",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = Color.White
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = HeaderColor,
+                    navigationIconContentColor = Color.White
                 )
             )
         },
         bottomBar = {
-            AppBottomBar(
+            PerfilBottomBar(
                 selected = BottomItem.Profile,
                 onSelected = onBottomNavSelected
             )
         },
-        // el header “morado” ahora viene del tema (cambia con claro/oscuro)
-        containerColor = MaterialTheme.colorScheme.primary
+        containerColor = HeaderColor
     ) { inner ->
         Column(
             modifier = Modifier
                 .padding(inner)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary)
+                .background(HeaderColor)
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                color = MaterialTheme.colorScheme.surface
+                color = Color.White
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
+                        .background(Color.White)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            // antes: ContentBgColor -> ahora background del tema
-                            .background(MaterialTheme.colorScheme.background)
+                            .background(ContentBgColor)
                             .padding(horizontal = 20.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -87,43 +100,40 @@ fun PerfilScreen(
                             modifier = Modifier
                                 .size(84.dp)
                                 .clip(CircleShape)
-                                // antes: lila fijo -> ahora primaryContainer del tema
-                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                .background(Color(0xFFEDEBFE)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Person,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
+                                tint = HeaderColor,
                                 modifier = Modifier.size(44.dp)
                             )
                         }
                         Spacer(Modifier.height(16.dp))
                         Text(
                             text = "Jonatan Saldivia",
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontSize = 18.sp
+                            color = TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = "jsaldivia@gmail.com",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = Color(0xFF6B7280),
                             fontSize = 14.sp
                         )
 
                         Spacer(Modifier.height(24.dp))
 
-                        // --- Lista de opciones ---
-                        PreferenceRow(Icons.Filled.Notifications, "Notificaciones")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        PerfilRow(Icons.Filled.Notifications, "Notificaciones")
+                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
+                        PerfilRow(Icons.Filled.Settings, "Preferencias")
+                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
+                        PerfilRow(Icons.Filled.Settings, "Configuraciones")
+                        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE5E7EB))
+                        PerfilRow(Icons.Filled.Share, "Colaboración")
 
-                        DarkModePreference(settingsVm = settingsVm)
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                        PreferenceRow(Icons.Filled.Settings, "Configuraciones")
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-
-                        PreferenceRow(Icons.Filled.Share, "Colaboración")
                         Spacer(Modifier.height(24.dp))
                     }
                 }
@@ -133,61 +143,51 @@ fun PerfilScreen(
 }
 
 @Composable
-private fun PreferenceRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String
-) {
+private fun PerfilRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
-        }
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { Icon(icon, contentDescription = null) }
         Spacer(Modifier.width(12.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Text(text = title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
         Spacer(Modifier.weight(1f))
     }
 }
 
 @Composable
-private fun DarkModePreference(
-    settingsVm: SettingsViewModel,
-    modifier: Modifier = Modifier
+private fun PerfilBottomBar(
+    selected: BottomItem,
+    onSelected: (BottomItem) -> Unit
 ) {
-    val isDark by settingsVm.isDarkMode.collectAsStateWithLifecycle()
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { settingsVm.setDarkMode(!isDark) }
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-            Icon(Icons.Filled.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text("Modo oscuro", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
-            Text(
-                if (isDark) "Activado" else "Desactivado",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        Switch(
-            checked = isDark,
-            onCheckedChange = { checked -> settingsVm.setDarkMode(checked) }
-        )
+    NavigationBar {
+        NavItem(Icons.Filled.Home,   "Inicio",    selected == BottomItem.Home)     { onSelected(BottomItem.Home) }
+        NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) { onSelected(BottomItem.Projects) }
+        NavItem(Icons.Filled.ListAlt,"Tareas",    selected == BottomItem.Tasks)    { onSelected(BottomItem.Tasks) }
+        NavItem(Icons.Filled.Person, "Perfil",    selected == BottomItem.Profile)  { onSelected(BottomItem.Profile) }
     }
 }
+
+@Composable
+private fun RowScope.NavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) }
+    )
+}
+
+
+
+
 
 
 

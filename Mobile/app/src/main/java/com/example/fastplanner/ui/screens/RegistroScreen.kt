@@ -20,9 +20,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 import com.example.fastplanner.data.AuthPrefs
-import com.example.fastplanner.data.remote.HttpClient
+import com.example.fastplanner.data.remote.ApiClient
+//import com.example.fastplanner.data.remote.HttpClient
 import com.example.fastplanner.data.remote.RegisterReq
 import kotlinx.coroutines.launch
+
+import android.util.Log
+import retrofit2.HttpException
+import java.io.IOException
 
 @Composable
 fun RegistroScreen(
@@ -112,14 +117,28 @@ fun RegistroScreen(
                         try {
                             loading = true
                             error = null
-                            val res = HttpClient.auth.register(
+
+                            val res = ApiClient.apiService.register(
                                 RegisterReq(name.trim(), email.trim(), pass)
                             )
+
+                            Log.d("REGISTER", "OK -> access=${res.accessToken.take(6)}***")
                             AuthPrefs.saveTokens(ctx, res.accessToken, res.refreshToken)
                             onRegisterSuccess()
+
+                        } catch (e: HttpException) {
+                            val code = e.code()
+                            val body = e.response()?.errorBody()?.string()
+                            Log.e("REGISTER", "HTTP $code -> $body", e)
+                            error = "HTTP $code: ${body ?: e.message()}"
+
+                        } catch (e: IOException) {
+                            Log.e("REGISTER", "Network error", e)
+                            error = "Sin conexión o timeout."
+
                         } catch (e: Exception) {
-                            e.printStackTrace()
-                            error = "No se pudo registrar. ¿Correo ya existe o sin conexión?"
+                            Log.e("REGISTER", "Unexpected", e)
+                            error = "Error inesperado: ${e.message}"
                         } finally {
                             loading = false
                         }

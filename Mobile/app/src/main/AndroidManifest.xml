@@ -14,7 +14,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.FastPlanner"
-        android:usesCleartextTraffic="true">  <!-- Habilita HTTP (API local en http://) -->
+        android:usesCleartextTraffic="true">
+
 
         <!-- Login como LAUNCHER -->
         <activity

@@ -1,5 +1,5 @@
 package com.example.fastplanner.ui.screens
-
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,10 +8,11 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,87 +23,119 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.fastplanner.ui.theme.BoardBlue
-import com.example.fastplanner.ui.theme.BoardGreen
-import com.example.fastplanner.ui.theme.BoardPink
-import com.example.fastplanner.ui.theme.BoardRed
 
+// imports:
+import com.example.fastplanner.ui.components.ProjectSwitcherTopBar
+import com.example.fastplanner.ui.components.ProjectSwitcherUiState
+import com.example.fastplanner.ui.components.ProjectUi
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.fastplanner.data.projects.ProjectsRepository
+import com.example.fastplanner.ui.screens.ProjectSwitcherViewModel
+import com.example.fastplanner.ui.screens.ProjectSwitcherVMFactory
+
+// Data para los tableros
 data class BoardUi(val id: String, val title: String, val activitiesCount: Int, val color: Color)
+
+// Colores temporales (pueden venir de color.kt)
+private val Blue = Color(0xFF2F8BFF)
+private val Green = Color(0xFF4BC19D)
+private val Pink = Color(0xFFF06AB1)
+private val Red  = Color(0xFFEF6A6A)
+private val Header = Color(0xFF3E21FF)
+private val ContentBg = Color(0xFFF1F5F9)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
+    projectsRepo: ProjectsRepository,
+    onProjectChanged: (Long) -> Unit,
     onOpenDrawer: () -> Unit = {},
     onBoardClick: (BoardUi) -> Unit = {},
     onCreateBoardClick: () -> Unit = {},
     onBottomNavSelected: (BottomItem) -> Unit = {}
 ) {
-    var query by remember { mutableStateOf("") }
+    val switcherVm: ProjectSwitcherViewModel = viewModel(
+        factory = ProjectSwitcherVMFactory(projectsRepo, onProjectChanged)
+    )
+    val ps by switcherVm.state.collectAsState()
 
+    LaunchedEffect(Unit) { switcherVm.load()}
+    var query by remember { mutableStateOf("") }
     val boards = remember {
         listOf(
-            BoardUi("1", "Marketing", 3, BoardBlue),
-            BoardUi("2", "Investigación", 2, BoardGreen),
-            BoardUi("3", "Desarrollo", 5, BoardPink),
-            BoardUi("4", "Estadística", 1, BoardRed),
+            BoardUi("1", "Marketing", 3, Blue),
+            BoardUi("2", "Investigación", 2, Green),
+            BoardUi("3", "Desarrollo", 5, Pink),
+            BoardUi("4", "Estadística", 1, Red),
         )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    Text(
+                        text = ps.selected?.name ?: "",
+                        color = Color.White
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
-                        Icon(
-                            Icons.Filled.Menu,
-                            contentDescription = "Menú",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                    Box {
+                        IconButton(onClick = { switcherVm.toggleMenu() }) {
+                            Icon(
+                                Icons.Filled.Menu,            // <--- hamburguesa
+                                contentDescription = "Menú",
+                                tint = Color.White
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = ps.expanded,
+                            onDismissRequest = { switcherVm.toggleMenu() }
+                        ) {
+                            when {
+                                ps.loading -> Text("Cargando...", modifier = Modifier.padding(12.dp))
+                                ps.error != null -> Text("Error: ${ps.error}", modifier = Modifier.padding(12.dp))
+                                else -> ps.projects.forEach { p ->
+                                    DropdownMenuItem(
+                                        text = { Text(p.name) },
+                                        onClick = { switcherVm.select(p) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* abrir perfil */ }) {
-                        Icon(
-                            Icons.Filled.AccountCircle,
-                            contentDescription = "Perfil",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                    IconButton(onClick = { }) {
+                        Icon(Icons.Default.Person, contentDescription = "Perfil", tint = Color.White)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = Header,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White
                 )
             )
         },
-        // barra inferior unificada
-        bottomBar = {
-            AppBottomBar(
-                selected = BottomItem.Home,
-                onSelected = onBottomNavSelected
-            )
-        },
-        // header/background superior (morado en claro, tono en oscuro)
-        containerColor = MaterialTheme.colorScheme.primary
+
+        bottomBar = { MainBottomBar(BottomItem.Home, onBottomNavSelected) },
+        containerColor = Header
     ) { inner ->
         Column(
             modifier = Modifier
                 .padding(inner)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary)
+                .background(Header)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
-                    .background(MaterialTheme.colorScheme.surface)
+                    .background(Color.White)
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Spacer(Modifier.height(16.dp))
-
-                    // BUSCADOR
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -112,13 +145,7 @@ fun MainScreen(
                         OutlinedTextField(
                             value = query,
                             onValueChange = { query = it },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Filled.Search,
-                                    contentDescription = "Buscar",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
+                            leadingIcon = { Icon(Icons.Default.Home, null) },
                             placeholder = { Text("buscar …") },
                             singleLine = true,
                             shape = RoundedCornerShape(24.dp),
@@ -126,20 +153,17 @@ fun MainScreen(
                         )
                     }
 
-                    // CONTENIDO
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.background)
+                            .background(ContentBg)
                             .padding(horizontal = 16.dp)
                     ) {
                         Spacer(Modifier.height(16.dp))
                         Text(
                             text = "Tableros",
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = Color(0xFF0F172A)
                         )
                         Spacer(Modifier.height(12.dp))
 
@@ -163,12 +187,10 @@ fun MainScreen(
 
 @Composable
 private fun BoardCard(board: BoardUi, onClick: () -> Unit) {
-    // Mantengo el color propio del tablero, pero uso contentColor blanco para buen contraste
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = board.color,
-        contentColor = Color.White,
         modifier = Modifier.height(110.dp)
     ) {
         Column(
@@ -179,6 +201,7 @@ private fun BoardCard(board: BoardUi, onClick: () -> Unit) {
         ) {
             Text(
                 text = board.title,
+                color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -199,26 +222,45 @@ private fun CreateBoardCard(onClick: () -> Unit) {
         onClick = onClick,
         shape = RoundedCornerShape(18.dp),
         color = Color.Transparent,
-        border = BorderStroke(2.dp, MaterialTheme.colorScheme.outlineVariant),
+        border = BorderStroke(2.dp, Color(0xFFCBD5E1)),
         modifier = Modifier.height(110.dp)
     ) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Filled.Add,
-                    contentDescription = "Crear tablero",
-                    tint = MaterialTheme.colorScheme.onSurface
-                )
+                Icon(Icons.Default.Home, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "crear tablero",
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Text(text = "crear tablero", fontWeight = FontWeight.Medium)
             }
         }
     }
 }
+
+@Composable
+private fun MainBottomBar(selected: BottomItem, onSelected: (BottomItem) -> Unit) {
+    NavigationBar {
+        NavItem(Icons.Filled.Home, "Inicio", selected == BottomItem.Home) { onSelected(BottomItem.Home) }
+        NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) { onSelected(BottomItem.Projects) }
+        NavItem(Icons.AutoMirrored.Filled.ListAlt, "Tareas", selected == BottomItem.Tasks) { onSelected(BottomItem.Tasks) }
+        NavItem(Icons.Filled.CalendarMonth, "Calendario", selected == BottomItem.Calendar) { onSelected(BottomItem.Calendar) }
+        NavItem(Icons.Filled.Person, "Perfil", selected == BottomItem.Profile) { onSelected(BottomItem.Profile) }
+    }
+}
+
+@Composable
+private fun RowScope.NavItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    NavigationBarItem(
+        selected = selected,
+        onClick = onClick,
+        icon = { Icon(icon, contentDescription = label) },
+        label = { Text(label) }
+    )
+}
+
 
 
 
