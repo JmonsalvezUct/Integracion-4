@@ -7,7 +7,7 @@ declare global {
 export const prisma: PrismaClient =
   global.__PRISMA__ ??
   new PrismaClient({
-    log: ['warn', 'error'], // agrega 'query' si necesitas debug
+    log: ['warn', 'error'], 
   });
 
 if (process.env.NODE_ENV !== 'production') global.__PRISMA__ = prisma;

@@ -8,7 +8,7 @@ export type Role = "owner" | "admin" | "member";
 
 export function authorizeProject(allowed: Role[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Usuario (mientras no hay JWT, usamos x-user-id)
+
     const userId: number | undefined =
       (req as any).user?.id ??
       (req.header("x-user-id") ? Number(req.header("x-user-id")) : undefined) ??
@@ -18,18 +18,18 @@ export function authorizeProject(allowed: Role[]) {
 
     let projectId: number | undefined;
 
-    // params típicos: :id, :projectId
+
     const p: any = req.params || {};
     const candidate = p.projectId ?? p.id ?? p.project ?? undefined;
     if (candidate !== undefined) projectId = Number(candidate);
 
-    // fallbacks
+    
     if (!projectId && req.body?.projectId) projectId = Number(req.body.projectId);
     if (!projectId && (req.query as any)?.projectId) {
       projectId = Number((req.query as any).projectId);
     }
 
-    // Si estamos bajo /tasks/:id, resolvemos desde la tarea
+ 
     if (!projectId && req.baseUrl.includes("/tasks") && p?.id) {
       const taskId = Number(p.id);
       const task = await prisma.task.findUnique({

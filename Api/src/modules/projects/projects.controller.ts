@@ -92,8 +92,7 @@ export const getProjectTasks = async (req: Request, res: Response) => {
 export const cloneProjectController = async (req: Request, res: Response) => {
   const id = Number(req.params.id);
   const { name } = (req as any).body ?? {};
-  // Si más adelante usas Prisma con RBAC:
-  // const userId = (req as AuthRequest).user?.id;
+
 
   const copy = await projectService.cloneProject(id, { name });
   if (!copy) return res.status(404).json({ message: "Proyecto no existe" });
@@ -128,6 +127,52 @@ createProject: async (req: Request, res: Response) => {
     }
   },
 
+<<<<<<< HEAD
+
+
+
+
+  // TDI-80: Obtener todos los proyectos
+async getAllProjects(req: Request, res: Response, next: NextFunction) {
+    try {
+      
+      const sortByQ = String(req.query.sortBy ?? 'date').toLowerCase();
+      const orderQ  = String(req.query.order ?? 'desc').toLowerCase();
+      const q       = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+
+      const sortByValue: SortBy =
+        sortByQ === 'name'     ? 'name' :
+        sortByQ === 'activity' ? 'activity' :
+        'date';
+
+      const orderValue: Order = orderQ === 'asc' ? 'asc' : 'desc';
+
+      let list = await projectService.getAllProjects({ sortBy: sortByValue, order: orderValue });
+
+
+ 
+      if (q) {
+        const qlc = q.toLowerCase();
+        list = list.filter(p => p.name.toLowerCase().includes(qlc));
+      }
+
+
+      const data = list.map(p => ({
+        id: p.id,
+        name: p.name,
+        createdAt: p.createdAt?.toISOString?.() ?? new Date().toISOString(),
+        activity: p.tasksCount ?? 0,
+      }));
+
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  // TDI-81: Obtener proyecto por ID
+=======
+>>>>>>> ede2e2b85847be7fc16784d438432b70018d01bf
   getProjectById: async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
