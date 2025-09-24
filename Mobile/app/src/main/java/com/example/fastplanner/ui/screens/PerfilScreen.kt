@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ListAlt
@@ -163,10 +165,11 @@ private fun PerfilBottomBar(
     onSelected: (BottomItem) -> Unit
 ) {
     NavigationBar {
-        NavItem(Icons.Filled.Home,   "Inicio",    selected == BottomItem.Home)     { onSelected(BottomItem.Home) }
+        NavItem(Icons.Filled.Home, "Inicio", selected == BottomItem.Home) { onSelected(BottomItem.Home) }
         NavItem(Icons.Filled.Folder, "Proyectos", selected == BottomItem.Projects) { onSelected(BottomItem.Projects) }
-        NavItem(Icons.Filled.ListAlt,"Tareas",    selected == BottomItem.Tasks)    { onSelected(BottomItem.Tasks) }
-        NavItem(Icons.Filled.Person, "Perfil",    selected == BottomItem.Profile)  { onSelected(BottomItem.Profile) }
+        NavItem(Icons.AutoMirrored.Filled.ListAlt, "Tareas", selected == BottomItem.Tasks) { onSelected(BottomItem.Tasks) }
+        NavItem(Icons.Filled.CalendarMonth, "Calendario", selected == BottomItem.Calendar) { onSelected(BottomItem.Calendar) }
+        NavItem(Icons.Filled.Person, "Perfil", selected == BottomItem.Profile) { onSelected(BottomItem.Profile) }
     }
 }
 

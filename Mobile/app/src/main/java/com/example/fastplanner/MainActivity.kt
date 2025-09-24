@@ -106,7 +106,11 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     BottomItem.Projects -> {
-                                        // TODO: nav.navigate(Routes.PROJECTS) { ... }
+                                        nav.navigate(Routes.PROJECTS) {
+                                            popUpTo(Routes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                     BottomItem.Tasks -> {
                                         // TODO: nav.navigate(Routes.TASKS) { ... }
@@ -177,7 +181,11 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                     BottomItem.Projects -> {
-                                        // TODO: nav.navigate(Routes.PROJECTS) { ... }
+                                        nav.navigate(Routes.PROJECTS) {
+                                            popUpTo(Routes.HOME) { saveState = true }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
                                     }
                                     BottomItem.Tasks -> {
                                         // TODO: nav.navigate(Routes.TASKS) { ... }
