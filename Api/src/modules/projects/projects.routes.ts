@@ -40,53 +40,19 @@ const router = Router();
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 
-router.get(
-  "/:id/tasks",
-  authorizeProject(["owner", "admin", "member"]),  
-  validate(getProjectTasksVal),
-  getProjectTasks
-);
+// TDI-80: Obtener todos los proyectos
+router.get('/', projectController.getAllProjects);
 
+// TDI-81: Obtener proyecto por ID
+router.get('/:id', projectController.getProjectById);
 
+// TDI-79: Crear proyecto
+router.post('/', projectController.createProject);
 
-/**
- * @openapi
- * /projects/{id}/clone:
- *   post:
- *     summary: Clonar proyecto (duplica estructura)
- *     tags: [Projects]
- *     security: [{ bearerAuth: [] }]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer, minimum: 1 }
- *     requestBody:
- *       required: false
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name: { type: string }
- *               copyMembers: { type: boolean, default: false }
- *               copyAttachments: { type: boolean, default: false }
- *     responses:
- *       201: { description: Proyecto clonado }
- *       403: { description: Prohibido }
- *       404: { description: Proyecto no existe }
- */
-router.post('/:id/clone',
-  authMiddleware,
-  validate(cloneProjectSchema),
-  // authorizeProject(['owner','admin']),
-  cloneProjectController
-);
+// TDI-82: Actualizar proyecto
+router.put('/:id', projectController.updateProject);
 
-router.get("/",        projectController.getAllProjects);
-router.get("/:id",     projectController.getProjectById);
-router.post("/",       projectController.createProject);
-router.put("/:id",     projectController.updateProject);
-router.delete("/:id",  projectController.deleteProject);
+// TDI-83: Eliminar proyecto
+router.delete('/:id', projectController.deleteProject);
 
 export default router;
