@@ -7,8 +7,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 # ============================
 # 🔹 Leer CSVs
 # ============================
-df_incidencias = pd.read_csv("incidencias_semana3.csv")
-df_horas = pd.read_csv("parte_horas_incidencias.csv")
+df_incidencias = pd.read_csv("Incidencias_semana4.csv")
+df_horas = pd.read_csv("parte_incidencias_semana 4.csv")
 
 # 🔄 Normalizar nombres de usuarios
 df_incidencias = df_incidencias.replace({
