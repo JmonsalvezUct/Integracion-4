@@ -4,88 +4,128 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 
-# Leer CSV original
-df = pd.read_csv("incidencias_semana3.csv")
+# ============================
+# 🔹 Leer CSVs
+# ============================
+df_incidencias = pd.read_csv("Incidencias_semana4.csv")
+df_horas = pd.read_csv("parte_incidencias_semana 4.csv")
 
-# 🔄 Reemplazar valores en todo el DataFrame
-df = df.replace({
+# 🔄 Normalizar nombres de usuarios
+df_incidencias = df_incidencias.replace({
     "admin": "sarancibia2022",
     "Leo": "lplaceres2022"
 })
 
-df = df.rename(columns={"Tiempo empleado": "Tiempo empleado (min)"})
-df = df.rename(columns={"Estimación": "Estimación (min)"})
+# Renombrar columnas largas
+df_incidencias = df_incidencias.rename(columns={
+    "Tiempo empleado": "T. empleado",
+    "Estimación": "Estim. (min)"
+})
 
-# Columnas para cada tabla
-cols_principal = [
-    "ID de la incidencia",
-    "Usuario asignado",
+# ============================
+# 🔹 Unir incidencias con parte de horas
+# ============================
+cols_tiempo = [c for c in df_horas.columns if "00:00" in c]
+
+# Reducir nombres de fechas
+rename_map = {c: c.split(" ")[0] + "-" + c.split(" ")[1] for c in cols_tiempo}
+df_horas = df_horas.rename(columns=rename_map)
+df_horas_simple = df_horas[["Item"] + list(rename_map.values())]
+
+df_merge = df_incidencias.merge(
+    df_horas_simple,
+    left_on="ID de la incidencia",
+    right_on="Item",
+    how="left"
+).drop(columns=["Item"])
+
+# ============================
+# 🔹 Columnas finales para PDF
+# ============================
+# Cambiar nombres para mostrar en PDF
+pdf_column_names = [
+    "ID de la incidencia",  # → id
+    "Usuario asignado",     # → encargado
     "Estado",
-    "Tiempo empleado (min)",
-    "Estimación (min)"
-]
-cols_resumen = [
-    "ID de la incidencia",
-    "Resumen"
-]
+    "Prioridad",
+    "Resuelta",
+] + list(rename_map.values())
 
-# Crear documento PDF
+# Mapeo de nombres cortos
+pdf_column_map = {
+    "ID de la incidencia": "ID",
+    "Usuario asignado": "Encargado"
+}
+
+cols_resumen = ["ID de la incidencia", "Resumen"]
+
+# ============================
+# 🔹 PDF
+# ============================
 pdf_filename = "incidencias.pdf"
 doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
 styles = getSampleStyleSheet()
 elements = []
 
-# Título
-elements.append(Paragraph("Reporte de tareas - Semana 3", styles["Title"]))
+elements.append(Paragraph("Tareas asignadas - Semana 4", styles["Title"]))
 elements.append(Spacer(1, 20))
 
-# ==============================
+# ============================
 # TABLA PRINCIPAL
-# ==============================
-data_principal = [cols_principal] + df[cols_principal].values.tolist()
+# ============================
+# Preparar datos y reemplazar nombres de columnas para mostrar
+data_principal = [ [pdf_column_map.get(c, c) for c in pdf_column_names] ] \
+                 + df_merge[pdf_column_names].fillna("").values.tolist()
 
-# Ajuste de ancho (10% más angosta que la página)
-page_width = letter[0] - doc.leftMargin 
-table_width = page_width * 0.95
-col_widths = [table_width / len(cols_principal)] * len(cols_principal)
+page_width = letter[0] - doc.leftMargin
+table_width = page_width
+
+# Anchos relativos → más espacio a Estado y Resuelta
+col_widths = []
+for col in pdf_column_names:
+    if col == "Estado":
+        col_widths.append(table_width * 0.07)
+    elif col == "Resuelta":
+        col_widths.append(table_width * 0.15)
+    elif col == "Usuario asignado":
+        col_widths.append(table_width * 0.15)
+    else:
+        col_widths.append(table_width * 0.63 / (len(pdf_column_names) - 2))
 
 table_principal = Table(data_principal, colWidths=col_widths, repeatRows=1)
-
 table_principal.setStyle(TableStyle([
     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#4a90e2")),
     ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
     ("ALIGN", (0, 0), (-1, -1), "CENTER"),
     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-    ("FONTSIZE", (0, 0), (-1, -1), 9),
-    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+    ("FONTSIZE", (0, 0), (-1, -1), 8),
+    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
     ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
-    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
 ]))
 elements.append(Paragraph("Tabla Principal", styles["Heading2"]))
 elements.append(table_principal)
-elements.append(Spacer(1, 30))
+elements.append(Spacer(1, 25))
 
-# ==============================
+# ============================
 # TABLA DE RESUMEN
-# ==============================
-data_resumen = [cols_resumen] + df[cols_resumen].values.tolist()
+# ============================
+data_resumen = [ ["ID", "Resumen"] ] + df_merge[cols_resumen].values.tolist()
 
 table_resumen = Table(data_resumen, repeatRows=1)
-
 table_resumen.setStyle(TableStyle([
-    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#50b848")),  # verde
+    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#50b848")),
     ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
     ("ALIGN", (0, 0), (-1, -1), "LEFT"),
     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
     ("FONTSIZE", (0, 0), (-1, -1), 9),
-    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+    ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
     ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
-    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ("GRID", (0, 0), (-1, -1), 0.25, colors.grey),
 ]))
 elements.append(Paragraph("Descripción de tareas", styles["Heading2"]))
 elements.append(table_resumen)
 
-# Construir PDF
 doc.build(elements)
 
 print(f"✅ PDF generado: {pdf_filename}")
