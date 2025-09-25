@@ -29,6 +29,9 @@ model Project {
   name        String
   description String?
   createdAt   DateTime        @default(now())
+  endDate     DateTime?
+  startDate   DateTime?
+  status      String          @default("active")
   history     ChangeHistory[]
   tasks       Task[]
   users       UserProject[]

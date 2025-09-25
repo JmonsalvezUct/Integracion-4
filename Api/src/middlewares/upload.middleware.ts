@@ -3,7 +3,7 @@ import fs from "fs";
 import multer, {type FileFilterCallback } from "multer";
 import type { Request } from "express";
 
-// valores por defecto (sin .env)
+
 const MAX_FILE_MB = 10;
 export const uploadDir = path.join(process.cwd(), "uploads");
 
