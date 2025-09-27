@@ -1,14 +1,9 @@
 import express from 'express';
-import routes from '../routes.js';
 import cors from 'cors';
 import { errorHandler } from '../../middlewares/error.middleware.js';
 import { requestLogger } from "../../middlewares/logger.middleware.js";
 import helmet from 'helmet';
-
-
-import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from '../../config/swagger.js'; 
-
+import routes from '../routes.js';
 
 export const createApp = () => {
   const app = express();
@@ -17,7 +12,7 @@ export const createApp = () => {
 
   // app.use(
   //   cors({
-  //     origin: ["http://localhost:3000"], // Solo permite requests desde este dominio, configurar los de 2do cuando hagan deploy
+  //     origin: ["proccess.env.WEB_URL", "URL mobile"], // Solo permite requests desde este dominio, configurar los de 2do cuando hagan deploy
   //     methods: ["GET", "POST", "PUT", "DELETE"],
   //     allowedHeaders: ["Content-Type", "Authorization"],
   //     credentials: true,
@@ -26,15 +21,8 @@ export const createApp = () => {
 
   app.use(express.json());
   app.use(requestLogger); // logger
-
-
-  app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec ));
-
-
-  app.use('/api', routes);
-
-  app.use('/api', (_req, res) => res.status(404).json({ message: 'Recurso no encontrado' }));
-
-  app.use(errorHandler); 
+  app.use('/api', routes); 
+  app.use(errorHandler); // Middleware global de errores (debe ir al final)
+  
   return app;
 };
