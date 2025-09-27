@@ -94,7 +94,7 @@ export const removeUserFromProject = async (req: Request, res: Response) => {
 
 export const getProjectMembers = async (req: Request, res: Response) => {
   try {
-    const projectId = Number(req.params.projectId);
+    const projectId = Number(req.params.id);
     const members = await projectsService.getProjectMembers(projectId);
     return res.json(members);
   } catch (e: any) {
