@@ -11,7 +11,7 @@ export function rbacMiddleware(allowedRoles: ProjectRoleType[]) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const userId = req.user?.id;
-      const projectId = Number(req.body.projectId || req.params.projectId || req.query.projectId);
+      const projectId = Number(req.params.id);
 
       if (!userId) {
         return res.status(400).json({ error: 'Missing user' });
