@@ -87,18 +87,13 @@ export const authService = {
   },
 
   async logout(refreshToken: string) {
+    const record = await authRepository.findRefreshToken(refreshToken);
+    if (!record) throw new Error('REFRESH_NOT_FOUND');
     try {
       await authRepository.deleteRefreshToken(refreshToken);
-    } catch (error){
+    } catch (error) {
       console.error('Error al intentar cerrar la sesión', error);
-    }
-  },
-
-  async getProfile(userId: number) {
-    try {
-      await authRepository.findUserById(userId);
-    } catch (error){
-      console.error('Error al intentar obtener perfil', error);
+      throw new Error('LOGOUT_ERROR');
     }
   },
 
