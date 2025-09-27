@@ -1,175 +1,112 @@
-import { Prisma } from "@prisma/client";
-import type { Request, Response } from "express";
-import {prisma} from '../../app/loaders/prisma.js'
+import type { Request, Response } from 'express';
+import { tasksService } from './tasks.service.js';
+import {
+  CreateTaskSchema,
+  UpdateTaskSchema,
+  AssignTaskSchema,
+  ChangeStatusSchema,
+} from './tasks.validators.js';
 
-const DEFAULT_PRIORITY_ID = 1;
-export const getTaskById = async (req: Request, res: Response) => {
-  const { id } = ((req as any).validatedParams ?? req.params) as any;
-
-  const task = await prisma.task.findUnique({
-    where: { id: Number(id) },
-
-  });
-
-  if (!task) return res.status(404).json({ message: "Task not found" });
-  res.json(task);
-};
-
-
-
-
-export const updateTask = async (req: Request, res: Response) => {
-  const { id }   = ((req as any).validatedParams ?? req.params) as any;
-  const body:any =  (req as any).validatedBody   ?? req.body;
-
-  const data: any = {};
-
-  if ("title"       in body) data.title       = body.title;
-  if ("description" in body) data.description = body.description; 
-  if ("dueDate"     in body) data.dueDate     = body.dueDate ? new Date(body.dueDate) : null;
-
- 
-  if ("projectId"  in body) data.project  = { connect: { id: body.projectId } };
-  if ("statusId"   in body) data.status   = { connect: { id: body.statusId } };
-  if ("priorityId" in body) data.priority = { connect: { id: body.priorityId } };
-
-  if ("assigneeId" in body) {
-    data.assignee = body.assigneeId === null
-      ? { disconnect: true }              
-      : { connect: { id: body.assigneeId } };
+export const createTask = async (req: Request, res: Response) => {
+  const parse = CreateTaskSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res
+      .status(400)
+      .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
 
   try {
-    const task = await prisma.task.update({
-      where: { id: Number(id) },
-      data,
-    });
+    const task = await tasksService.createTask(parse.data);
+    return res.status(201).json(task);
+  } catch {
+    return res.status(500).json({ error: 'Error al crear la tarea' });
+  }
+};
+
+export const getTasks = async (_req: Request, res: Response) => {
+  try {
+    const tasks = await tasksService.getTasks();
+    return res.json(tasks);
+  } catch {
+    return res.status(500).json({ error: 'Error al obtener las tareas' });
+  }
+};
+
+export const getTaskById = async (req: Request, res: Response) => {
+  try {
+    const task = await tasksService.getTaskById(Number(req.params.id));
+    if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });
     return res.json(task);
-  } catch (e:any) {
-    
-    return res.status(400).json({
-      message: "No se pudo actualizar la tarea",
-      error: e?.message ?? String(e),
-    });
+  } catch {
+    return res.status(500).json({ error: 'Error al obtener la tarea' });
+  }
+};
+
+export const updateTask = async (req: Request, res: Response) => {
+  const parse = UpdateTaskSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res
+      .status(400)
+      .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
+  }
+
+  try {
+    const task = await tasksService.updateTask(Number(req.params.id), parse.data);
+    return res.json(task);
+  } catch {
+    return res.status(500).json({ error: 'Error al actualizar la tarea' });
   }
 };
 
 export const deleteTask = async (req: Request, res: Response) => {
-  const { id } = ((req as any).validatedParams ?? req.params) as any;
-
   try {
-    await prisma.task.delete({ where: { id: Number(id) } });
+    await tasksService.deleteTask(Number(req.params.id));
     return res.status(204).send();
-  } catch (e: any) {
-    
-    if (e?.code === "P2025") {
-      return res.status(404).json({ message: "Task not found" });
-    }
-    
-    if (e?.code === "P2003") {
-      return res.status(409).json({ message: "No se pudo eliminar por dependencias" });
-    }
-    return res.status(500).json({ message: "Error al eliminar tarea", error: e?.message ?? String(e) });
+  } catch {
+    return res.status(500).json({ error: 'Error al eliminar la tarea' });
   }
 };
 
-export const createTask = async (req: Request, res: Response) => {
+export const getTasksByProject = async (req: Request, res: Response) => {
   try {
-    const { title, projectId, creatorId, description, assigneeId, statusId, priorityId, dueDate } = req.body;
-    
-    if (!title) return res.status(400).json({ message: "title es requerido" });
-    if (!projectId) return res.status(400).json({ message: "projectId es requerido" });
-
-    // TEMPORAL: Si no hay creatorId, usar el primer usuario existente
-    let finalCreatorId = creatorId;
-    if (!finalCreatorId) {
-      const firstUser = await prisma.user.findFirst({
-        select: { id: true }
-      });
-      if (!firstUser) {
-        return res.status(400).json({ message: "No hay usuarios en la base de datos" });
-      }
-      finalCreatorId = firstUser.id;
-      console.log('⚠️  Usando creatorId temporal:', finalCreatorId);
-    }
-
-    const task = await prisma.task.create({
-      data: {
-        title,
-        description: description || "",
-        project: { connect: { id: projectId } },
-        creator: { connect: { id: finalCreatorId } },
-        assignee: assigneeId ? { connect: { id: assigneeId } } : undefined,
-        status: { connect: { id: statusId || 1 } },
-        priority: { connect: { id: priorityId || 2 } },
-        dueDate: dueDate ? new Date(dueDate) : null,
-      },
-    });
-    
-    res.status(201).json(task);
-  } catch (error: any) {
-    console.error('Error creating task:', error);
-    res.status(500).json({ message: "Error al crear tarea", error: error.message });
+    const projectId = Number(req.params.projectId);
+    const tasks = await tasksService.getTasksByProject(projectId);
+    return res.json(tasks);
+  } catch {
+    return res
+      .status(500)
+      .json({ error: 'Error al obtener las tareas del proyecto' });
   }
 };
 
-export const listTasks = async (req: Request, res: Response) => {
-  
-  const q = ((req as any).validatedQuery ?? req.query) as any;
-
-  
-  const page     = Number(q.page ?? 1);
-  const pageSize = Math.min(100, Number(q.pageSize ?? 10));
-  const toNum = (v: any) =>
-    v === undefined || v === null || v === "" ? undefined : Number(v);
-
-  const projectId  = toNum(q.projectId);
-  const creatorId  = toNum(q.creatorId);
-  const assigneeId = toNum(q.assigneeId);
-  const statusId   = toNum(q.statusId);
-  const priorityId = toNum(q.priorityId);
-
-  const dueFrom = q.dueFrom ? new Date(q.dueFrom) : undefined;
-  const dueTo   = q.dueTo   ? new Date(q.dueTo)   : undefined;
-  const search  = typeof q.search === "string" && q.search.trim()
-    ? q.search.trim()
-    : undefined;
-
-  const skip = Math.max(0, (page - 1) * pageSize);
-  const take = Math.max(1, pageSize);
-
-  const where: any = {};
-  if (projectId !== undefined)  where.projectId  = projectId;
-  if (creatorId !== undefined)  where.creatorId  = creatorId;
-  if (assigneeId !== undefined) where.assigneeId = assigneeId;
-  if (statusId !== undefined)   where.statusId   = statusId;
-  if (priorityId !== undefined) where.priorityId = priorityId;
-  if (dueFrom || dueTo) where.dueDate = { gte: dueFrom, lte: dueTo };
-  if (search) {
-    where.OR = [
-      { title:       { contains: search, mode: "insensitive" } },
-      { description: { contains: search, mode: "insensitive" } },
-    ];
+export const assignTask = async (req: Request, res: Response) => {
+  const parse = AssignTaskSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res
+      .status(400)
+      .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
 
-  const orderStr: Prisma.SortOrder = q.order === "asc" ? "asc" : "desc";
-  let orderBy: Prisma.TaskOrderByWithRelationInput = { createdAt: orderStr };
-  switch (q.sort) {
-    case "createdAt": orderBy = { createdAt: orderStr }; break;
-    case "dueDate":   orderBy = { dueDate:   orderStr }; break;
-    case "priorityId":orderBy = { priorityId:orderStr }; break;
-    case "statusId":  orderBy = { statusId:  orderStr }; break;
-    case "title":     orderBy = { title:     orderStr }; break;
-    case "id":        orderBy = { id:        orderStr }; break;
+  try {
+    const updated = await tasksService.assignTask(Number(req.params.id), parse.data);
+    return res.json(updated);
+  } catch {
+    return res.status(500).json({ error: 'Error al asignar la tarea' });
+  }
+};
+
+export const changeStatus = async (req: Request, res: Response) => {
+  const parse = ChangeStatusSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res
+      .status(400)
+      .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
 
-  const [total, items] = await Promise.all([
-    prisma.task.count({ where }),
-    prisma.task.findMany({ where, orderBy, skip, take }),
-  ]);
-
-  res.json({
-    items,
-    pageInfo: { page, pageSize: take, total, totalPages: Math.ceil(total / take) },
-  });
+  try {
+    const updated = await tasksService.changeStatus(Number(req.params.id), parse.data);
+    return res.json(updated);
+  } catch {
+    return res.status(500).json({ error: 'Error al cambiar el estado de la tarea' });
+  }
 };

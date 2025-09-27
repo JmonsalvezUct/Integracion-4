@@ -1,239 +1,103 @@
+import type { Request, Response } from 'express';
+import { projectsService } from './projects.service.js';
+import { CreateProjectSchema, UpdateProjectSchema } from './projects.validators.js';
 
-
-import type { Request, Response, NextFunction } from "express";
-import { prisma } from "../../app/loaders/prisma.js";
-import type { Prisma,PrismaClient  } from "@prisma/client";
-
-import { projectService } from './projects.service.js';
-import type { SortBy, Order } from './projects.service.js';
-
-
-/**
- * GET /projects/:id/tasks
- */
-
-    
-export const getProjectTasks = async (req: Request, res: Response) => {
-  const { id } = ((req as any).validatedParams ?? req.params) as any;
-  const q = ((req as any).validatedQuery ?? req.query) as any;
-
-  const page = Number(q.page ?? 1);
-  const pageSize = Math.min(100, Number(q.pageSize ?? 10));
-  const toNum = (v: any) =>
-    v === undefined || v === null || v === "" ? undefined : Number(v);
-
-  const assigneeId = toNum(q.assigneeId);
-  const statusId = toNum(q.statusId);
-  const priorityId = toNum(q.priorityId);
-
-  const dueFrom = q.dueFrom ? new Date(q.dueFrom) : undefined;
-  const dueTo = q.dueTo ? new Date(q.dueTo) : undefined;
-  const search =
-    typeof q.search === "string" && q.search.trim() ? q.search.trim() : undefined;
-
-  const skip = Math.max(0, (page - 1) * pageSize);
-  const take = Math.max(1, pageSize);
-
-  const where: Prisma.TaskWhereInput = { projectId: Number(id) };
-  if (assigneeId !== undefined) where.assigneeId = assigneeId;
-  if (statusId !== undefined) where.statusId = statusId;
-  if (priorityId !== undefined) where.priorityId = priorityId;
-  if (dueFrom || dueTo) where.dueDate = { gte: dueFrom, lte: dueTo };
-  if (search)
-    where.OR = [
-      { title: { contains: search, mode: "insensitive" } },
-      { description: { contains: search, mode: "insensitive" } },
-    ];
-
-  const orderStr: Prisma.SortOrder = q.order === "asc" ? "asc" : "desc";
-  let orderBy: Prisma.TaskOrderByWithRelationInput = { createdAt: orderStr };
-  switch (q.sort) {
-    case "createdAt":
-      orderBy = { createdAt: orderStr };
-      break;
-    case "dueDate":
-      orderBy = { dueDate: orderStr };
-      break;
-    case "priorityId":
-      orderBy = { priorityId: orderStr };
-      break;
-    case "statusId":
-      orderBy = { statusId: orderStr };
-      break;
-    case "title":
-      orderBy = { title: orderStr };
-      break;
-    case "id":
-      orderBy = { id: orderStr };
-      break;
-  }
-
-  const [total, items] = await Promise.all([
-    prisma.task.count({ where }),
-    prisma.task.findMany({ where, orderBy, skip, take }),
-  ]);
-
-  res.json({
-    items,
-    pageInfo: {
-      page,
-      pageSize: take,
-      total,
-      totalPages: Math.ceil(total / take),
-    },
-  });
-};
-
-
-
-
-
-
-export const cloneProjectController = async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  const { name } = (req as any).body ?? {};
-
-
-  const copy = await projectService.cloneProject(id, { name });
-  if (!copy) return res.status(404).json({ message: "Proyecto no existe" });
-  return res.status(201).json({ message: "Proyecto clonado", project: copy });
-};
-
-export const projectController = {
-createProject: async (req: Request, res: Response) => {
+export const createProject = async (req: Request, res: Response) => {
+  const parse = CreateProjectSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   try {
-    const { name, description } = req.body; // Solo name y description
-    
-    if (!name) {
-      return res.status(400).json({ error: 'El nombre del proyecto es requerido' });
-    }
-
-    const project = await projectService.createProject({ name, description });
-    res.status(201).json(project);
-
-  } catch (error) {
-    console.error('Error in createProject:', error);
-    res.status(500).json({ error: 'Error al crear el proyecto' });
+    const project = await projectsService.createProject(parse.data);
+    return res.status(201).json(project);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al crear el proyecto' });
   }
-},
+};
 
-  getAllProjects: async (req: Request, res: Response) => {
-    try {
-      const projects = await projectService.getAllProjects();
-      res.json(projects);
-    } catch (error) {
-      console.error('Error in getAllProjects:', error);
-      res.status(500).json({ error: 'Error al obtener los proyectos' });
-    }
-  },
+export const getProjects = async (req: Request, res: Response) => {
+  try {
+    const projects = await projectsService.getProjects();
+    return res.json(projects);
+  } catch {
+    return res.status(500).json({ error: 'Error al obtener los proyectos' });
+  }
+};
 
-<<<<<<< HEAD
+export const getProjectById = async (req: Request, res: Response) => {
+  try {
+    const project = await projectsService.getProjectById(Number(req.params.id));
+    if (!project) return res.status(404).json({ error: 'Proyecto no encontrado' });
+    return res.json(project);
+  } catch {
+    return res.status(500).json({ error: 'Error al obtener el proyecto' });
+  }
+};
 
+export const updateProject = async (req: Request, res: Response) => {
+  const parse = UpdateProjectSchema.safeParse(req.body);
+  if (!parse.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
+  try {
+    const project = await projectsService.updateProject(Number(req.params.id), parse.data);
+    return res.json(project);
+  } catch {
+    return res.status(500).json({ error: 'Error al actualizar el proyecto' });
+  }
+};
 
+export const deleteProject = async (req: Request, res: Response) => {
+  try {
+    await projectsService.deleteProject(Number(req.params.id));
+    return res.status(204).send();
+  } catch {
+    return res.status(500).json({ error: 'Error al eliminar el proyecto' });
+  }
+};
 
+export const getProjectsByUserId = async (req: Request, res: Response) => {
+  try {
+    const userId = Number(req.params.userId);
+    const projects = await projectsService.getProjectsByUserId(userId);
+    return res.json(projects);
+  } catch {
+    return res.status(500).json({ error: 'Error al obtener los proyectos del usuario' });
+  }
+};
 
-  // TDI-80: Obtener todos los proyectos
-async getAllProjects(req: Request, res: Response, next: NextFunction) {
-    try {
-      
-      const sortByQ = String(req.query.sortBy ?? 'date').toLowerCase();
-      const orderQ  = String(req.query.order ?? 'desc').toLowerCase();
-      const q       = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+export const addUserToProject = async (req: Request, res: Response) => {
+  try {
+    const { projectId, userId, roleId } = req.body;
+    const result = await projectsService.addUserToProject(projectId, userId, roleId);
+    return res.status(201).json(result);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al agregar usuario al proyecto', details: e.message });
+  }
+};
 
-      const sortByValue: SortBy =
-        sortByQ === 'name'     ? 'name' :
-        sortByQ === 'activity' ? 'activity' :
-        'date';
+export const updateUserRoleInProject = async (req: Request, res: Response) => {
+  try {
+    const { userProjectId, roleId } = req.body;
+    const result = await projectsService.updateUserRoleInProject(userProjectId, roleId);
+    return res.json(result);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al actualizar el rol del usuario', details: e.message });
+  }
+};
 
-      const orderValue: Order = orderQ === 'asc' ? 'asc' : 'desc';
+export const removeUserFromProject = async (req: Request, res: Response) => {
+  try {
+    const { userProjectId } = req.body;
+    await projectsService.removeUserFromProject(userProjectId);
+    return res.status(204).send();
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al quitar usuario del proyecto', details: e.message });
+  }
+};
 
-      let list = await projectService.getAllProjects({ sortBy: sortByValue, order: orderValue });
-
-
- 
-      if (q) {
-        const qlc = q.toLowerCase();
-        list = list.filter(p => p.name.toLowerCase().includes(qlc));
-      }
-
-
-      const data = list.map(p => ({
-        id: p.id,
-        name: p.name,
-        createdAt: p.createdAt?.toISOString?.() ?? new Date().toISOString(),
-        activity: p.tasksCount ?? 0,
-      }));
-
-      res.json(data);
-    } catch (err) {
-      next(err);
-    }
-  },
-
-  // TDI-81: Obtener proyecto por ID
-=======
->>>>>>> ede2e2b85847be7fc16784d438432b70018d01bf
-  getProjectById: async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ error: 'ID debe ser un número válido' });
-      }
-
-      const project = await projectService.getProjectById(id);
-      if (!project) {
-        return res.status(404).json({ error: "Proyecto no encontrado" });
-      }
-
-      res.json(project);
-    } catch (error) {
-      console.error('Error in getProjectById:', error);
-      res.status(500).json({ error: 'Error al obtener el proyecto' });
-    }
-  },
-
-  updateProject: async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ error: 'ID debe ser un número válido' });
-      }
-
-      const { name, description, status } = req.body;
-      
-      const project = await projectService.updateProject(id, { name, description, status });
-      
-      if (!project) {
-        return res.status(404).json({ error: "Proyecto no encontrado" });
-      }
-
-      res.json(project);
-    } catch (error) {
-      console.error('Error in updateProject:', error);
-      res.status(500).json({ error: 'Error al actualizar el proyecto' });
-    }
-  },
-
-  deleteProject: async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id);
-      
-      if (isNaN(id)) {
-        return res.status(400).json({ error: 'ID debe ser un número válido' });
-      }
-
-      const deleted = await projectService.deleteProject(id);
-      if (!deleted) {
-        return res.status(404).json({ error: "Proyecto no encontrado" });
-      }
-
-      res.status(204).send();
-    } catch (error) {
-      console.error('Error in deleteProject:', error);
-      res.status(500).json({ error: 'Error al eliminar el proyecto' });
-    }
-  },
-
+export const getProjectMembers = async (req: Request, res: Response) => {
+  try {
+    const projectId = Number(req.params.id);
+    const members = await projectsService.getProjectMembers(projectId);
+    return res.json(members);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al obtener los miembros del proyecto', details: e.message });
+  }
 };
