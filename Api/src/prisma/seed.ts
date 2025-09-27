@@ -1,70 +1,84 @@
-import {prisma}  from "../app/loaders/prisma.js";
+
+import { prisma } from "../app/loaders/prisma.js";
 import bcrypt from "bcrypt";
+import { ProjectRoleType, StatusType, PriorityType } from "@prisma/client";
 
 async function main() {
   console.log("🌱 Seeding database...");
 
-  // Roles de proyecto
-  const adminRole = await prisma.projectRole.create({ data: { role: "Admin" } });
-  const memberRole = await prisma.projectRole.create({ data: { role: "Member" } });
-
-  // Estados
-  await prisma.status.createMany({
-    data: [{ status: "To Do" }, { status: "In Progress" }, { status: "Done" }],
-    skipDuplicates: true,
-  });
-
-  // Prioridades
-  await prisma.priority.createMany({
-    data: [{ priority: "Low" }, { priority: "Medium" }, { priority: "High" }],
-    skipDuplicates: true,
-  });
-
-  // Tipos de adjuntos
-  await prisma.attachmentType.createMany({
-    data: [{ type: "Image" }, { type: "Document" }, { type: "Link" }],
-    skipDuplicates: true,
-  });
-
-  // Tipos de notificación
   await prisma.notificationType.createMany({
     data: [{ type: "TaskAssigned" }, { type: "ProjectUpdated" }],
     skipDuplicates: true,
   });
 
-  // Acciones de historial
   await prisma.action.createMany({
     data: [{ action: "Created" }, { action: "Updated" }, { action: "Deleted" }],
     skipDuplicates: true,
   });
 
-  // Usuario de prueba
-  const passwordHash = await bcrypt.hash("password123", 10);
+  // Create many users
+  const users = [];
+  for (let i = 1; i <= 10; i++) {
+    const passwordHash = await bcrypt.hash(`password${i}`, 10);
+    users.push(await prisma.user.create({
+      data: {
+        name: `User${i}`,
+        email: `user${i}@example.com`,
+        password: passwordHash,
+      },
+    }));
+  }
 
-  const user = await prisma.user.create({
-    data: {
-      name: "Admin User",
-      email: "admin@example.com",
-      password: passwordHash,
-    },
-  });
+  // Create many projects
+  const projects = [];
+  for (let i = 1; i <= 5; i++) {
+    projects.push(await prisma.project.create({
+      data: {
+        name: `Project${i}`,
+        description: `Description for project ${i}`,
+      },
+    }));
+  }
 
-  // Proyecto inicial
-  const project = await prisma.project.create({
-    data: {
-      name: "Proyecto Demo",
-      description: "Proyecto de ejemplo para testing",
-    },
-  });
+  // Assign users to projects with different roles
+  for (let i = 0; i < projects.length; i++) {
+    // First user is always admin
+    await prisma.userProject.create({
+      data: {
+        userId: users[0]?.id!,
+        projectId: projects[i]?.id!,
+        role: ProjectRoleType.admin,
+      },
+    });
+    // Other users get random roles
+    for (let j = 1; j < users.length; j++) {
+      const roles = [ProjectRoleType.developer, ProjectRoleType.guest];
+      await prisma.userProject.create({
+        data: {
+          userId: users[j]?.id!,
+          projectId: projects[i]?.id!,
+          role: roles[Math.floor(Math.random() * roles.length)],
+        },
+      });
+    }
+  }
 
-  // Relación usuario-proyecto con rol
-  await prisma.userProject.create({
-    data: {
-      userId: user.id,
-      projectId: project.id,
-      roleId: adminRole.id,
-    },
-  });
+  // Create many tasks for each project
+  for (const project of projects) {
+    for (let t = 1; t <= 20; t++) {
+      await prisma.task.create({
+        data: {
+          title: `Task ${t} for ${project.name}`,
+          description: `Description for task ${t}`,
+          creatorId: users[Math.floor(Math.random() * users.length)]?.id!,
+          assigneeId: users[Math.floor(Math.random() * users.length)]?.id!,
+          projectId: project.id!,
+          status: [StatusType.created, StatusType.in_progress, StatusType.completed, StatusType.archived][Math.floor(Math.random() * 4)],
+          priority: [PriorityType.high, PriorityType.medium, PriorityType.low][Math.floor(Math.random() * 3)],
+        },
+      });
+    }
+  }
 
   console.log("✅ Seed completed");
 }

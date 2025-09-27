@@ -62,12 +62,42 @@ export const getProjectsByUserId = async (req: Request, res: Response) => {
   }
 };
 
-export const getUserRolesInProjects = async (req: Request, res: Response) => {
+export const addUserToProject = async (req: Request, res: Response) => {
   try {
-    const userId = Number(req.params.userId);
-    const roles = await projectsService.getUserRolesInProjects(userId);
-    return res.json(roles);
-  } catch {
-    return res.status(500).json({ error: 'Error al obtener los roles del usuario en proyectos' });
+    const { projectId, userId, roleId } = req.body;
+    const result = await projectsService.addUserToProject(projectId, userId, roleId);
+    return res.status(201).json(result);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al agregar usuario al proyecto', details: e.message });
+  }
+};
+
+export const updateUserRoleInProject = async (req: Request, res: Response) => {
+  try {
+    const { userProjectId, roleId } = req.body;
+    const result = await projectsService.updateUserRoleInProject(userProjectId, roleId);
+    return res.json(result);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al actualizar el rol del usuario', details: e.message });
+  }
+};
+
+export const removeUserFromProject = async (req: Request, res: Response) => {
+  try {
+    const { userProjectId } = req.body;
+    await projectsService.removeUserFromProject(userProjectId);
+    return res.status(204).send();
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al quitar usuario del proyecto', details: e.message });
+  }
+};
+
+export const getProjectMembers = async (req: Request, res: Response) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    const members = await projectsService.getProjectMembers(projectId);
+    return res.json(members);
+  } catch (e: any) {
+    return res.status(500).json({ error: 'Error al obtener los miembros del proyecto', details: e.message });
   }
 };

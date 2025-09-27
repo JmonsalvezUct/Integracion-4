@@ -1,3 +1,4 @@
+import type { ProjectRoleType } from '@prisma/client';
 import { projectsRepository } from './projects.repository.js';
 import type { CreateProjectDTO, UpdateProjectDTO } from './projects.validators.js';
 
@@ -21,7 +22,20 @@ export const projectsService = {
     return projectsRepository.getProjectsByUserId(userId);
   },
 
-  async getUserRolesInProjects(userId: number) {
-    return projectsRepository.getUserRolesInProjects(userId);
+  async addUserToProject(projectId: number, userId: number, role: ProjectRoleType) {
+    return projectsRepository.addUserToProject(projectId, userId, role);
   },
+
+  async updateUserRoleInProject(userProjectId: number, role: ProjectRoleType) {
+    return projectsRepository.updateUserRoleInProject(userProjectId, role);
+  },
+
+  async removeUserFromProject(userProjectId: number) {
+    return projectsRepository.removeUserFromProject(userProjectId);
+  },
+
+  async getProjectMembers(projectId: number) {
+    return projectsRepository.getProjectMembers(projectId);
+  },
+
 };

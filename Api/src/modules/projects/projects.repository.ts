@@ -1,5 +1,6 @@
 import { prisma } from '../../app/loaders/prisma.js';
 import type { CreateProjectDTO, UpdateProjectDTO } from './projects.validators.js';
+import type { ProjectRoleType } from '@prisma/client';
 
 export const projectsRepository = {
   createProject: (data: CreateProjectDTO) => prisma.project.create({ data }),
@@ -13,16 +14,29 @@ export const projectsRepository = {
       where: { userId },
       include: {
         project: true,
-        role: true,
+        user: true,
       },
     }),
 
-  getUserRolesInProjects: (userId: number) =>
+  addUserToProject: (projectId: number, userId: number, role: ProjectRoleType) =>
+    prisma.userProject.create({ data: { projectId, userId, role } }),
+
+  updateUserRoleInProject: (userProjectId: number, role: ProjectRoleType) =>
+    prisma.userProject.update({ where: { id: userProjectId }, data: { role } }),
+
+  removeUserFromProject: (userProjectId: number) =>
+    prisma.userProject.delete({ where: { id: userProjectId } }),
+
+  getProjectMembers: (projectId: number) =>
     prisma.userProject.findMany({
-      where: { userId },
-      select: {
-        projectId: true,
-        role: true,
+      where: { projectId },
+      include: {
+        user: true,
       },
+    }),
+
+  getProjectMemberByUserId: (projectId: number, userId: number) =>
+    prisma.userProject.findFirst({
+      where: { projectId, userId },
     }),
 };

@@ -38,19 +38,12 @@ model Project {
 }
 
 model UserProject {
-  id        Int         @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   userId    Int
   projectId Int
-  roleId    Int
-  project   Project     @relation(fields: [projectId], references: [id])
-  role      ProjectRole @relation(fields: [roleId], references: [id])
-  user      User        @relation(fields: [userId], references: [id])
-}
-
-model ProjectRole {
-  id      Int           @id @default(autoincrement())
-  role    String
-  members UserProject[]
+  role      ProjectRoleType @default(developer)
+  project   Project         @relation(fields: [projectId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
 }
 
 model Task {
@@ -62,27 +55,13 @@ model Task {
   creatorId   Int
   assigneeId  Int?
   projectId   Int
-  statusId    Int
-  priorityId  Int
   attachments Attachment[]
   history     ChangeHistory[]
   assignee    User?           @relation("AssignedTasks", fields: [assigneeId], references: [id])
   creator     User            @relation("CreatedTasks", fields: [creatorId], references: [id])
-  priority    Priority        @relation(fields: [priorityId], references: [id])
   project     Project         @relation(fields: [projectId], references: [id])
-  status      Status          @relation(fields: [statusId], references: [id])
-}
-
-model Status {
-  id     Int    @id @default(autoincrement())
-  status String @unique
-  tasks  Task[]
-}
-
-model Priority {
-  id       Int    @id @default(autoincrement())
-  priority String @unique
-  tasks    Task[]
+  status      StatusType   @default(created)
+  priority    PriorityType @default(medium)
 }
 
 model Attachment {
@@ -147,3 +126,23 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
 }
+
+enum ProjectRoleType {
+  admin
+  developer
+  guest
+}
+
+enum PriorityType {
+  high
+  medium
+  low
+}
+
+enum StatusType {
+  created
+  in_progress
+  completed
+  archived
+}
+
