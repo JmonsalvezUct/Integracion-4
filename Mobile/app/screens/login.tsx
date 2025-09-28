@@ -1,4 +1,11 @@
 import React, { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { Link, useRouter } from "expo-router";
+import { login } from "@/services/auth";
+import { Alert } from "react-native";
+import { API_URL } from "@/constants/api";
+
+
 import {
   View,
   Text,
@@ -10,8 +17,7 @@ import {
   Image,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { Link, useRouter } from "expo-router";
+
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -19,10 +25,28 @@ export default function LoginScreen() {
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
 
-  const onSubmit = () => {
-    // TODO: validación + llamada a tu API
-    // router.replace("(tabs)");
-  };
+  // dentro del componente:
+const onSubmit = async () => {
+  try {
+    console.log("[Login] Intentando login contra:", `${API_URL}/auth/login`);
+    // OJO: usar estados reales `email` y `pass`
+    const emailOk = email.trim();
+    const passOk = pass;
+
+    if (!emailOk || !passOk) {
+      Alert.alert("Faltan datos", "Ingresa email y contraseña.");
+      return;
+    }
+
+    await login(emailOk, passOk); // hace fetch y guarda tokens
+    console.log("[Login] Exitoso, navegando a tabs");
+    router.replace("/(tabs)");
+  } catch (e: any) {
+    console.log("[Login] Error:", e?.message, e);
+    Alert.alert("No se pudo iniciar sesión", e?.message ?? "Revisa tus credenciales o conexión.");
+  }
+};
+
 
   return (
     <KeyboardAvoidingView
