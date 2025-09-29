@@ -1,4 +1,9 @@
 import React, { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { Alert } from "react-native";
+import { registerUser, login } from "@/services/auth";
+
 import {
   View,
   Text,
@@ -9,8 +14,7 @@ import {
   StyleSheet,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -18,11 +22,34 @@ export default function RegisterScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const onSubmit = () => {
-    // TODO: validación + llamada a tu API de registro
-    // Si todo OK -> router.replace("(tabs)")
-  };
+  const onSubmit = async () => {
+  try {
+    if (!name || !email || !pass) {
+      Alert.alert("Completa los campos", "Nombre, correo y contraseña.");
+      return;
+    }
+
+    setLoading(true);
+    const data = await registerUser({
+      name,
+      email,
+      password: pass,
+    });
+
+    if (!data?.accessToken) {
+      await login(email, pass);
+    }
+
+    router.replace("/(tabs)");
+  } catch (e: any) {
+    Alert.alert("No se pudo registrar", e?.message ?? "Intenta de nuevo.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <KeyboardAvoidingView
@@ -73,8 +100,15 @@ export default function RegisterScreen() {
           </View>
 
           {/* Botón */}
-          <TouchableOpacity style={styles.button} activeOpacity={0.9} onPress={onSubmit}>
-            <Text style={styles.buttonText}>Registrarme</Text>
+          <TouchableOpacity
+            style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
+            activeOpacity={0.9}
+            onPress={onSubmit}
+            disabled={loading} // lo deshabilita mientras loading = true
+          >
+            <Text style={styles.buttonText}>
+              {loading ? "Creando..." : "Registrarme"} {/*cambia el texto */}
+            </Text>
           </TouchableOpacity>
 
           {/* Volver a login */}

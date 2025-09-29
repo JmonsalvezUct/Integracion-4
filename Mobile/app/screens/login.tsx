@@ -6,6 +6,7 @@ import { Alert } from "react-native";
 import { API_URL } from "@/constants/api";
 
 
+
 import {
   View,
   Text,
@@ -24,12 +25,12 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // dentro del componente:
 const onSubmit = async () => {
   try {
     console.log("[Login] Intentando login contra:", `${API_URL}/auth/login`);
-    // OJO: usar estados reales `email` y `pass`
     const emailOk = email.trim();
     const passOk = pass;
 
@@ -38,14 +39,19 @@ const onSubmit = async () => {
       return;
     }
 
+    setLoading(true); // activar loading
+
     await login(emailOk, passOk); // hace fetch y guarda tokens
     console.log("[Login] Exitoso, navegando a tabs");
     router.replace("/(tabs)");
   } catch (e: any) {
     console.log("[Login] Error:", e?.message, e);
     Alert.alert("No se pudo iniciar sesión", e?.message ?? "Revisa tus credenciales o conexión.");
+  } finally {
+    setLoading(false); // desactivar loading pase lo que pase
   }
 };
+
 
 
   return (
@@ -55,11 +61,10 @@ const onSubmit = async () => {
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
-          {/* Logo + título */}
+          {/* Logo*/}
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            {/* Coloca tu logo en assets y descomenta la línea de abajo */}
-            {/* <Image source={require("@/assets/fastplanner-logo.png")} style={styles.logo} /> */}
-            <Text style={styles.brand}>FastPlanner</Text>
+            {/*logo en assets */}
+            <Image source={require("@/assets/images/fastplanner-logo.png")} style={styles.logo} />
           </View>
 
           <Text style={styles.title}>Inicia sesión</Text>
@@ -100,9 +105,17 @@ const onSubmit = async () => {
           </View>
 
           {/* Botón Entrar */}
-          <TouchableOpacity style={styles.button} activeOpacity={0.9} onPress={onSubmit}>
-            <Text style={styles.buttonText}>Entrar</Text>
+          <TouchableOpacity
+            style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
+            activeOpacity={0.9}
+            onPress={onSubmit}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? "Entrando..." : "Entrar"}
+            </Text>
           </TouchableOpacity>
+
 
           {/* Link registro */}
           <Text style={styles.registerText}>
@@ -132,7 +145,7 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
-  logo: { width: 42, height: 42, resizeMode: "contain", marginBottom: 6 },
+  logo: { width: 160, height: 80, resizeMode: "contain", marginBottom: 6 },
   brand: { fontWeight: "800", fontSize: 16, color: "#111827" },
   title: {
     fontSize: 22,
