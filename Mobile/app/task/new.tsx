@@ -4,27 +4,97 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
+
+
 
 const PRIMARY = "#3B34FF";
 
+const priorityMap: Record<"Alta" | "Media" | "Baja", "high" | "medium" | "low"> = {
+  Alta: "high",
+  Media: "medium",
+  Baja: "low",
+};
+
+function toISODateTime(d?: string) {
+  if (!d) return undefined as unknown as string;
+  const [y, m, dd] = d.split("-");
+  if (!y || !m || !dd) return undefined as unknown as string;
+  return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${dd.padStart(2, "0")}T00:00:00.000Z`;
+}
+
+function clean<T extends object>(obj: T): Partial<T> {
+  const out: any = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined || v === null) continue;
+    if (typeof v === "string" && v.trim() === "") continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+
+
+
+
+
+const BASE_URL = "https://integracion-4.onrender.com";
+
+
+
+
+
 export default function NewTaskScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ projectId?: string; creatorId?: string }>();
+
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
-  const [date, setDate] = useState(""); 
+  const [date, setDate] = useState("");
   const [priority, setPriority] = useState<"Alta" | "Media" | "Baja">("Media");
-  const [tag, setTag] = useState("");
+  const [tag, setTag] = useState(""); 
 
   const canSave = title.trim().length > 0;
 
-  const submit = () => {
-    if (!canSave) return Alert.alert("Falta título", "El título es obligatorio.");
-    const payload = { title, desc, date, priority, tag };
-    console.log("Nueva tarea:", payload); 
-    Alert.alert("Tarea creada", "Se creó la tarea correctamente.");
-    router.back();
-  };
+
+const submit = async () => {
+  if (!canSave) {
+    return Alert.alert("Falta título", "El título es obligatorio.");
+  }
+
+  const payload = clean({
+    title,
+    description: desc,
+    dueDate: toISODateTime(date),
+    priority: priorityMap[priority],
+    projectId: 1, 
+    creatorId: 1, 
+  });
+
+  try {
+    const res = await fetch(`${BASE_URL}/api/tasks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Error ${res.status}: ${text}`);
+    }
+
+    const data = await res.json();
+    console.log("Tarea creada:", data);
+    Alert.alert("Éxito", "Tarea creada correctamente.");
+    router.back(); 
+  } catch (err: any) {
+    console.error("Error al crear tarea:", err);
+    Alert.alert("Error", "No se pudo conectar al servidor.");
+  }
+};
+
 
   return (
     <SafeAreaView style={styles.root}>
@@ -80,14 +150,18 @@ export default function NewTaskScreen() {
 
           <Text style={styles.label}>Etiqueta</Text>
           <TextInput
-            placeholder="UI, Backend, Bug…"
+            placeholder="UI, Backend, Bug… (no se envía)"
             placeholderTextColor="#9aa0a6"
             value={tag}
             onChangeText={setTag}
             style={styles.input}
           />
 
-          <TouchableOpacity style={[styles.primaryBtn, !canSave && { opacity: 0.5 }]} disabled={!canSave} onPress={submit}>
+          <TouchableOpacity
+            style={[styles.primaryBtn, !canSave && { opacity: 0.5 }]}
+            disabled={!canSave}
+            onPress={submit}
+          >
             <Text style={styles.primaryBtnText}>Crear tarea</Text>
           </TouchableOpacity>
         </View>
@@ -95,6 +169,7 @@ export default function NewTaskScreen() {
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: PRIMARY },
