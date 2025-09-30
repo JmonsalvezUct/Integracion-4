@@ -1,35 +1,46 @@
-import {prisma}  from "../../app/loaders/prisma.js";
+import { tasksRepository } from './tasks.repository.js';
+import type {
+  CreateTaskDTO,
+  UpdateTaskDTO,
+  AssignTaskDTO,
+  ChangeStatusDTO,
+} from './tasks.validators.js';
+import type { StatusType, PriorityType } from '@prisma/client';
 
-type CreateTaskDTO = {
-  title: string;
-  description?: string;
-  projectId: number;
-  creatorId: number;
-  assigneeId?: number;
-  status?: string;   // 'pending' | 'in_progress' | 'done' | 'archived'
-  priority?: string; // 'low' | 'medium' | 'high' | 'urgent'
-  dueDate?: string;  // ISO
+export const tasksService = {
+  createTask: async (data: CreateTaskDTO) => {
+    return tasksRepository.createTask(data);
+  },
+
+  getTasks: async () => {
+    return tasksRepository.getTasks();
+  },
+
+  getTaskById: async (id: number) => {
+    return tasksRepository.getTaskById(id);
+  },
+
+  updateTask: async (id: number, data: UpdateTaskDTO) => {
+    return tasksRepository.updateTask(id, data);
+  },
+
+  deleteTask: async (id: number) => {
+    return tasksRepository.deleteTask(id);
+  },
+
+  getTasksByProject: async (projectId: number) => {
+    return tasksRepository.getTasksByProject(projectId);
+  },
+
+  assignTask: async (id: number, data: AssignTaskDTO) => {
+    return tasksRepository.assignTask(id, data.assigneeId);
+  },
+
+  changeStatus: async (id: number, data: ChangeStatusDTO) => {
+    return tasksRepository.changeStatus(id, data.status as StatusType);
+  },
+
+  changePriority: async (id: number, priority: PriorityType) => {
+    return tasksRepository.changePriority(id, priority);
+  },
 };
-
-export async function createTaskSvc(data: CreateTaskDTO) {
-  const statusName = data.status ?? "pending";
-  const priorityName = data.priority ?? "medium";
-
-  const [status, priority] = await Promise.all([
-    prisma.status.findUniqueOrThrow({ where: { status: statusName } }),
-    prisma.priority.findUniqueOrThrow({ where: { priority: priorityName } }),
-  ]);
-
-  return prisma.task.create({
-    data: {
-      title: data.title,
-      description: data.description,
-      project: { connect: { id: data.projectId } },
-      creator: { connect: { id: data.creatorId } },
-      ...(data.assigneeId ? { assignee: { connect: { id: data.assigneeId } } } : {}),
-      status: { connect: { id: status.id } },
-      priority: { connect: { id: priority.id } },
-      ...(data.dueDate ? { dueDate: new Date(data.dueDate) } : {}),
-    },
-  });
-}
