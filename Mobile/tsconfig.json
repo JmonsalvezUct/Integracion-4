@@ -1,12 +1,14 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "jsx": "react-native",
     "strict": true,
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["./*"] },
+    "types": ["expo", "expo-router", "react", "react-native"]  // ← clave
   },
   "include": [
     "**/*.ts",
