@@ -10,6 +10,8 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 
 const PRIMARY = "#3B34FF";
 
+
+//CORREGIR EN FUTURO --> TASK.TSX
 const priorityMap: Record<"Alta" | "Media" | "Baja", "high" | "medium" | "low"> = {
   Alta: "high",
   Media: "medium",
@@ -46,7 +48,7 @@ const BASE_URL = "https://integracion-4.onrender.com";
 
 export default function NewTaskScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ projectId?: string; creatorId?: string }>();
+  const params = useLocalSearchParams<{ projectId?: string; creatorId?: string }>(); // --> EXTRAE PARAMETROS DE LA URL 
 
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
@@ -54,7 +56,7 @@ export default function NewTaskScreen() {
   const [priority, setPriority] = useState<"Alta" | "Media" | "Baja">("Media");
   const [tag, setTag] = useState(""); 
 
-  const canSave = title.trim().length > 0;
+  const canSave = title.trim().length > 0; 
 
 
 const submit = async () => {
