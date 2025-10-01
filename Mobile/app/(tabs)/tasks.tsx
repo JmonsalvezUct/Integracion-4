@@ -6,6 +6,7 @@ const PRIMARY = "#3B34FF";
 import { useLocalSearchParams } from "expo-router";
 import { DataTable } from "react-native-paper";
 import React, { useEffect, useMemo, useState } from "react";
+import { Animated } from "react-native";
 
 
 interface Task {
@@ -35,11 +36,30 @@ const defaultColumns: ColumnsState = {
 
 
 
-
 export default function TasksScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [columns, setColumns] = useState<ColumnsState>(defaultColumns);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const toastY = React.useRef(new Animated.Value(-80)).current; // animación desde arriba
+
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setToastVisible(true);
+
+    
+    Animated.timing(toastY, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+
+      setTimeout(() => {
+        Animated.timing(toastY, { toValue: -80, duration: 180, useNativeDriver: true }).start(
+          () => setToastVisible(false)
+        );
+      }, 1800);
+    });
+  };
 
   const toggleCol = (key: keyof ColumnsState) =>
     setColumns((c) => ({ ...c, [key]: !c[key] }));
@@ -68,24 +88,50 @@ export default function TasksScreen() {
 
         setTasks(data || []);
         setProjectName(data.project?.name || "Proyecto");
-      } catch (err) {
-        console.error("Error al cargar tareas:", err);
-      }
-    };
+      showToast("Tareas cargadas correctamente ", "success");
+    } catch (err) {
+      console.error("Error al cargar tareas:", err);
+      showToast("Error al cargar tareas ", "error");
+    }
+  };
 
     fetchTasks();
   }, [projectId]);
 
+const CL_TZ = "America/Santiago";
 const visibleTasks = useMemo(() => tasks, [tasks]);
-const formatDate = (iso?: string | null) =>
-  iso ? new Date(iso).toLocaleDateString() : "—";
-
+const formatDate = (iso?: string | null) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat("es-CL", {
+    timeZone: CL_TZ,     
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(d);
+};
 
 const HIDDEN_CELL = { flex: 0 as const, width: 0 as const, paddingHorizontal: 0, opacity: 0 };
 
 return (
     <SafeAreaView style={styles.container}>
       <Header title={`Tareas de ${projectName}`} />
+        {toastVisible && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.toast,
+              {
+                transform: [{ translateY: toastY }],
+                backgroundColor: toastType === "error" ? "#E74C3C" : "#2ECC71",
+              },
+            ]}
+          >
+            <Text style={styles.toastText}>{toastMsg}</Text>
+          </Animated.View>
+        )}
+
+
 
       
       <View style={styles.selector}>
@@ -99,14 +145,15 @@ return (
         {visibleTasks.length === 0 ? (
           <Text style={{ color: "#666" }}>No hay tareas en este proyecto.</Text>
         ) : (
-        
-          <DataTable style={styles.table}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <DataTable style={styles.table}>
           <DataTable.Header>
             <DataTable.Title style={styles.colTitle}>Título</DataTable.Title>
-            <DataTable.Title style={columns.status   ? styles.colSmall  : HIDDEN_CELL}>Estado</DataTable.Title>
+            <DataTable.Title style={columns.status ? styles.colSmall : HIDDEN_CELL}>Estado</DataTable.Title>
             <DataTable.Title style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>Responsable</DataTable.Title>
-            <DataTable.Title style={columns.dueDate  ? styles.colSmall  : HIDDEN_CELL}>Fecha</DataTable.Title>
-            <DataTable.Title style={columns.priority ? styles.colSmall  : HIDDEN_CELL}>Prioridad</DataTable.Title>
+            <DataTable.Title style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}>Fecha</DataTable.Title>
+            <DataTable.Title style={columns.priority ? styles.colSmall : HIDDEN_CELL}>Prioridad</DataTable.Title>
           </DataTable.Header>
 
           {visibleTasks.map((t: Task) => (
@@ -115,7 +162,7 @@ return (
                 <Text numberOfLines={2} style={{ fontWeight: "600" }}>{t.title}</Text>
               </DataTable.Cell>
 
-              <DataTable.Cell style={columns.status   ? styles.colSmall  : HIDDEN_CELL}>
+              <DataTable.Cell style={columns.status ? styles.colSmall : HIDDEN_CELL}>
                 {t.status ?? "—"}
               </DataTable.Cell>
 
@@ -123,16 +170,20 @@ return (
                 {t.assignee?.name ?? "—"}
               </DataTable.Cell>
 
-              <DataTable.Cell style={columns.dueDate  ? styles.colSmall  : HIDDEN_CELL}>
+              <DataTable.Cell style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}>
                 {formatDate(t.dueDate)}
               </DataTable.Cell>
 
-              <DataTable.Cell style={columns.priority ? styles.colSmall  : HIDDEN_CELL}>
+              <DataTable.Cell style={columns.priority ? styles.colSmall : HIDDEN_CELL}>
                 {t.priority ?? "—"}
               </DataTable.Cell>
             </DataTable.Row>
           ))}
-          </DataTable>
+        </DataTable>
+      </ScrollView>
+    </ScrollView>
+
+      
         )}
       </View>
 
@@ -240,12 +291,42 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
-  switchLabel: { fontSize: 12, color: "#333" },
+    switchLabel: { fontSize: 12, color: "#333" },
 
-  table: { backgroundColor: "#fff", borderRadius: 12, overflow: "hidden" },
+    table: { backgroundColor: "#fff", borderRadius: 12, overflow: "hidden",minWidth: 600, },
 
-  colTitle: { flex: 2.4 },
+    colTitle: {
+    
+    flex: 0,        
+    width: 180,    
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
+  },
+  titleText: {
+    fontWeight: "600",
+    flexWrap: "wrap",  
+  },
   colMedium: { flex: 1.4 },
   colSmall: { flex: 1 },
+  toast: {
+    position: "absolute",
+    top: 8,
+    left: 16,
+    right: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    zIndex: 999,
+  },
+  toastText: {
+    color: "#fff",
+    fontWeight: "600",
+    textAlign: "center",
+  },
   
 });

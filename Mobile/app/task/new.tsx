@@ -11,12 +11,14 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 const PRIMARY = "#3B34FF";
 
 
-//CORREGIR EN FUTURO --> TASK.TSX
+
 const priorityMap: Record<"Alta" | "Media" | "Baja", "high" | "medium" | "low"> = {
   Alta: "high",
   Media: "medium",
   Baja: "low",
 };
+
+
 
 function toISODateTime(d?: string) {
   if (!d) return undefined as unknown as string;
@@ -58,6 +60,9 @@ export default function NewTaskScreen() {
 
   const canSave = title.trim().length > 0; 
 
+
+
+  
 
 const submit = async () => {
   if (!canSave) {
