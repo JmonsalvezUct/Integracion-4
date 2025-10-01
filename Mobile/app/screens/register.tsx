@@ -107,7 +107,7 @@ export default function RegisterScreen() {
             disabled={loading} // lo deshabilita mientras loading = true
           >
             <Text style={styles.buttonText}>
-              {loading ? "Creando..." : "Registrarme"} {/*cambia el texto */}
+              {loading ? "Creando..." : "Registrarme"} 
             </Text>
           </TouchableOpacity>
 
