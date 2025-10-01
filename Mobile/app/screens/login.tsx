@@ -48,7 +48,7 @@ const onSubmit = async () => {
     console.log("[Login] Error:", e?.message, e);
     Alert.alert("No se pudo iniciar sesión", e?.message ?? "Revisa tus credenciales o conexión.");
   } finally {
-    setLoading(false); // desactivar loading pase lo que pase
+    setLoading(false); // desactivar loading 
   }
 };
 
@@ -56,7 +56,7 @@ const onSubmit = async () => {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#1E2BFF" }} // azul de fondo
+      style={{ flex: 1, backgroundColor: "#1E2BFF" }} 
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   button: {
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#3F48FF", // botón azul
+    backgroundColor: "#3F48FF", 
     alignItems: "center",
     justifyContent: "center",
     marginTop: 16,

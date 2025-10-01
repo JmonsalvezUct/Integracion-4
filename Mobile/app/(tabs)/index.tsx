@@ -12,7 +12,10 @@ import {
 import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 
-const BASE_URL = "http://10.0.2.2:3000/api";
+
+import { API_URL } from "@/constants/api";
+
+import { getAccessToken } from "@/lib/secure-store";
 
 type Project = { id: number; name: string; activitiesCount?: number };
 
@@ -26,12 +29,13 @@ export default function HomeScreen() {
     setLoading(true);
     try {
       const userId = await SecureStore.getItemAsync("userId");
-      const token = await SecureStore.getItemAsync("token");
+      const token  = await getAccessToken();
+
       if (!userId || !token) {
         setProjects([]);
       } else {
         const res = await fetch(
-          `${BASE_URL}/projects?userId=${userId}&status=active`,
+          `${API_URL}/projects?userId=${userId}&status=active`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         const data = res.ok ? await res.json() : [];
@@ -62,7 +66,7 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
-      {/* Header con menú, buscador y perfil */}
+      {/* Header menú, buscador y perfil */}
       <View
         style={{
           backgroundColor: "#3f3df8",
@@ -73,11 +77,8 @@ export default function HomeScreen() {
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* Menú */}
-          <TouchableOpacity
-            onPress={() => {}}
-            style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
+          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="menu" size={26} color="#ffffff" />
           </TouchableOpacity>
 
@@ -105,11 +106,8 @@ export default function HomeScreen() {
           </View>
 
           {/* Perfil */}
-          <TouchableOpacity
-            onPress={() => {}}
-            style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
+          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="account-circle" size={26} color="#ffffff" />
           </TouchableOpacity>
         </View>
@@ -126,16 +124,12 @@ export default function HomeScreen() {
           contentContainerStyle={{ padding: 16, flexGrow: 1 }}
           data={filtered}
           keyExtractor={(p) => String(p.id)}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          // Título fijo de la sección 
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListHeaderComponent={
             <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
               Proyectos
             </Text>
           }
-          // Sin mensaje cuando la lista está vacía
           ListEmptyComponent={<View />} 
           renderItem={({ item }) => (
             <View

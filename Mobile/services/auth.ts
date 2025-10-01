@@ -23,14 +23,14 @@ export async function login(email: string, password: string): Promise<LoginRespo
   });
 
   if (!res.ok) {
-    //leer mensaje de error del backend
+    
     const msg = await res.text();
     throw new Error(msg || `HTTP ${res.status}`);
   }
 
   const data = (await res.json()) as LoginResponse;
 
-  // >>> Guarda lo que te pidieron:
+  
   await saveAuth({
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
@@ -59,8 +59,7 @@ export async function registerUser(payload: RegisterPayload) {
     throw new Error(text || `HTTP ${res.status}`);
   }
 
-  // Puede que el register devuelva solo el usuario,
-  // o también tokens. Soporta ambas cosas.
+ 
   let data: any = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
 
