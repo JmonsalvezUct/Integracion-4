@@ -7,6 +7,9 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabsLayout() {
+
+  const colorScheme = useColorScheme();
+
   return (
     <Tabs
       screenOptions={{
