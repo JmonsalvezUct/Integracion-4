@@ -1,159 +1,356 @@
-import { Router } from "express";
-import { validate } from "../../middlewares/validate.middleware.js";
-import {
-  createTask as createTaskVal,
-  listTasks as listTasksVal,
-  getTaskById as getTaskByIdVal,
-  updateTask as updateTaskVal,
-  deleteTask as deleteTaskVal,
-} from "./tasks.validators.js";
+import { Router } from 'express';
 import {
   createTask,
-  listTasks,
   getTaskById,
   updateTask,
   deleteTask,
-} from "./tasks.controller.js";
+  getTasksByProject,
+  assignTask,
+  changeStatus,
+} from './tasks.controller.js';
 
 const router = Router();
+
 /**
- * @openapi
+ * @swagger
  * /tasks:
  *   post:
- *     summary: Crear una nueva tarea
+ *     summary: Crear nueva tarea
+ *     description: Crea una nueva tarea en un proyecto específico.
  *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/TaskCreate'
- *           example:
- *             title: "Diseñar pantalla de login"
- *             description: "Vista en Figma"
- *             projectId: 1
- *             statusId: 1
- *             priorityId: 2
+ *             type: object
+ *             required:
+ *               - title
+ *               - projectId
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: "Implementar autenticación"
+ *                 minLength: 3
+ *               description:
+ *                 type: string
+ *                 example: "Implementar sistema de login con JWT"
+ *               projectId:
+ *                 type: integer
+ *                 example: 1
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high]
+ *                 example: "medium"
+ *               status:
+ *                 type: string
+ *                 enum: [pending, in_progress, review, completed]
+ *                 default: "pending"
+ *                 example: "pending"
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *                 example: "2025-10-15"
+ *               assigneeId:
+ *                 type: integer
+ *                 description: ID del usuario asignado
+ *                 example: 2
  *     responses:
  *       201:
- *         description: Tarea creada
+ *         description: Tarea creada exitosamente
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Task' }
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 title:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 createdBy:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
  *       400:
- *         description: Datos inválidos
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *         description: Datos inválidos o proyecto no encontrado
+ *       401:
+ *         description: No autorizado
+ *       403:
+ *         description: No tiene permisos en el proyecto
+ *     x-middleware:
+ *       - authMiddleware
  */
-router.post("/", validate(createTaskVal), createTask);
+router.post('/', createTask);
 
 
 /**
- * @openapi
- * /tasks:
- *   get:
- *     summary: Listar todas las tareas
- *     tags: [Tasks]
- *     parameters:
- *       - $ref: '#/components/parameters/PageParam'
- *       - $ref: '#/components/parameters/PageSizeParam'
- *       - $ref: '#/components/parameters/SortParam'
- *       - $ref: '#/components/parameters/OrderParam'
- *       - $ref: '#/components/parameters/StatusParam'
- *       - $ref: '#/components/parameters/QParam'
- *     responses:
- *       200:
- *         description: Lista de tareas
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/TaskListResponse' }
- */
-router.get("/", validate(listTasksVal), listTasks);
-
-;
-
-/**
- * @openapi
+ * @swagger
  * /tasks/{id}:
  *   get:
- *     summary: Obtener tarea por ID
+ *     summary: Get task by ID
  *     tags: [Tasks]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *     responses:
  *       200:
- *         description: Tarea encontrada
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Task' }
- *       404:
- *         description: No encontrada
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *         description: Task details
  */
-router.get("/:id", validate(getTaskByIdVal), getTaskById);
 
+router.get('/:id', getTaskById);
 
 /**
- * @openapi
+ * @swagger
  * /tasks/{id}:
  *   put:
- *     summary: Actualizar tarea existente
+ *     summary: Update a task
  *     tags: [Tasks]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
- *           schema: { $ref: '#/components/schemas/TaskUpdate' }
- *           example:
- *             title: "Login con validaciones"
- *             description: "Ajustar accesibilidad"
- *             statusId: 2
- *             priorityId: 1
+ *           schema:
+ *             $ref: '#/components/schemas/Task'
  *     responses:
  *       200:
- *         description: Tarea actualizada
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Task' }
- *       404:
- *         description: No encontrada
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *         description: Task updated
  */
-router.put("/:id", validate(updateTaskVal), updateTask);
+
+router.put('/:id', updateTask);
+
 /**
- * @openapi
+ * @swagger
  * /tasks/{id}:
  *   delete:
- *     summary: Eliminar tarea
+ *     summary: Delete a task
  *     tags: [Tasks]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
- *         schema: { type: integer }
+ *         schema:
+ *           type: integer
  *     responses:
  *       204:
- *         description: Eliminada correctamente
- *       404:
- *         description: No encontrada
+ *         description: Task deleted
+ */
+
+router.delete('/:id', deleteTask);
+
+/**
+ * @swagger
+ * /tasks/project/{projectId}:
+ *   get:
+ *     summary: Obtener tareas por proyecto
+ *     description: Lista todas las tareas de un proyecto específico con filtros y paginación.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del proyecto
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, in_progress, review, completed]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high]
+ *         description: Filtrar por prioridad
+ *       - in: query
+ *         name: assigneeId
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por usuario asignado
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Elementos por página
+ *     responses:
+ *       200:
+ *         description: Lista de tareas paginada
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       priority:
+ *                         type: string
+ *                       dueDate:
+ *                         type: string
+ *                         format: date
+ *                       assignee:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: integer
+ *                           name:
+ *                             type: string
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     pages:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *       401:
+ *         description: No autorizado
+ *       403:
+ *         description: No tiene permisos en el proyecto
+ *       404:
+ *         description: Proyecto no encontrado
+ *     x-middleware:
+ *       - authMiddleware
  */
-router.delete("/:id", validate(deleteTaskVal), deleteTask);
 
+router.get('/project/:projectId', getTasksByProject);
+
+/**
+ * @swagger
+ * /tasks/{id}/assign:
+ *   post:
+ *     summary: Assign a task to a user
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               assigneeId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Task assigned
+ */
+
+router.post('/:id/assign', assignTask);
+
+/**
+ * @swagger
+ * /tasks/{id}/status:
+ *   post:
+ *     summary: Cambiar estado de una tarea
+ *     description: Actualiza el estado de una tarea y registra el cambio.
+ *     tags: [Tasks]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la tarea
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, in_progress, review, completed]
+ *                 example: "in_progress"
+ *               comment:
+ *                 type: string
+ *                 example: "Iniciando desarrollo de la funcionalidad"
+ *     responses:
+ *       200:
+ *         description: Estado actualizado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 status:
+ *                   type: string
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 updatedBy:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *       400:
+ *         description: Estado inválido
+ *       401:
+ *         description: No autorizado
+ *       403:
+ *         description: No tiene permisos para modificar la tarea
+ *       404:
+ *         description: Tarea no encontrada
+ *     x-middleware:
+ *       - authMiddleware
+ */
+
+router.post('/:id/status', changeStatus);
 
 export default router;

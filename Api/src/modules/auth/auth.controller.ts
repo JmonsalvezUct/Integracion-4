@@ -30,15 +30,6 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const me = async (req: AuthRequest, res: Response) => {
-  try {
-    const user = await authService.getProfile(req.user!.id);
-    return res.json({ user });
-  } catch {
-    return res.status(500).json({ error: 'Error al obtener el perfil' });
-  }
-};
-
 export const refresh = async (req: Request, res: Response) => {
   const parse = RefreshSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
@@ -60,8 +51,12 @@ export const logout = async (req: Request, res: Response) => {
   const parse = RefreshSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
 
-  await authService.logout(parse.data.refreshToken);
-  return res.json({ ok: true });
+  try {
+    await authService.logout(parse.data.refreshToken);
+    return res.json({ ok: true });
+  } catch (e: any) {
+    return res.status(500).json({ error: 'No se pudo cerrar la sesión', details: e.message });
+  }
 };
 
 export const resetPassword = async (req: Request, res: Response) => {

@@ -1,61 +1,35 @@
-import { z } from "zod";
+import { z } from 'zod';
+import { StatusType, PriorityType } from "@prisma/client";
 
-export const createTask = {
-  body: z.object({
-    title: z.string().min(1),
-    projectId: z.coerce.number().int().positive(),
-    creatorId: z.coerce.number().int().positive().optional(),
-    statusId: z.coerce.number().int().positive().optional(),
-    priorityId: z.coerce.number().int().positive().default(1),
-    description: z.string().optional(),
-    dueDate: z.coerce.date().optional(),
-  }),
-};
+export const CreateTaskSchema = z.object({
+  title: z.string().min(2).max(100),
+  description: z.string().max(255).optional(),
+  dueDate: z.coerce.date().optional(),
+  projectId: z.number(),
+  assigneeId: z.number().optional(),
+  status: z.nativeEnum(StatusType).optional(),
+  priority: z.nativeEnum(PriorityType).optional(),
+  creatorId: z.number(), 
+});
 
-export const listTasks = {
-  query: z.object({
-    page: z.coerce.number().int().positive().default(1),
-    pageSize: z.coerce.number().int().positive().max(100).default(10),
-    projectId: z.coerce.number().int().positive().optional(),
-    creatorId: z.coerce.number().int().positive().optional(),
-    assigneeId: z.coerce.number().int().positive().optional(),
-    statusId: z.coerce.number().int().positive().optional(),
-    priorityId: z.coerce.number().int().positive().optional(),
-    search: z.string().trim().min(1).optional(),
-    dueFrom: z.coerce.date().optional(),
-    dueTo: z.coerce.date().optional(),
-    
-    sort: z.enum(["createdAt","dueDate","priorityId","statusId","title","id"]).optional(),
+export const UpdateTaskSchema = z.object({
+  title: z.string().min(2).max(100).optional(),
+  description: z.string().max(255).optional(),
+  dueDate: z.coerce.date().optional(),
+  assigneeId: z.number().optional(),
+  status: z.nativeEnum(StatusType).optional(),
+  priority: z.nativeEnum(PriorityType).optional(),
+});
 
-    order: z.enum(["asc","desc"]).default("desc"),
-  }),
-};
+export const AssignTaskSchema = z.object({
+  assigneeId: z.number().int(),
+});
 
-export const getTaskById = {
-  params: z.object({
-    id: z.coerce.number().int().positive()
-  })
-};
-export const deleteTask = {
-  params: z.object({
-    id: z.coerce.number().int().positive(),
-  }),
-};
-export const updateTask = {
-  params: z.object({
-    id: z.coerce.number().int().positive(),
-  }),
-  body: z.object({
-    title: z.string().min(1).optional(),
-    description: z.string().nullable().optional(),
-    dueDate: z.coerce.date().nullable().optional(),
+export const ChangeStatusSchema = z.object({
+  status: z.string(),
+});
 
-    
-    projectId:  z.coerce.number().int().positive().optional(),
-    statusId:   z.coerce.number().int().positive().optional(),
-    priorityId: z.coerce.number().int().positive().optional(),
-    assigneeId: z.coerce.number().int().positive().nullable().optional(), 
-  }).refine(obj => Object.keys(obj).length > 0, {
-    message: "Body vacío: envía al menos un campo para actualizar",
-  }),
-};
+export type CreateTaskDTO = z.infer<typeof CreateTaskSchema>;
+export type UpdateTaskDTO = z.infer<typeof UpdateTaskSchema>;
+export type AssignTaskDTO = z.infer<typeof AssignTaskSchema>;
+export type ChangeStatusDTO = z.infer<typeof ChangeStatusSchema>;
