@@ -1,3 +1,4 @@
+
 import { SafeAreaView, View, Text,Platform , StyleSheet, TouchableOpacity, Switch, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -37,19 +38,20 @@ const defaultColumns: ColumnsState = {
 
 
 export default function TasksScreen() {
+  const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
   const [columns, setColumns] = useState<ColumnsState>(defaultColumns);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const toastY = React.useRef(new Animated.Value(-80)).current; // animación desde arriba
+  const toastY = React.useRef(new Animated.Value(-80)).current; 
 
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToastMsg(msg);
     setToastType(type);
     setToastVisible(true);
-
+    
     
     Animated.timing(toastY, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
 
@@ -134,12 +136,26 @@ return (
 
 
       
-      <View style={styles.selector}>
-        <ColSwitch label="Estado" value={columns.status} onChange={() => toggleCol("status")} />
-        <ColSwitch label="Responsable" value={columns.assignee} onChange={() => toggleCol("assignee")} />
-        <ColSwitch label="Fecha límite" value={columns.dueDate} onChange={() => toggleCol("dueDate")} />
-        <ColSwitch label="Prioridad" value={columns.priority} onChange={() => toggleCol("priority")} />
-      </View>
+      <View style={styles.filterWrapper}>
+  <TouchableOpacity
+    onPress={() => setShowFilters(!showFilters)}
+    style={styles.toggleFiltersButton}
+  >
+    <Text style={styles.toggleFiltersText}>
+      {showFilters ? "Ocultar filtros ▲" : "Mostrar filtros ▼"}
+    </Text>
+  </TouchableOpacity>
+
+  {showFilters && (
+    <View style={styles.selector}>
+      <ColSwitch label="Estado" value={columns.status} onChange={() => toggleCol("status")} />
+      <ColSwitch label="Responsable" value={columns.assignee} onChange={() => toggleCol("assignee")} />
+      <ColSwitch label="Fecha límite" value={columns.dueDate} onChange={() => toggleCol("dueDate")} />
+      <ColSwitch label="Prioridad" value={columns.priority} onChange={() => toggleCol("priority")} />
+    </View>
+  )}
+</View>
+
 
       <View style={styles.content}>
         {visibleTasks.length === 0 ? (
@@ -189,7 +205,7 @@ return (
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: "/task/new", params: { projectId } })}
+        onPress={() => router.push({ pathname: "/task/CreateTask", params: { projectId } })}
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={28} color="#fff" />
@@ -329,4 +345,25 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   
+  filterWrapper: {
+  paddingHorizontal: 12,
+  paddingTop: 10,
+  backgroundColor: "#EFEFFF",
+},
+
+toggleFiltersButton: {
+  alignSelf: "flex-start",
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  backgroundColor: "#3B34FF",
+  borderRadius: 8,
+  marginBottom: 8,
+},
+
+toggleFiltersText: {
+  color: "#fff",
+  fontWeight: "600",
+  fontSize: 13,
+},
+
 });
