@@ -112,7 +112,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           {/* Volver a login */}
-          <TouchableOpacity onPress={() => router.replace("/screens/login")} style={{ marginTop: 12 }}>
+          <TouchableOpacity onPress={() => router.replace("/auth/login")} style={{ marginTop: 12 }}>
             <Text style={styles.backToLogin}>Volver a iniciar sesión</Text>
           </TouchableOpacity>
         </View>

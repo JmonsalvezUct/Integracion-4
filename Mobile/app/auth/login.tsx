@@ -150,7 +150,7 @@ const onSubmit = async () => {
           {/* Link registro */}
           <Text style={styles.registerText}>
             ¿No tienes cuenta?{" "}
-            <Link href="/screens/register" style={styles.registerLink}>
+            <Link href="/auth/register" style={styles.registerLink}>
               Regístrate
             </Link>
           </Text>
