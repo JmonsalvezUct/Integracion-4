@@ -1,5 +1,6 @@
 import { Redirect } from "expo-router";
 
 export default function Index() {
-  return <Redirect href="/screens/login" />;
+  const isLoggedIn = false;
+  return <Redirect href={isLoggedIn ? "/(tabs)" : "/screens/login"} />;
 }

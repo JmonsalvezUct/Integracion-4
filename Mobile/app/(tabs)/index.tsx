@@ -8,11 +8,13 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from "react-native";
-
-// import * as SecureStore from "expo-secure-store";
+import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
+
+
 import { API_URL } from "@/constants/api";
-import { getAccessToken, getUserId } from "@/lib/secure-store";
+
+import { getAccessToken } from "@/lib/secure-store";
 
 type Project = { id: number; name: string; activitiesCount?: number };
 
@@ -25,22 +27,18 @@ export default function HomeScreen() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const userId = await getUserId();
-      const token = await getAccessToken();
+      const userId = await SecureStore.getItemAsync("userId");
+      const token  = await getAccessToken();
 
       if (!userId || !token) {
         setProjects([]);
       } else {
-        const res = await fetch(`${API_URL}/projects/user/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
+        const res = await fetch(
+          `${API_URL}/projects?userId=${userId}&status=active`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         const data = res.ok ? await res.json() : [];
-        // backend devuelve userProject[] 
-        const mapped = Array.isArray(data)
-          ? data.map((up: any) => up.project).filter(Boolean)
-          : [];
-        setProjects(mapped);
+        setProjects(Array.isArray(data) ? data : []);
       }
     } catch {
       setProjects([]);
