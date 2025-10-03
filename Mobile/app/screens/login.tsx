@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { login } from "@/services/auth";
+import { login, refreshTokens } from "@/services/auth";
+import { clearAuth, getRefreshToken } from "@/lib/secure-store";
 import { Alert } from "react-native";
 import { API_URL } from "@/constants/api";
 
@@ -26,6 +27,35 @@ export default function LoginScreen() {
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const refresh = await getRefreshToken();
+        if (!mounted) return;
+        if (refresh) {
+          try {
+            await refreshTokens();
+            if (!mounted) return;
+            router.replace("/(tabs)");
+            return;
+          } catch (e) {
+            // fallo al renovar -> limpiar tokens
+            await clearAuth();
+          }
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        if (mounted) setChecking(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // dentro del componente:
 const onSubmit = async () => {
@@ -67,7 +97,7 @@ const onSubmit = async () => {
             <Image source={require("@/assets/images/fastplanner-logo.png")} style={styles.logo} />
           </View>
 
-          <Text style={styles.title}>Inicia sesión</Text>
+          <Text style={styles.title}>{checking ? "Comprobando sesión..." : "Inicia sesión"}</Text>
 
           {/* Input correo */}
           <View style={styles.inputWrap}>
