@@ -12,9 +12,7 @@ import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-
 import { API_URL } from "@/constants/api";
-
 import { getAccessToken } from "@/lib/secure-store";
 
 type Project = { id: number; name: string; activitiesCount?: number };
@@ -26,21 +24,54 @@ export default function HomeScreen() {
   const [q, setQ] = React.useState("");
   const router = useRouter();
 
+  // Normaliza el resultado de /projects/user/{userId} (UserProject con project anidado)
+  const normalizeProjects = (raw: any): Project[] => {
+    if (!Array.isArray(raw)) return [];
+    // Caso: elementos tipo UserProject con { project: {...} }
+    if (raw.length > 0 && raw[0]?.project) {
+      return raw
+        .map((it) => {
+          const p = it.project;
+          if (!p || typeof p.id !== "number") return null;
+          return {
+            id: p.id,
+            name: String(p.name ?? ""),
+            activitiesCount:
+              typeof p.activitiesCount === "number" ? p.activitiesCount : undefined,
+          } as Project;
+        })
+        .filter(Boolean) as Project[];
+    }
+    // Caso: ya viene plano como Project[]
+    return raw
+      .map((p) =>
+        p && typeof p.id === "number"
+          ? {
+              id: p.id,
+              name: String(p.name ?? ""),
+              activitiesCount:
+                typeof p.activitiesCount === "number" ? p.activitiesCount : undefined,
+            }
+          : null
+      )
+      .filter(Boolean) as Project[];
+  };
+
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
       const userId = await SecureStore.getItemAsync("userId");
-      const token  = await getAccessToken();
+      const token = await getAccessToken();
 
       if (!userId || !token) {
         setProjects([]);
       } else {
-        const res = await fetch(
-          `${API_URL}/projects?userId=${userId}&status=active`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const res = await fetch(`${API_URL}/projects/user/${userId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const data = res.ok ? await res.json() : [];
-        setProjects(Array.isArray(data) ? data : []);
+        const normalized = normalizeProjects(data);
+        setProjects(normalized);
       }
     } catch {
       setProjects([]);
@@ -65,6 +96,13 @@ export default function HomeScreen() {
       )
     : projects;
 
+  const goToDetail = (projectId: number) => {
+    router.push({
+      pathname: "/features/project/DetailProject",
+      params: { id: String(projectId) },
+    });
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
       {/* Header menú, buscador y perfil */}
@@ -78,10 +116,11 @@ export default function HomeScreen() {
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* Menú */}
-          
-
-          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={() => {}}
+            style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <MaterialIcons name="menu" size={26} color="#ffffff" />
           </TouchableOpacity>
 
@@ -106,19 +145,22 @@ export default function HomeScreen() {
               style={{ flex: 1, marginLeft: 8, fontSize: 16 }}
               placeholderTextColor="#9b9b9b"
             />
-
-            
           </View>
-            <TouchableOpacity
-              onPress={() => router.push("/features/project/CreateProject")}
-              style={{ padding: 6 }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
-            </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/features/project/CreateProject")}
+            style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
+          </TouchableOpacity>
+
           {/* Perfil */}
-          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={() => {}}
+            style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
             <MaterialIcons name="account-circle" size={26} color="#ffffff" />
           </TouchableOpacity>
         </View>
@@ -131,9 +173,6 @@ export default function HomeScreen() {
           <Text style={{ marginTop: 8 }}>Cargando proyectos…</Text>
         </View>
       ) : (
-
-
-        
         <FlatList
           contentContainerStyle={{ padding: 16, flexGrow: 1 }}
           data={filtered}
@@ -144,9 +183,13 @@ export default function HomeScreen() {
               Proyectos
             </Text>
           }
-          ListEmptyComponent={<View />} 
+          ListEmptyComponent={<View />}
           renderItem={({ item }) => (
-            <View
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => goToDetail(item.id)}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir proyecto ${item.name}`}
               style={{
                 backgroundColor: "white",
                 borderRadius: 16,
@@ -154,19 +197,24 @@ export default function HomeScreen() {
                 marginBottom: 12,
                 borderWidth: 1,
                 borderColor: "#e6e6e6",
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
               }}
             >
-              <Text style={{ fontSize: 16, fontWeight: "700" }}>{item.name}</Text>
-              {typeof item.activitiesCount === "number" ? (
-                <Text style={{ marginTop: 6, color: "#666" }}>
-                  {item.activitiesCount} Actividades
-                </Text>
-              ) : null}
-            </View>
+              <View style={{ flexShrink: 1, paddingRight: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700" }}>{item.name}</Text>
+                {typeof item.activitiesCount === "number" ? (
+                  <Text style={{ marginTop: 6, color: "#666" }}>
+                    {item.activitiesCount} Actividades
+                  </Text>
+                ) : null}
+              </View>
+              <MaterialIcons name="chevron-right" size={24} color="#999" />
+            </TouchableOpacity>
           )}
         />
       )}
     </View>
   );
 }
-
