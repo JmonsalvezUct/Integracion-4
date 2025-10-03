@@ -44,7 +44,20 @@ function clean<T extends object>(obj: T): Partial<T> {
 
 const BASE_URL = "https://integracion-4.onrender.com";
 
+function isValidDate(dateStr: string) {
 
+  const regex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!regex.test(dateStr)) return false;
+
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const date = new Date(dateStr);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() + 1 === month &&
+    date.getDate() === day
+  );
+}
 
 
 
@@ -68,6 +81,12 @@ const submit = async () => {
   if (!canSave) {
     return Alert.alert("Falta título", "El título es obligatorio.");
   }
+      if (date.trim() !== "" && !isValidDate(date)) {
+      return Alert.alert(
+        "Fecha inválida",
+        "Por favor ingresa una fecha válida en formato AAAA-MM-DD (por ejemplo 2025-10-01)."
+      );
+    }
 
   const payload = clean({
     title,

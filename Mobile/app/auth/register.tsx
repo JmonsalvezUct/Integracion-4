@@ -1,11 +1,8 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { Link, useRouter } from "expo-router";
-import { login } from "@/services/auth";
+import { useRouter } from "expo-router";
 import { Alert } from "react-native";
-import { API_URL } from "@/constants/api";
-
-
+import { registerUser, login } from "@/services/auth";
 
 import {
   View,
@@ -15,62 +12,68 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Image,
   ScrollView,
 } from "react-native";
 
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const router = useRouter();
+
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
-  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // dentro del componente:
-const onSubmit = async () => {
+  const onSubmit = async () => {
   try {
-    console.log("[Login] Intentando login contra:", `${API_URL}/auth/login`);
-    const emailOk = email.trim();
-    const passOk = pass;
-
-    if (!emailOk || !passOk) {
-      Alert.alert("Faltan datos", "Ingresa email y contraseña.");
+    if (!name || !email || !pass) {
+      Alert.alert("Completa los campos", "Nombre, correo y contraseña.");
       return;
     }
 
-    setLoading(true); // activar loading
+    setLoading(true);
+    const data = await registerUser({
+      name,
+      email,
+      password: pass,
+    });
 
-    await login(emailOk, passOk); // hace fetch y guarda tokens
-    console.log("[Login] Exitoso, navegando a tabs");
+    if (!data?.accessToken) {
+      await login(email, pass);
+    }
+
     router.replace("/(tabs)");
   } catch (e: any) {
-    console.log("[Login] Error:", e?.message, e);
-    Alert.alert("No se pudo iniciar sesión", e?.message ?? "Revisa tus credenciales o conexión.");
+    Alert.alert("No se pudo registrar", e?.message ?? "Intenta de nuevo.");
   } finally {
-    setLoading(false); // desactivar loading 
+    setLoading(false);
   }
 };
 
 
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#1E2BFF" }} 
+      style={{ flex: 1, backgroundColor: "#1E2BFF" }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
-          {/* Logo*/}
-          <View style={{ alignItems: "center", marginBottom: 8 }}>
-            {/*logo en assets */}
-            <Image source={require("@/assets/images/fastplanner-logo.png")} style={styles.logo} />
+          <Text style={styles.title}>Crear cuenta</Text>
+
+          {/* Nombre */}
+          <View style={styles.inputWrap}>
+            <Ionicons name="person-outline" size={18} color="#6B7280" style={styles.leftIcon} />
+            <TextInput
+              placeholder="Nombre"
+              placeholderTextColor="#9CA3AF"
+              value={name}
+              onChangeText={setName}
+              style={styles.input}
+            />
           </View>
 
-          <Text style={styles.title}>Inicia sesión</Text>
-
-          {/* Input correo */}
-          <View style={styles.inputWrap}>
+          {/* Correo */}
+          <View style={[styles.inputWrap, { marginTop: 12 }]}>
             <Ionicons name="person-outline" size={18} color="#6B7280" style={styles.leftIcon} />
             <TextInput
               placeholder="Correo"
@@ -83,7 +86,7 @@ const onSubmit = async () => {
             />
           </View>
 
-          {/* Input contraseña */}
+          {/* Contraseña */}
           <View style={[styles.inputWrap, { marginTop: 12 }]}>
             <Ionicons name="lock-closed-outline" size={18} color="#6B7280" style={styles.leftIcon} />
             <TextInput
@@ -91,39 +94,27 @@ const onSubmit = async () => {
               placeholderTextColor="#9CA3AF"
               value={pass}
               onChangeText={setPass}
-              secureTextEntry={!show}
+              secureTextEntry
               style={styles.input}
             />
-            <TouchableOpacity onPress={() => setShow((s) => !s)}>
-              <Ionicons
-                name={show ? "eye-off-outline" : "eye-outline"}
-                size={20}
-                color="#6B7280"
-                style={{ marginRight: 8 }}
-              />
-            </TouchableOpacity>
           </View>
 
-          {/* Botón Entrar */}
+          {/* Botón */}
           <TouchableOpacity
             style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
             activeOpacity={0.9}
             onPress={onSubmit}
-            disabled={loading}
+            disabled={loading} // lo deshabilita mientras loading = true
           >
             <Text style={styles.buttonText}>
-              {loading ? "Entrando..." : "Entrar"}
+              {loading ? "Creando..." : "Registrarme"} 
             </Text>
           </TouchableOpacity>
 
-
-          {/* Link registro */}
-          <Text style={styles.registerText}>
-            ¿No tienes cuenta?{" "}
-            <Link href="/screens/register" style={styles.registerLink}>
-              Regístrate
-            </Link>
-          </Text>
+          {/* Volver a login */}
+          <TouchableOpacity onPress={() => router.replace("/auth/login")} style={{ marginTop: 12 }}>
+            <Text style={styles.backToLogin}>Volver a iniciar sesión</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -145,14 +136,12 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
-  logo: { width: 160, height: 80, resizeMode: "contain", marginBottom: 6 },
-  brand: { fontWeight: "800", fontSize: 16, color: "#111827" },
   title: {
     fontSize: 22,
     fontWeight: "800",
     textAlign: "center",
     color: "#111827",
-    marginVertical: 10,
+    marginBottom: 12,
   },
   inputWrap: {
     flexDirection: "row",
@@ -162,24 +151,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
     backgroundColor: "#FFFFFF",
-    marginTop: 8,
   },
   leftIcon: { marginLeft: 14, marginRight: 6 },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#111827",
-    paddingHorizontal: 8,
-  },
+  input: { flex: 1, fontSize: 16, color: "#111827", paddingHorizontal: 8 },
   button: {
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#3F48FF", 
+    backgroundColor: "#3F48FF",
     alignItems: "center",
     justifyContent: "center",
     marginTop: 16,
   },
   buttonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
-  registerText: { textAlign: "center", marginTop: 14, color: "#6B7280" },
-  registerLink: { color: "#3F48FF", fontWeight: "700" },
+  backToLogin: { textAlign: "center", color: "#3F48FF", fontWeight: "700" },
 });

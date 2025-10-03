@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 
 import { API_URL } from "@/constants/api";
@@ -23,6 +24,7 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = React.useState(false);
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [q, setQ] = React.useState("");
+  const router = useRouter();
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -76,6 +78,8 @@ export default function HomeScreen() {
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* Menú */}
+          
+
           <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="menu" size={26} color="#ffffff" />
@@ -102,8 +106,16 @@ export default function HomeScreen() {
               style={{ flex: 1, marginLeft: 8, fontSize: 16 }}
               placeholderTextColor="#9b9b9b"
             />
-          </View>
 
+            
+          </View>
+            <TouchableOpacity
+              onPress={() => router.push("/features/project/CreateProject")}
+              style={{ padding: 6 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
+            </TouchableOpacity>
           {/* Perfil */}
           <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -119,6 +131,9 @@ export default function HomeScreen() {
           <Text style={{ marginTop: 8 }}>Cargando proyectos…</Text>
         </View>
       ) : (
+
+
+        
         <FlatList
           contentContainerStyle={{ padding: 16, flexGrow: 1 }}
           data={filtered}
