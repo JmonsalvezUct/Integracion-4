@@ -113,7 +113,7 @@ export default function HomeScreen() {
             
           </View>
             <TouchableOpacity
-              onPress={() => router.push("/project/CreateProject")}
+              onPress={() => router.push("/features/project/CreateProject")}
               style={{ padding: 6 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >

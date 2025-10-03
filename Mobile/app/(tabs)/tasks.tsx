@@ -205,7 +205,7 @@ return (
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: "/task/CreateTask", params: { projectId } })}
+        onPress={() => router.push({ pathname: "/features/task/CreateTask", params: { projectId } })}
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={28} color="#fff" />
