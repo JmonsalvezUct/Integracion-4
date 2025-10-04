@@ -1,8 +1,7 @@
     import React, { useState } from "react";
-    import { View, Text, TextInput, Button, Alert } from "react-native";
+    import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from "react-native";
     import { useRouter } from "expo-router";
     import { getAccessToken } from "@/lib/secure-store";
-
 
     export default function CreateProject() {
     const [name, setName] = useState("");
@@ -19,7 +18,6 @@
         return;
         }
 
-
         const token = await getAccessToken();
         if (!token) {
         Alert.alert("Error", "No se encontró token de autenticación.");
@@ -32,8 +30,9 @@
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
         status: status || undefined,
-        userId: 1, 
+        userId: 1,
         };
+
         const API_BASE = "https://integracion-4.onrender.com";
         setLoading(true);
         try {
@@ -48,7 +47,7 @@
 
         if (res.ok) {
             Alert.alert("Proyecto creado exitosamente");
-            router.replace("/"); 
+            router.replace("/");
         } else {
             const error = await res.text();
             Alert.alert("Error al crear proyecto", error || "Error desconocido");
@@ -62,23 +61,31 @@
     };
 
     return (
-        <View style={{ flex: 1, padding: 20, backgroundColor: "#fff", justifyContent: "center" }}>
-        <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 16 }}>
-            Crear nuevo proyecto
-        </Text>
+        <ScrollView contentContainerStyle={styles.container}>
+
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backArrow}>←</Text>
+            <Text style={styles.backText}>Volver</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.title}>Crear Proyecto</Text>
+        <Text style={styles.subtitle}>Completa la información para continuar</Text>
 
         <TextInput
             placeholder="Nombre del proyecto *"
             value={name}
             onChangeText={setName}
             style={styles.input}
+            placeholderTextColor="#999"
         />
 
         <TextInput
             placeholder="Descripción (opcional)"
             value={description}
             onChangeText={setDescription}
-            style={styles.input}
+            style={[styles.input, styles.multilineInput]}
+            placeholderTextColor="#999"
+            multiline
         />
 
         <TextInput
@@ -86,6 +93,7 @@
             value={startDate}
             onChangeText={setStartDate}
             style={styles.input}
+            placeholderTextColor="#999"
         />
 
         <TextInput
@@ -93,6 +101,7 @@
             value={endDate}
             onChangeText={setEndDate}
             style={styles.input}
+            placeholderTextColor="#999"
         />
 
         <TextInput
@@ -100,24 +109,80 @@
             value={status}
             onChangeText={setStatus}
             style={styles.input}
+            placeholderTextColor="#999"
         />
 
-        <Button
-            title={loading ? "Creando..." : "Crear Proyecto"}
+        <TouchableOpacity
+            style={[styles.button, loading && { opacity: 0.7 }]}
             onPress={handleCreate}
             disabled={loading}
-            color="#3f3df8"
-        />
-        </View>
+        >
+            <Text style={styles.buttonText}>
+            {loading ? "Creando..." : "GUARDAR CAMBIOS"}
+            </Text>
+        </TouchableOpacity>
+        </ScrollView>
     );
     }
 
-    const styles = {
+    const styles = StyleSheet.create({
+    container: {
+        flexGrow: 1,
+        backgroundColor: "#fff",
+        padding: 24,
+        paddingTop: 50, 
+    },
+    backButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    backArrow: {
+        fontSize: 22,
+        color: "#3f3df8",
+        marginRight: 4,
+    },
+    backText: {
+        color: "#3f3df8",
+        fontSize: 16,
+        fontWeight: "500",
+    },
+    title: {
+        fontSize: 22,
+        fontWeight: "bold",
+        textAlign: "center",
+        marginBottom: 4,
+    },
+    subtitle: {
+        fontSize: 14,
+        color: "#999",
+        textAlign: "center",
+        marginBottom: 24,
+    },
     input: {
         borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 8,
+        borderColor: "#e0e0e0",
+        borderRadius: 10,
         padding: 12,
+        fontSize: 15,
         marginBottom: 12,
+        backgroundColor: "#f9f9f9",
     },
-    };
+    multilineInput: {
+        minHeight: 70,
+        textAlignVertical: "top",
+    },
+    button: {
+        backgroundColor: "#3f3df8",
+        paddingVertical: 14,
+        borderRadius: 10,
+        alignItems: "center",
+        marginTop: 8,
+    },
+    buttonText: {
+        color: "#fff",
+        fontWeight: "bold",
+        fontSize: 15,
+        textTransform: "uppercase",
+    },
+    });
