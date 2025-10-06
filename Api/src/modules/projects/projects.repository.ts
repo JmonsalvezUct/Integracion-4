@@ -39,4 +39,10 @@ export const projectsRepository = {
     prisma.userProject.findFirst({
       where: { projectId, userId },
     }),
+    
+  patchProject: (id: number, data: Partial<UpdateProjectDTO>) => 
+    prisma.project.update({
+      where: { id },
+      data
+    }),
 };

@@ -38,4 +38,7 @@ export const projectsService = {
     return projectsRepository.getProjectMembers(projectId);
   },
 
+  async patchProject(id: number, data: Partial<UpdateProjectDTO>) {
+    return projectsRepository.patchProject(id, data);
+  },
 };

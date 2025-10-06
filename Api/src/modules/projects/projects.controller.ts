@@ -52,6 +52,22 @@ export const deleteProject = async (req: Request, res: Response) => {
   }
 };
 
+export const patchProject = async (req: Request, res: Response) => {
+  const parse = UpdateProjectSchema.safeParse(req.body);
+  if (!parse.success) {
+    return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
+  }
+  try {
+    const project = await projectsService.patchProject(Number(req.params.id), parse.data);
+    if (!project) {
+      return res.status(404).json({ error: 'Proyecto no encontrado' });
+    }
+    return res.json(project);
+  } catch (e) {
+    return res.status(500).json({ error: 'Error al actualizar parcialmente el proyecto' });
+  }
+};
+
 export const getProjectsByUserId = async (req: Request, res: Response) => {
   try {
     const userId = Number(req.params.userId);
