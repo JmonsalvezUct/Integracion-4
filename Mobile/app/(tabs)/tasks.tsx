@@ -3,11 +3,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Header from "../../components/ui/header";
 const PRIMARY = "#3B34FF";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useFocusEffect } from "expo-router";
 import { DataTable } from "react-native-paper";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { RefreshControl } from 'react-native';
 import { Animated } from "react-native";
-import { logger } from "react-native-reanimated/lib/typescript/common";
+//import { logger } from "react-native-reanimated/lib/typescript/common";
+import { API_URL } from "@/constants/api";
 
 
 interface Task {
@@ -82,27 +84,41 @@ export default function TasksScreen() {
   const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null); 
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc"); 
 
-  const API_BASE = "https://integracion-4.onrender.com";
+  //const API_BASE = "https://integracion-4.onrender.com";
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchTasks = useCallback(async () => {
+    if (!projectId) return;
+    try {
+      const res = await fetch(`${API_URL}/tasks/project/${projectId}`);
+      const data = await res.json();
+
+      setTasks(data || []);
+      setProjectName(data.project?.name || "Proyecto");
+      showToast("Tareas cargadas correctamente ", "success");
+    } catch (err) {
+      console.error("Error al cargar tareas:", err);
+      showToast("Error al cargar tareas ", "error");
+    }
+  }, [projectId]);
 
   useEffect(() => {
-    if (!projectId) return;
-    
-    const fetchTasks = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/tasks/project/${projectId}`);
-        const data = await res.json();
-
-        setTasks(data || []);
-        setProjectName(data.project?.name || "Proyecto");
-        showToast("Tareas cargadas correctamente ", "success");
-      } catch (err) {
-        console.error("Error al cargar tareas:", err);
-        showToast("Error al cargar tareas ", "error");
-      }
-    };
-
     fetchTasks();
-  }, [projectId]);
+  }, [fetchTasks]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchTasks();
+    setRefreshing(false);
+  }, [fetchTasks]);
+
+  // Se muestran las nuevas tareas
+  useFocusEffect(
+    useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
 
   const CL_TZ = "America/Santiago";
 
@@ -255,11 +271,13 @@ export default function TasksScreen() {
         {visibleTasks.length === 0 ? (
           <Text style={{ color: "#666" }}>No hay tareas en este proyecto.</Text>
         ) : (
-          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <DataTable style={styles.table}>
                 <DataTable.Header>
-
+                  <DataTable.Title style={styles.colId}>ID</DataTable.Title>
                   <DataTable.Title
                     style={styles.colTitle}
                     onPress={() => handleSort("title")}
@@ -267,45 +285,27 @@ export default function TasksScreen() {
                     Título {sortBy === "title" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
                   </DataTable.Title>
 
-                  <DataTable.Title style={columns.status ? styles.colSmall : HIDDEN_CELL}>Estado</DataTable.Title>
-                  <DataTable.Title style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>Responsable</DataTable.Title>
-
-                  <DataTable.Title
-                    style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}
-                    onPress={() => handleSort("dueDate")}
-                  >
-                    Fecha {sortBy === "dueDate" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                  </DataTable.Title>
-
-                  <DataTable.Title
-                    style={columns.priority ? styles.colSmall : HIDDEN_CELL}
-                    onPress={() => handleSort("priority")}
-                  >
-                    Prioridad {sortBy === "priority" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
-                  </DataTable.Title>
-
+                  <DataTable.Title style={styles.colSmall}>Estado</DataTable.Title>
                 </DataTable.Header>
 
                 {visibleTasks.map((t: Task) => (
-                  <DataTable.Row key={t.id}>
+                  <DataTable.Row
+                    key={t.id}
+                    onPress={() => {
+                      console.log("Open detail for", t.id);
+                      router.push(`/features/task/detail_task?taskId=${t.id}`);
+                    }}
+                  >
+                    <DataTable.Cell style={styles.colId}>
+                      <Text>{t.id}</Text>
+                    </DataTable.Cell>
+
                     <DataTable.Cell style={styles.colTitle}>
                       <Text numberOfLines={2} style={{ fontWeight: "600" }}>{t.title}</Text>
                     </DataTable.Cell>
 
-                    <DataTable.Cell style={columns.status ? styles.colSmall : HIDDEN_CELL}>
+                    <DataTable.Cell style={styles.colSmall}>
                       {t.status ?? "—"}
-                    </DataTable.Cell>
-
-                    <DataTable.Cell style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>
-                      {t.assignee?.name ?? "—"}
-                    </DataTable.Cell>
-
-                    <DataTable.Cell style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}>
-                      {formatDate(t.dueDate)}
-                    </DataTable.Cell>
-
-                    <DataTable.Cell style={columns.priority ? styles.colSmall : HIDDEN_CELL}>
-                      {t.priority ?? "—"}
                     </DataTable.Cell>
                   </DataTable.Row>
                 ))}
@@ -393,18 +393,11 @@ const styles = StyleSheet.create({
   },
   switchLabel: { fontSize: 12, color: "#333" },
   table: { backgroundColor: "#fff", borderRadius: 12, overflow: "hidden",minWidth: 600, },
-  colTitle: {
-    flex: 0,        
-    width: 180,    
-    paddingHorizontal: 8, 
-    paddingVertical: 4, 
-  },
-  titleText: {
-    fontWeight: "600",
-    flexWrap: "wrap",  
-  },
+  colTitle: { flex: 0 },
+  colId: { width: 60, paddingHorizontal: 8 },
+  colSmall: { width: 120, paddingHorizontal: 8 },
   colMedium: { flex: 1.4 },
-  colSmall: { flex: 1 },
+  titleText: { fontWeight: "600", flexWrap: "wrap" },
   toast: {
     position: "absolute",
     top: 8,

@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-
+import { API_URL } from "@/constants/api";
 
 
 const PRIMARY = "#3B34FF";
@@ -42,21 +42,19 @@ function clean<T extends object>(obj: T): Partial<T> {
 
 
 
-const BASE_URL = "https://integracion-4.onrender.com";
+//const BASE_URL = "https://integracion-4.onrender.com";
 
 function isValidDate(dateStr: string) {
-
+  if (!dateStr) return false;
+  
+  const s = String(dateStr).trim().replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-');
   const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(dateStr)) return false;
+  if (!regex.test(s)) return false;
 
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const date = new Date(dateStr);
-
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() + 1 === month &&
-    date.getDate() === day
-  );
+  const [year, month, day] = s.split('-').map(Number);
+  
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return d.getUTCFullYear() === year && d.getUTCMonth() + 1 === month && d.getUTCDate() === day;
 }
 
 
@@ -81,24 +79,28 @@ const submit = async () => {
   if (!canSave) {
     return Alert.alert("Falta título", "El título es obligatorio.");
   }
-      if (date.trim() !== "" && !isValidDate(date)) {
-      return Alert.alert(
-        "Fecha inválida",
-        "Por favor ingresa una fecha válida en formato AAAA-MM-DD (por ejemplo 2025-10-01)."
-      );
-    }
+  
+  const rawDate = date;
+  const normalizedDate = rawDate ? String(rawDate).trim().replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-') : '';
+  console.log('CreateTask.submit date raw=', JSON.stringify(rawDate), 'normalized=', JSON.stringify(normalizedDate));
+  if (normalizedDate !== '' && !isValidDate(normalizedDate)) {
+    return Alert.alert(
+      "Fecha inválida",
+      "Por favor ingresa una fecha válida en formato AAAA-MM-DD (por ejemplo 2025-10-01)."
+    );
+  }
 
-  const payload = clean({
-    title,
-    description: desc,
-    dueDate: toISODateTime(date),
-    priority: priorityMap[priority],
-    projectId: 1, 
-    creatorId: 1, 
-  });
+    const payload = clean({
+      title,
+      description: desc,
+      dueDate: normalizedDate ? toISODateTime(normalizedDate) : undefined,
+      priority: priorityMap[priority],
+      projectId: 1,
+      creatorId: 1,
+    });
 
   try {
-    const res = await fetch(`${BASE_URL}/api/tasks`, {
+    const res = await fetch(`${API_URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
