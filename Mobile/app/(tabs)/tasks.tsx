@@ -2,6 +2,7 @@ import { SafeAreaView, View, Text, Platform, StyleSheet, TouchableOpacity, Switc
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Header from "../../components/ui/header";
+const PRIMARY = "#3B34FF";
 import { useLocalSearchParams } from "expo-router";
 import { DataTable } from "react-native-paper";
 import React, { useEffect, useMemo, useState } from "react";
@@ -11,7 +12,7 @@ interface Task {
   title: string;
   status?: string;
   priority?: string;
-  dueDate?: string | null;
+  dueDate?: string | null;     
   assignee?: { name?: string | null } | null;
 }
 
@@ -74,10 +75,13 @@ export default function TasksScreen() {
   const API_BASE = "https://integracion-4.onrender.com";
 
   useEffect(() => {
+    if (!projectId) return;
+    
     const fetchTasks = async () => {
       try {
         const res = await fetch(`${API_BASE}/api/tasks/project/${projectId}`);
         const data = await res.json();
+
         setTasks(data || []);
         setProjectName(data.project?.name || "Proyecto");
         showToast("Tareas cargadas correctamente ", "success");
@@ -250,17 +254,20 @@ export default function TasksScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <Header title={`Tareas de ${projectName}`} />
-      {toastVisible && (
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.toast, {
-            transform: [{ translateY: toastY }],
-            backgroundColor: toastType === "error" ? "#E74C3C" : "#2ECC71",
-          }]}
-        >
-          <Text style={styles.toastText}>{toastMsg}</Text>
-        </Animated.View>
-      )}
+        {toastVisible && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.toast,
+              {
+                transform: [{ translateY: toastY }],
+                backgroundColor: toastType === "error" ? "#E74C3C" : "#2ECC71",
+              },
+            ]}
+          >
+            <Text style={styles.toastText}>{toastMsg}</Text>
+          </Animated.View>
+        )}
 
       {/* Selector de modo de vista */}
       <View style={{ flexDirection: "row", justifyContent: "center", marginVertical: 8 }}>
@@ -458,6 +465,7 @@ export default function TasksScreen() {
       <TouchableOpacity
         style={styles.fab}
         onPress={() => router.push({ pathname: "/features/task/CreateTask", params: { projectId } })}
+        activeOpacity={0.9}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
@@ -534,6 +542,10 @@ const styles = StyleSheet.create({
     width: 180,    
     paddingHorizontal: 8, 
     paddingVertical: 4, 
+  },
+  titleText: {
+    fontWeight: "600",
+    flexWrap: "wrap",  
   },
   colMedium: { flex: 1.4 },
   colSmall: { flex: 1 },

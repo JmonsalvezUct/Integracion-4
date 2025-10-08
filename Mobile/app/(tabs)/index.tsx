@@ -1,3 +1,4 @@
+// app/(tabs)/index.tsx
 import React from "react";
 import {
   View,
@@ -13,7 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
 import { API_URL } from "@/constants/api";
-import { getAccessToken } from "@/lib/secure-store";
+import { getAccessToken, getUserId } from "@/lib/secure-store";
 
 type Project = { id: number; name: string; activitiesCount?: number };
 
@@ -24,43 +25,10 @@ export default function HomeScreen() {
   const [q, setQ] = React.useState("");
   const router = useRouter();
 
-  // Normaliza el resultado de /projects/user/{userId} (UserProject con project anidado)
-  const normalizeProjects = (raw: any): Project[] => {
-    if (!Array.isArray(raw)) return [];
-    // Caso: elementos tipo UserProject con { project: {...} }
-    if (raw.length > 0 && raw[0]?.project) {
-      return raw
-        .map((it) => {
-          const p = it.project;
-          if (!p || typeof p.id !== "number") return null;
-          return {
-            id: p.id,
-            name: String(p.name ?? ""),
-            activitiesCount:
-              typeof p.activitiesCount === "number" ? p.activitiesCount : undefined,
-          } as Project;
-        })
-        .filter(Boolean) as Project[];
-    }
-    // Caso: ya viene plano como Project[]
-    return raw
-      .map((p) =>
-        p && typeof p.id === "number"
-          ? {
-              id: p.id,
-              name: String(p.name ?? ""),
-              activitiesCount:
-                typeof p.activitiesCount === "number" ? p.activitiesCount : undefined,
-            }
-          : null
-      )
-      .filter(Boolean) as Project[];
-  };
-
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const userId = await SecureStore.getItemAsync("userId");
+      const userId = await getUserId();
       const token = await getAccessToken();
 
       if (!userId || !token) {
@@ -69,9 +37,13 @@ export default function HomeScreen() {
         const res = await fetch(`${API_URL}/projects/user/${userId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         const data = res.ok ? await res.json() : [];
-        const normalized = normalizeProjects(data);
-        setProjects(normalized);
+        // backend devuelve userProject[] 
+        const mapped = Array.isArray(data)
+          ? data.map((up: any) => up.project).filter(Boolean)
+          : [];
+        setProjects(mapped);
       }
     } catch {
       setProjects([]);
@@ -156,11 +128,8 @@ export default function HomeScreen() {
           </TouchableOpacity>
           
           {/* Perfil */}
-          <TouchableOpacity
-            onPress={() => {}}
-            style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
+          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="account-circle" size={26} color="#ffffff" />
           </TouchableOpacity>
         </View>
@@ -183,7 +152,7 @@ export default function HomeScreen() {
               Proyectos
             </Text>
           }
-          ListEmptyComponent={<View />}
+          ListEmptyComponent={<View />} 
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => navigateToProjectDetail(item)}
@@ -194,9 +163,6 @@ export default function HomeScreen() {
                 marginBottom: 12,
                 borderWidth: 1,
                 borderColor: "#e6e6e6",
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between",
               }}
             >
               <Text style={{ fontSize: 16, fontWeight: "700" }}>{item.name}</Text>
