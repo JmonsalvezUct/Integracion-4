@@ -1,15 +1,17 @@
 import type { Request, Response } from 'express';
+import type { AuthRequest } from '../../middlewares/auth.middleware.js';
 import { projectsService } from './projects.service.js';
 import { CreateProjectSchema, UpdateProjectSchema } from './projects.validators.js';
 
-export const createProject = async (req: Request, res: Response) => {
+export const createProject = async (req: AuthRequest, res: Response) => {
   const parse = CreateProjectSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
+  if (!req.user?.id) return res.status(401).json({ error: 'No autorizado' });
   try {
-    const project = await projectsService.createProject(parse.data);
+    const project = await projectsService.createProject(parse.data, req.user.id);
     return res.status(201).json(project);
   } catch (e: any) {
-    return res.status(500).json({ error: 'Error al crear el proyecto' });
+    return res.status(500).json({ error: 'Error al crear el proyecto', details: e?.message });
   }
 };
 
