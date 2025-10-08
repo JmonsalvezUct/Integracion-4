@@ -1,12 +1,10 @@
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Animated } from "react-native";
+import { SafeAreaView, View, Text, Platform, StyleSheet, TouchableOpacity, Switch, ScrollView, TextInput, Animated } from "react-native"; 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import Header from "../../components/ui/header";
 import { useLocalSearchParams } from "expo-router";
 import { DataTable } from "react-native-paper";
 import React, { useEffect, useMemo, useState } from "react";
-
-const PRIMARY = "#3B34FF";
 
 interface Task {
   id: number;
@@ -39,13 +37,40 @@ export default function TasksScreen() {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-  const toastY = React.useRef(new Animated.Value(-80)).current;
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [projectName, setProjectName] = useState("");
+  const toastY = React.useRef(new Animated.Value(-80)).current; 
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [currentStartDate, setCurrentStartDate] = useState(new Date());
 
-  const projectId = 1;
+  const showToast = (msg: string, type: "success" | "error" = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+    setToastVisible(true);
+    
+    Animated.timing(toastY, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+      setTimeout(() => {
+        Animated.timing(toastY, { toValue: -80, duration: 180, useNativeDriver: true }).start(
+          () => setToastVisible(false)
+        );
+      }, 1800);
+    });
+  };
+
+  const toggleCol = (key: keyof ColumnsState) =>
+    setColumns((c) => ({ ...c, [key]: !c[key] }));
+  
+  const projectId = 1; 
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [projectName, setProjectName] = useState("");
+  
+  const [filters, setFilters] = useState({
+    status: "",
+    assignee: "",
+    dueDate: "",
+  }); 
+
+  const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null); 
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc"); 
+
   const API_BASE = "https://integracion-4.onrender.com";
 
   useEffect(() => {
@@ -61,19 +86,11 @@ export default function TasksScreen() {
         showToast("Error al cargar tareas ", "error");
       }
     };
+
     fetchTasks();
   }, [projectId]);
 
-  const showToast = (msg: string, type: "success" | "error" = "success") => {
-    setToastMsg(msg);
-    setToastType(type);
-    setToastVisible(true);
-    Animated.timing(toastY, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
-      setTimeout(() => {
-        Animated.timing(toastY, { toValue: -80, duration: 180, useNativeDriver: true }).start(() => setToastVisible(false));
-      }, 1800);
-    });
-  };
+  const CL_TZ = "America/Santiago";
 
   // Función para generar los 14 días a mostrar
   const generateTwoWeekDays = () => {
@@ -107,7 +124,7 @@ export default function TasksScreen() {
         year: currentDate.getFullYear(),
         isToday,
         hasTasks,
-        dayOfWeek: currentDate.getDay() // 0 = Domingo, 1 = Lunes, etc.
+        dayOfWeek: currentDate.getDay()
       });
     }
     
@@ -153,11 +170,66 @@ export default function TasksScreen() {
     return months[currentStartDate.getMonth()];
   };
 
+  const visibleTasks = useMemo(() => {
+    let filtered = tasks.filter((task) => {
+      const matchStatus = filters.status
+        ? task.status?.toLowerCase().includes(filters.status.toLowerCase())
+        : true;
+
+      const matchAssignee = filters.assignee
+        ? task.assignee?.name?.toLowerCase().includes(filters.assignee.toLowerCase())
+        : true;
+
+      const matchDate = filters.dueDate
+        ? task.dueDate?.startsWith(filters.dueDate)
+        : true;
+
+      return matchStatus && matchAssignee && matchDate;
+    });
+
+    let sorted = [...filtered];
+
+    if (sortBy) {
+      sorted.sort((a, b) => {
+        let valA: any;
+        let valB: any;
+
+        switch (sortBy) {
+          case "title":
+            valA = a.title?.toLowerCase() || "";
+            valB = b.title?.toLowerCase() || "";
+            break;
+
+          case "priority":
+            const priorityOrder: Record<string, number> = {
+              high: 3,
+              medium: 2,
+              low: 1,
+              };
+            valA = a.priority && priorityOrder[a.priority] !== undefined ? priorityOrder[a.priority] : 4;
+            valB = b.priority && priorityOrder[b.priority] !== undefined ? priorityOrder[b.priority] : 4;
+            break;
+
+          case "dueDate":
+            valA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+            valB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+            break;
+        }
+
+        if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+        if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return sorted;
+  }, [tasks, filters, sortBy, sortDirection]); 
+
   const formatDate = (iso?: string | null) => {
     if (!iso) return "—";
     const d = new Date(iso);
     return new Intl.DateTimeFormat("es-CL", {
-      timeZone: "America/Santiago",
+      timeZone: CL_TZ,     
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -165,6 +237,15 @@ export default function TasksScreen() {
   };
 
   const HIDDEN_CELL = { flex: 0 as const, width: 0 as const, paddingHorizontal: 0, opacity: 0 };
+
+  const handleSort = (key: "title" | "priority" | "dueDate") => {
+    if (sortBy === key) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(key);
+      setSortDirection("asc");
+    }
+  }; 
 
   return (
     <SafeAreaView style={styles.container}>
@@ -197,32 +278,117 @@ export default function TasksScreen() {
         </TouchableOpacity>
       </View>
 
+      {viewMode === "list" && (
+        <View style={styles.filterWrapper}>
+          <TouchableOpacity
+            onPress={() => setShowFilters(!showFilters)}
+            style={styles.toggleFiltersButton}
+          >
+            <Text style={styles.toggleFiltersText}>
+              {showFilters ? "Ocultar filtros ▲" : "Mostrar filtros ▼"}
+            </Text>
+          </TouchableOpacity>
+
+          {showFilters && (
+            <View style={styles.selector}>
+              <ColSwitch label="Estado" value={columns.status} onChange={() => toggleCol("status")} />
+              <ColSwitch label="Responsable" value={columns.assignee} onChange={() => toggleCol("assignee")} />
+              <ColSwitch label="Fecha límite" value={columns.dueDate} onChange={() => toggleCol("dueDate")} />
+              <ColSwitch label="Prioridad" value={columns.priority} onChange={() => toggleCol("priority")} />
+
+              <View style={{ gap: 8, width: "100%", marginTop: 10 }}>
+                <Text style={{ fontWeight: "600" }}>Filtros:</Text>
+
+                <Text>Estado:</Text>
+                <TextInput
+                  placeholder="Ej. Pendiente"
+                  style={styles.input}
+                  value={filters.status}
+                  onChangeText={(text) => setFilters({ ...filters, status: text })}
+                />
+
+                <Text>Responsable:</Text>
+                <TextInput
+                  placeholder="Ej. Juan"
+                  style={styles.input}
+                  value={filters.assignee}
+                  onChangeText={(text) => setFilters({ ...filters, assignee: text })}
+                />
+
+                <Text>Fecha (YYYY-MM-DD):</Text>
+                <TextInput
+                  placeholder="Ej. 2025-10-01"
+                  style={styles.input}
+                  value={filters.dueDate}
+                  onChangeText={(text) => setFilters({ ...filters, dueDate: text })}
+                />
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       <View style={styles.content}>
         {viewMode === "list" ? (
-          <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-            <DataTable style={styles.table}>
-              <DataTable.Header>
-                <DataTable.Title style={styles.colTitle}>Título</DataTable.Title>
-                <DataTable.Title style={columns.status ? styles.colSmall : HIDDEN_CELL}>Estado</DataTable.Title>
-                <DataTable.Title style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>Responsable</DataTable.Title>
-                <DataTable.Title style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}>Fecha</DataTable.Title>
-                <DataTable.Title style={columns.priority ? styles.colSmall : HIDDEN_CELL}>Prioridad</DataTable.Title>
-              </DataTable.Header>
-              {tasks.map((t: Task) => (
-                <DataTable.Row key={t.id}>
-                  <DataTable.Cell style={styles.colTitle}>{t.title}</DataTable.Cell>
-                  <DataTable.Cell style={columns.status ? styles.colSmall : HIDDEN_CELL}>{t.status ?? "—"}</DataTable.Cell>
-                  <DataTable.Cell style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>
-                    {t.assignee?.name ?? "—"}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}>
-                    {t.dueDate ? new Date(t.dueDate).toLocaleDateString() : "—"}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={columns.priority ? styles.colSmall : HIDDEN_CELL}>{t.priority ?? "—"}</DataTable.Cell>
-                </DataTable.Row>
-              ))}
-            </DataTable>
-          </ScrollView>
+          visibleTasks.length === 0 ? (
+            <Text style={{ color: "#666" }}>No hay tareas en este proyecto.</Text>
+          ) : (
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <DataTable style={styles.table}>
+                  <DataTable.Header>
+                    <DataTable.Title
+                      style={styles.colTitle}
+                      onPress={() => handleSort("title")}
+                    >
+                      Título {sortBy === "title" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                    </DataTable.Title>
+
+                    <DataTable.Title style={columns.status ? styles.colSmall : HIDDEN_CELL}>Estado</DataTable.Title>
+                    <DataTable.Title style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>Responsable</DataTable.Title>
+
+                    <DataTable.Title
+                      style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}
+                      onPress={() => handleSort("dueDate")}
+                    >
+                      Fecha {sortBy === "dueDate" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                    </DataTable.Title>
+
+                    <DataTable.Title
+                      style={columns.priority ? styles.colSmall : HIDDEN_CELL}
+                      onPress={() => handleSort("priority")}
+                    >
+                      Prioridad {sortBy === "priority" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                    </DataTable.Title>
+                  </DataTable.Header>
+
+                  {visibleTasks.map((t: Task) => (
+                    <DataTable.Row key={t.id}>
+                      <DataTable.Cell style={styles.colTitle}>
+                        <Text numberOfLines={2} style={{ fontWeight: "600" }}>{t.title}</Text>
+                      </DataTable.Cell>
+
+                      <DataTable.Cell style={columns.status ? styles.colSmall : HIDDEN_CELL}>
+                        {t.status ?? "—"}
+                      </DataTable.Cell>
+
+                      <DataTable.Cell style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>
+                        {t.assignee?.name ?? "—"}
+                      </DataTable.Cell>
+
+                      <DataTable.Cell style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}>
+                        {formatDate(t.dueDate)}
+                      </DataTable.Cell>
+
+                      <DataTable.Cell style={columns.priority ? styles.colSmall : HIDDEN_CELL}>
+                        {t.priority ?? "—"}
+                      </DataTable.Cell>
+                    </DataTable.Row>
+                  ))}
+                </DataTable>
+              </ScrollView>
+            </ScrollView>
+          )
         ) : (
           <View style={styles.calendarContainer}>
             {/* Encabezado del calendario */}
@@ -299,6 +465,23 @@ export default function TasksScreen() {
   );
 }
 
+function ColSwitch({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: boolean;
+  onChange: () => void;
+}) {
+  return (
+        <View style={styles.switchRow}>
+      <Text style={styles.switchLabel}>{label}</Text>
+      <Switch value={value} onValueChange={onChange} />
+      </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -327,30 +510,6 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
   },
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#eee",
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
-    color: "#333",
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 4,
-  },
   selector: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -369,14 +528,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   switchLabel: { fontSize: 12, color: "#333" },
-
-  table: { backgroundColor: "#fff", borderRadius: 12, overflow: "hidden", minWidth: 600 },
-
+  table: { backgroundColor: "#fff", borderRadius: 12, overflow: "hidden",minWidth: 600, },
   colTitle: {
-    flex: 0,
-    width: 180,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    flex: 0,        
+    width: 180,    
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
   },
   colMedium: { flex: 1.4 },
   colSmall: { flex: 1 },
@@ -400,6 +557,33 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
+  filterWrapper: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    backgroundColor: "#EFEFFF",
+  },
+  toggleFiltersButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: "#3B34FF",
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  toggleFiltersText: {
+    color: "#fff",
+    fontWeight: "600",
+    fontSize: 13,
+  },
+  input: {
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 8,
+    borderColor: "#ccc",
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  // Nuevos estilos para el calendario
   viewModeBtn: {
     paddingHorizontal: 18,
     paddingVertical: 8,
@@ -420,7 +604,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-  // Nuevos estilos para el calendario de 14 días
   calendarContainer: {
     flex: 1,
   },

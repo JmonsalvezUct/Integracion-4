@@ -25,11 +25,23 @@ type ProjectDetail = {
   createdAt?: string;
 };
 
-type Owner = { id: number; name?: string; email?: string };
+type Owner = { 
+  id: number; 
+  name?: string; 
+  email?: string;
+  role?: string;
+};
+
+type Member = {
+  id: number;
+  name?: string;
+  email?: string;
+  role: string;
+};
 
 export default function DetailProject() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const projectId = Number(id);
+  const projectId = id ? Number(id) : null;
   const router = useRouter();
 
   const [loading, setLoading] = React.useState(true);
@@ -37,6 +49,7 @@ export default function DetailProject() {
   const [error, setError] = React.useState<string | null>(null);
   const [project, setProject] = React.useState<ProjectDetail | null>(null);
   const [owner, setOwner] = React.useState<Owner | null>(null);
+  const [members, setMembers] = React.useState<Member[]>([]);
 
   // ---------- utils ----------
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -47,122 +60,184 @@ export default function DetailProject() {
     return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
   };
 
-  // hidrata nombre/email con /users/{id} si existe
-  const fetchUserProfile = async (uid: number, headers: HeadersInit) => {
-    try {
-      const res = await fetch(`${API_URL}/users/${uid}`, { headers });
-      if (res.ok) {
-        const u = await res.json();
-        return {
-          name: typeof u?.name === "string" ? u.name : undefined,
-          email: typeof u?.email === "string" ? u.email : undefined,
-        };
-      }
-    } catch {}
-    return {};
-  };
-
-  // Encuentra el registro de membresía del usuario en ESTE proyecto y devuelve si es admin + (nombre/email si vienen)
-  const findMembershipOnThisProject = (arr: any[], pid: number) => {
-    if (!Array.isArray(arr)) return null;
-
-    for (const it of arr) {
-      // projectId puede venir plano o anidado en "project"
-      const pId =
-        (typeof it?.projectId === "number" ? it.projectId : undefined) ??
-        (typeof it?.project?.id === "number" ? it.project.id : undefined) ??
-        (typeof it?.Project?.id === "number" ? it.Project.id : undefined);
-
-      if (pId !== pid) continue;
-
-      // role puede venir en varias rutas
-      const role =
-        it?.role ??
-        it?.userRole ??
-        it?.UserProject?.role ??
-        it?.userProject?.role ??
-        it?.projectRole ??
-        it?.projectRoleType ??
-        it?.Role;
-
-      const roleStr = role ? String(role).toLowerCase() : undefined;
-      const isAdmin = roleStr === "admin"; // 👈 ESTRICTO: solo admin explícito
-
-      // nombre/email por si el endpoint ya los trae
-      const name =
-        (typeof it?.user?.name === "string" && it.user.name) ||
-        (typeof it?.User?.name === "string" && it.User.name) ||
-        undefined;
-      const email =
-        (typeof it?.user?.email === "string" && it.user.email) ||
-        (typeof it?.User?.email === "string" && it.User.email) ||
-        undefined;
-
-      return { isAdmin, name, email };
-    }
-    return null;
-  };
-
   const fetchData = React.useCallback(async () => {
-    if (!projectId) return;
+    if (!projectId) {
+      setError("ID de proyecto no válido");
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
     setError(null);
+    console.log("🔍 Iniciando carga del proyecto ID:", projectId);
 
     try {
       const token = await getAccessToken();
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      console.log("✅ Token obtenido:", token ? "Sí" : "No");
+      
+      const headers: HeadersInit = token ? { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      } : {};
 
       // 1) Detalle del proyecto
-      const projRes = await fetch(`${API_URL}/projects/${projectId}`, { headers });
-      if (!projRes.ok) throw new Error(`No se pudo obtener el proyecto (HTTP ${projRes.status}).`);
-      const proj = (await projRes.json()) as ProjectDetail;
-      setProject(proj);
+      console.log("🌐 Llamando a:", `${API_URL}/projects/${projectId}`);
+      const projRes = await fetch(`${API_URL}/projects/${projectId}`, { 
+        headers,
+        method: 'GET'
+      });
+      
+      console.log("📊 Respuesta HTTP:", projRes.status, projRes.statusText);
+      
+      if (projRes.status === 500) {
+        // Error del servidor - usar el endpoint de proyectos del usuario como fallback
+        console.log("⚠️ Error 500 del servidor, usando proyectos del usuario...");
+        
+        const currentUserIdStr = await SecureStore.getItemAsync("userId");
+        const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : NaN;
+        
+        if (Number.isFinite(currentUserId)) {
+          const userProjectsRes = await fetch(`${API_URL}/projects/user/${currentUserId}`, { headers });
+          if (userProjectsRes.ok) {
+            const userProjects = await userProjectsRes.json();
+            console.log("📋 Proyectos del usuario:", userProjects);
+            
+            // Buscar este proyecto en la lista
+            const foundProject = Array.isArray(userProjects) 
+              ? userProjects.find((up: any) => up.project?.id === projectId || up.projectId === projectId)
+              : null;
+              
+            if (foundProject && foundProject.project) {
+              console.log("✅ Proyecto encontrado en lista de usuario:", foundProject.project);
+              console.log("👤 Información del usuario:", foundProject.user);
+              console.log("🎭 Rol del usuario:", foundProject.role);
+              
+              const projectDetail: ProjectDetail = {
+                id: foundProject.project.id,
+                name: foundProject.project.name,
+                description: foundProject.project.description,
+                status: foundProject.project.status,
+                startDate: foundProject.project.startDate,
+                endDate: foundProject.project.endDate,
+                createdAt: foundProject.project.createdAt
+              };
+              setProject(projectDetail);
+              
+              // USAR LA INFORMACIÓN REAL DEL USUARIO DESDE LA RESPUESTA
+              if (foundProject.user) {
+                // Establecer como owner (creador)
+                const ownerInfo: Owner = {
+                  id: foundProject.user.id,
+                  name: foundProject.user.name,
+                  email: foundProject.user.email,
+                  role: foundProject.role
+                };
+                setOwner(ownerInfo);
+                
+                // Establecer como miembro también
+                const memberInfo: Member = {
+                  id: foundProject.user.id,
+                  name: foundProject.user.name,
+                  email: foundProject.user.email,
+                  role: foundProject.role === 'admin' ? 'Administrador' : foundProject.role
+                };
+                setMembers([memberInfo]);
+                
+                console.log("✅ Usuario establecido como owner y miembro con datos reales:", ownerInfo);
+              } else {
+                // Fallback si no viene user en la respuesta
+                await setupCurrentUserAsOwnerAndMember(currentUserId);
+              }
+              
+              return; // Salir temprano - éxito con fallback
+            }
+          }
+        }
+        
+        // Si llegamos aquí, todos los fallbacks fallaron
+        throw new Error("El servidor tiene problemas internos. Intenta más tarde.");
+      }
+      
+      if (!projRes.ok) {
+        const errorText = await projRes.text();
+        console.error("❌ Error en respuesta:", errorText);
+        throw new Error(`Error ${projRes.status}: ${projRes.statusText}`);
+      }
 
-      // 2) Usuario logueado
+      const projData = await projRes.json();
+      console.log("✅ Datos del proyecto recibidos:", projData);
+      
+      // Validar estructura básica del proyecto
+      if (!projData || typeof projData !== 'object') {
+        throw new Error("Estructura de datos inválida");
+      }
+      
+      if (!projData.id || !projData.name) {
+        throw new Error("Datos del proyecto incompletos");
+      }
+
+      const projectDetail: ProjectDetail = {
+        id: projData.id,
+        name: projData.name,
+        description: projData.description || null,
+        status: projData.status,
+        startDate: projData.startDate,
+        endDate: projData.endDate,
+        createdAt: projData.createdAt
+      };
+
+      setProject(projectDetail);
+
+      // 2) Obtener información del usuario actual y establecer como owner y miembro
       const currentUserIdStr = await SecureStore.getItemAsync("userId");
       const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : NaN;
-      if (!Number.isFinite(currentUserId)) {
-        setOwner(null);
-        setLoading(false);
-        return;
+      
+      if (Number.isFinite(currentUserId)) {
+        await setupCurrentUserAsOwnerAndMember(currentUserId);
       }
 
-      // 3) Proyectos del usuario -> confirmar si ES admin de ESTE proyecto
-      const myProjRes = await fetch(`${API_URL}/projects/user/${currentUserId}`, { headers });
-      if (!myProjRes.ok) {
-        setOwner(null);
-        setLoading(false);
-        return;
-      }
-      const mine = await myProjRes.json();
-      const membership = findMembershipOnThisProject(mine, projectId);
-
-      if (!membership || !membership.isAdmin) {
-        // No pertenece o NO es admin => no mostrar Owner
-        setOwner(null);
-      } else {
-        // Es admin => es Owner. Sacamos nombre/email (endpoint -> /users/{id} -> SecureStore)
-        let name = membership.name || undefined;
-        let email = membership.email || undefined;
-
-        if (!name || !email) {
-          const prof = await fetchUserProfile(currentUserId, headers);
-          name = name || prof.name;
-          email = email || prof.email;
-        }
-        if (!name) name = (await SecureStore.getItemAsync("userName")) || undefined;
-        if (!email) email = (await SecureStore.getItemAsync("userEmail")) || undefined;
-
-        setOwner({ id: currentUserId, name, email });
-      }
     } catch (e: any) {
-      setError(e?.message ?? "Error al cargar el proyecto.");
+      console.error("💥 Error general:", e);
+      const errorMessage = e?.message ?? "Error desconocido al cargar el proyecto";
+      setError(errorMessage);
       setProject(null);
       setOwner(null);
+      setMembers([]);
     } finally {
       setLoading(false);
+      console.log("🏁 Carga completada");
     }
   }, [projectId]);
+
+  // Función para establecer al usuario actual como owner y miembro (fallback)
+  const setupCurrentUserAsOwnerAndMember = async (userId: number) => {
+    try {
+      const userName = await SecureStore.getItemAsync("userName");
+      const userEmail = await SecureStore.getItemAsync("userEmail");
+      
+      // Establecer como owner (creador)
+      const ownerInfo: Owner = {
+        id: userId,
+        name: userName || "Usuario",
+        email: userEmail || "usuario@ejemplo.com",
+        role: "admin"
+      };
+      setOwner(ownerInfo);
+      
+      // Establecer como miembro también
+      const memberInfo: Member = {
+        id: userId,
+        name: userName || "Usuario",
+        email: userEmail || "usuario@ejemplo.com",
+        role: "Administrador"
+      };
+      setMembers([memberInfo]);
+      
+      console.log("✅ Usuario establecido como owner y miembro (fallback):", ownerInfo);
+    } catch (error) {
+      console.error("❌ Error estableciendo usuario como owner/miembro:", error);
+    }
+  };
 
   React.useEffect(() => {
     fetchData();
@@ -175,7 +250,43 @@ export default function DetailProject() {
   }, [fetchData]);
 
   const ownerLabel = owner?.name || owner?.email || (owner ? `Usuario #${owner.id}` : "—");
-  const membersCount = owner ? 1 : 0;
+
+  // Función para crear un proyecto de ejemplo (solo para testing)
+  const createExampleProject = () => {
+    const exampleProject: ProjectDetail = {
+      id: projectId || 0,
+      name: "Proyecto de Ejemplo",
+      description: "Este es un proyecto de ejemplo porque el servidor no está respondiendo correctamente.",
+      status: "active",
+      startDate: new Date().toISOString(),
+      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString()
+    };
+    setProject(exampleProject);
+    setError(null);
+    
+    // Establecer usuario actual como owner y miembro
+    const currentUserIdStr = SecureStore.getItem("userId");
+    const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : 1;
+    const userName = SecureStore.getItem("userName");
+    const userEmail = SecureStore.getItem("userEmail");
+    
+    const ownerInfo: Owner = {
+      id: currentUserId,
+      name: userName || "Leo",
+      email: userEmail || "leo@test.com",
+      role: "admin"
+    };
+    setOwner(ownerInfo);
+    
+    const memberInfo: Member = {
+      id: currentUserId,
+      name: userName || "Leo",
+      email: userEmail || "leo@test.com",
+      role: "Administrador"
+    };
+    setMembers([memberInfo]);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
@@ -232,8 +343,43 @@ export default function DetailProject() {
               borderColor: "#e6e6e6",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#d00" }}>Error</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#d00" }}>Error del Servidor</Text>
             <Text style={{ marginTop: 8, color: "#444" }}>{error}</Text>
+            <Text style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
+              ID del proyecto: {projectId}
+            </Text>
+            
+            <Text style={{ marginTop: 16, fontSize: 14, color: "#666" }}>
+              El servidor está experimentando problemas internos.
+            </Text>
+
+            <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
+              <TouchableOpacity
+                onPress={onRefresh}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  backgroundColor: "#3f3df8",
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "600" }}>Reintentar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                onPress={createExampleProject}
+                style={{
+                  flex: 1,
+                  padding: 12,
+                  backgroundColor: "#666",
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "600" }}>Ver Ejemplo</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       ) : !project ? (
@@ -251,7 +397,7 @@ export default function DetailProject() {
             }}
           >
             <Text style={{ fontSize: 16, fontWeight: "700" }}>Proyecto no encontrado</Text>
-            <Text style={{ marginTop: 8, color: "#666" }}>Verifica el ID.</Text>
+            <Text style={{ marginTop: 8, color: "#666" }}>Verifica el ID: {projectId}</Text>
           </View>
         </ScrollView>
       ) : (
@@ -287,11 +433,11 @@ export default function DetailProject() {
               </Text>
             </View>
 
-            {/* Owner (solo si el usuario es admin explícito) */}
+            {/* Creador/Owner */}
             <View style={{ marginTop: 8, flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ fontSize: 14, color: "#666", width: 110 }}>Owner</Text>
+              <Text style={{ fontSize: 14, color: "#666", width: 110 }}>Creador</Text>
               <Text style={{ fontSize: 14, fontWeight: "600" }}>
-                {owner ? `${ownerLabel} (Owner)` : "— (no informado)"}
+                {owner ? `${owner.name || owner.email} (${owner.role || "Admin"})` : "No asignado"}
               </Text>
             </View>
 
@@ -309,12 +455,12 @@ export default function DetailProject() {
             <View style={{ marginTop: 12 }}>
               <Text style={{ fontSize: 14, color: "#666", marginBottom: 6 }}>Descripción</Text>
               <Text style={{ fontSize: 15, color: "#333", lineHeight: 20 }}>
-                {project.description?.trim() || "—"}
+                {project.description?.trim() || "Sin descripción"}
               </Text>
             </View>
           </View>
 
-          {/* Card Miembros (Owner solo si corresponde) */}
+          {/* Card Miembros */}
           <View
             style={{
               backgroundColor: "white",
@@ -325,33 +471,53 @@ export default function DetailProject() {
               borderColor: "#e6e6e6",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 8 }}>
-              Miembros ({owner ? 1 : 0})
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12 }}>
+              Miembros del Proyecto ({members.length})
             </Text>
 
-            {!owner ? (
-              <Text style={{ color: "#666" }}>
-                No se pudo determinar el owner (no eres admin de este proyecto).
+            {members.length === 0 ? (
+              <Text style={{ color: "#666", fontStyle: "italic" }}>
+                No hay miembros en este proyecto.
               </Text>
             ) : (
-              <View
-                style={{
-                  paddingVertical: 10,
-                  borderTopWidth: 1,
-                  borderTopColor: "#f0f0f0",
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View style={{ flexShrink: 1, paddingRight: 8 }}>
-                  <Text style={{ fontSize: 14, fontWeight: "600" }}>
-                    {ownerLabel} (Owner)
-                  </Text>
-                  <Text style={{ marginTop: 2, color: "#666", fontSize: 12 }}>
-                    Admin
-                  </Text>
-                </View>
+              <View style={{ gap: 8 }}>
+                {members.map((member, index) => (
+                  <View
+                    key={member.id || index}
+                    style={{
+                      paddingVertical: 12,
+                      paddingHorizontal: 12,
+                      borderWidth: 1,
+                      borderColor: "#f0f0f0",
+                      borderRadius: 8,
+                      backgroundColor: "#fafafa",
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <View style={{ flexShrink: 1, paddingRight: 8 }}>
+                      <Text style={{ fontSize: 14, fontWeight: "600" }}>
+                        {member.name || `Usuario #${member.id}`}
+                      </Text>
+                      <Text style={{ marginTop: 2, color: "#666", fontSize: 12 }}>
+                        {member.email || "Sin email"}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        backgroundColor: member.role === "Administrador" ? "#3f3df8" : "#666",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: "white" }}>
+                        {member.role}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
           </View>
