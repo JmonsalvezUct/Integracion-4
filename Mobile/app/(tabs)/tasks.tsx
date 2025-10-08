@@ -1,3 +1,4 @@
+
 import { SafeAreaView, View, Text, Platform, StyleSheet, TouchableOpacity, Switch, ScrollView, TextInput, Animated } from "react-native"; 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -6,6 +7,10 @@ const PRIMARY = "#3B34FF";
 import { useLocalSearchParams } from "expo-router";
 import { DataTable } from "react-native-paper";
 import React, { useEffect, useMemo, useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from "@/lib/secure-store";
+
+import { Modal, FlatList } from "react-native";
 
 interface Task {
   id: number;
@@ -41,7 +46,15 @@ export default function TasksScreen() {
   const toastY = React.useRef(new Animated.Value(-80)).current; 
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [currentStartDate, setCurrentStartDate] = useState(new Date());
-
+  //datos de usuarios de el proyecto harcodeados hasta que se implemente la funcionalidad de acceder a ellos
+const [assignModalVisible, setAssignModalVisible] = useState(false);
+const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+const [users, setUsers] = useState<{ id: number; name: string }[]>([
+  { id: 1, name: "Ana Pérez" },
+  { id: 2, name: "Carlos Gómez" },
+  { id: 3, name: "Lucía Torres" },
+]);
+//--------------------dato s de usuarios en el proyecto
   const showToast = (msg: string, type: "success" | "error" = "success") => {
     setToastMsg(msg);
     setToastType(type);
@@ -59,7 +72,8 @@ export default function TasksScreen() {
   const toggleCol = (key: keyof ColumnsState) =>
     setColumns((c) => ({ ...c, [key]: !c[key] }));
   
-  const projectId = 1; 
+  const projectId  = 1; 
+  console.log("📦 Project ID:", projectId );
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projectName, setProjectName] = useState("");
   
@@ -74,25 +88,84 @@ export default function TasksScreen() {
 
   const API_BASE = "https://integracion-4.onrender.com";
 
-  useEffect(() => {
-    if (!projectId) return;
-    
-    const fetchTasks = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/tasks/project/${projectId}`);
-        const data = await res.json();
+  const assignTaskToUser = async (taskId: number, userId: number) => {
+  try {
+    const token = await getAccessToken();
 
-        setTasks(data || []);
-        setProjectName(data.project?.name || "Proyecto");
-        showToast("Tareas cargadas correctamente ", "success");
-      } catch (err) {
-        console.error("Error al cargar tareas:", err);
-        showToast("Error al cargar tareas ", "error");
+    const res = await fetch(`${API_BASE}/api/tasks/${projectId}/${taskId}/assign`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ assigneeId: userId }),
+    });
+
+    const text = await res.text();
+    console.log("🧪 Respuesta asignación:", text);
+
+    if (!res.ok) throw new Error(`Error ${res.status}: ${text}`);
+
+    showToast(" Tarea asignada correctamente", "success");
+
+    // Actualizar el responsable en el estado
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, assignee: { name: users.find((u) => u.id === userId)?.name || "—" } } : t
+      )
+    );
+
+    setAssignModalVisible(false);
+    setSelectedTaskId(null);
+  } catch (err) {
+    console.error("❌ Error al asignar tarea:", err);
+    showToast("Error al asignar tarea", "error");
+  }
+};
+
+  useEffect(() => {
+    if (!projectId ) return;
+    
+
+
+const fetchTasks = async () => {
+ try {
+    const token = await getAccessToken();
+    const projectId = 1;
+
+    const taskIds = [1, 2, 3];
+    const allTasks: Task[] = [];
+
+    for (const taskId of taskIds) {
+      const res = await fetch(`${API_BASE}/api/tasks/${projectId}/${taskId}`, {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const text = await res.text();
+      try {
+        const task = JSON.parse(text);
+        if (task?.id) allTasks.push(task);
+      } catch {
+        console.warn(` Error parseando tarea ${taskId}`);
       }
-    };
+    }
+
+    setTasks(allTasks);
+    showToast(`Se cargaron ${allTasks.length} tareas`, "success");
+  } catch (err) {
+    console.error(" Error al cargar tareas:", err);
+    showToast("Error al cargar tareas", "error");
+  }
+};
+
+
+
 
     fetchTasks();
-  }, [projectId]);
+  }, [projectId ]);
 
   const CL_TZ = "America/Santiago";
 
@@ -348,26 +421,60 @@ export default function TasksScreen() {
                       style={styles.colTitle}
                       onPress={() => handleSort("title")}
                     >
-                      Título {sortBy === "title" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                      <Text>
+                        Título{" "}
+                        <Text style={{ color: sortBy === "title" ? "#3B34FF" : "#999" }}>
+                          {sortBy === "title"
+                            ? sortDirection === "asc"
+                              ? "▲"
+                              : "▼"
+                            : "△"}
+                        </Text>
+                      </Text>
                     </DataTable.Title>
 
-                    <DataTable.Title style={columns.status ? styles.colSmall : HIDDEN_CELL}>Estado</DataTable.Title>
-                    <DataTable.Title style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>Responsable</DataTable.Title>
+                    <DataTable.Title style={columns.status ? styles.colSmall : HIDDEN_CELL}>
+                      Estado
+                    </DataTable.Title>
+
+                    <DataTable.Title style={columns.assignee ? styles.colMedium : HIDDEN_CELL}>
+                      Responsable
+                    </DataTable.Title>
 
                     <DataTable.Title
                       style={columns.dueDate ? styles.colSmall : HIDDEN_CELL}
                       onPress={() => handleSort("dueDate")}
                     >
-                      Fecha {sortBy === "dueDate" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                      <Text>
+                        Fecha{" "}
+                        <Text style={{ color: sortBy === "dueDate" ? "#3B34FF" : "#999" }}>
+                          {sortBy === "dueDate"
+                            ? sortDirection === "asc"
+                              ? "▲"
+                              : "▼"
+                            : "△"}
+                        </Text>
+                      </Text>
                     </DataTable.Title>
 
                     <DataTable.Title
                       style={columns.priority ? styles.colSmall : HIDDEN_CELL}
                       onPress={() => handleSort("priority")}
                     >
-                      Prioridad {sortBy === "priority" ? (sortDirection === "asc" ? "▲" : "▼") : ""}
+                      <Text>
+                        Prioridad{" "}
+                        <Text style={{ color: sortBy === "priority" ? "#3B34FF" : "#999" }}>
+                          {sortBy === "priority"
+                            ? sortDirection === "asc"
+                              ? "▲"
+                              : "▼"
+                            : "△"}
+                        </Text>
+                      </Text>
                     </DataTable.Title>
+                    <DataTable.Title style={{ flex: 0.6 }}>Acciones</DataTable.Title>
                   </DataTable.Header>
+
 
                   {visibleTasks.map((t: Task) => (
                     <DataTable.Row key={t.id}>
@@ -390,8 +497,27 @@ export default function TasksScreen() {
                       <DataTable.Cell style={columns.priority ? styles.colSmall : HIDDEN_CELL}>
                         {t.priority ?? "—"}
                       </DataTable.Cell>
+
+
+                      <DataTable.Cell style={{ flex: 0.6, justifyContent: "center" }}>
+                        <TouchableOpacity
+                          style={{
+                            backgroundColor: "#3B34FF",
+                            paddingVertical: 4,
+                            paddingHorizontal: 8,
+                            borderRadius: 6,
+                          }}
+                          onPress={() => {
+                            setSelectedTaskId(t.id);
+                            setAssignModalVisible(true);
+                          }}
+                        >
+                          <Text style={{ color: "#fff", fontSize: 12 }}>Asignar</Text>
+                        </TouchableOpacity>
+                      </DataTable.Cell>
                     </DataTable.Row>
                   ))}
+
                 </DataTable>
               </ScrollView>
             </ScrollView>
@@ -464,11 +590,45 @@ export default function TasksScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: "/features/task/CreateTask", params: { projectId } })}
+        onPress={() => router.push({ pathname: "/features/task/CreateTask", params: { projectId  } })}
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
+      <Modal
+  visible={assignModalVisible}
+  animationType="slide"
+  transparent
+  onRequestClose={() => setAssignModalVisible(false)}
+>
+  <View style={styles.modalOverlay}>
+    <View style={styles.modalContainer}>
+      <Text style={styles.modalTitle}>Asignar tarea</Text>
+      <Text style={styles.modalSubtitle}>Selecciona un usuario:</Text>
+
+      <FlatList
+        data={users}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.userItem}
+            onPress={() => selectedTaskId && assignTaskToUser(selectedTaskId, item.id)}
+          >
+            <Text style={styles.userName}>{item.name}</Text>
+          </TouchableOpacity>
+        )}
+      />
+
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={() => setAssignModalVisible(false)}
+      >
+        <Text style={styles.cancelButtonText}>Cancelar</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+</Modal>
+
     </SafeAreaView>
   );
 }
@@ -723,4 +883,50 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
   },
+  modalOverlay: {
+  flex: 1,
+  backgroundColor: "rgba(0,0,0,0.4)",
+  justifyContent: "center",
+  alignItems: "center",
+},
+modalContainer: {
+  width: "85%",
+  backgroundColor: "#fff",
+  borderRadius: 16,
+  padding: 20,
+  elevation: 10,
+},
+modalTitle: {
+  fontSize: 18,
+  fontWeight: "700",
+  marginBottom: 10,
+  textAlign: "center",
+},
+modalSubtitle: {
+  color: "#666",
+  marginBottom: 10,
+  textAlign: "center",
+},
+userItem: {
+  paddingVertical: 10,
+  borderBottomWidth: 1,
+  borderBottomColor: "#eee",
+},
+userName: {
+  fontSize: 16,
+  textAlign: "center",
+  color: "#333",
+},
+cancelButton: {
+  marginTop: 14,
+  paddingVertical: 10,
+  borderRadius: 8,
+  backgroundColor: "#E74C3C",
+},
+cancelButtonText: {
+  color: "#fff",
+  fontWeight: "600",
+  textAlign: "center",
+},
+
 });
