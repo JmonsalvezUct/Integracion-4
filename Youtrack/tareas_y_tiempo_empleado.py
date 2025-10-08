@@ -7,8 +7,8 @@ from reportlab.lib.styles import getSampleStyleSheet
 # ============================
 # 🔹 Leer CSVs
 # ============================
-df_incidencias = pd.read_csv("Incidencias_semana1_sprint2.csv")
-df_horas = pd.read_csv("Parte de horas sprint 2 - semana 1.csv")
+df_incidencias = pd.read_csv("Incidencias_sprint2_semana2.csv")
+df_horas = pd.read_csv("Parte de horas sprint 2 - semana 2.csv")
 
 # 🔄 Normalizar nombres de usuarios
 df_incidencias = df_incidencias.replace({
@@ -67,7 +67,7 @@ doc = SimpleDocTemplate(pdf_filename, pagesize=letter)
 styles = getSampleStyleSheet()
 elements = []
 
-elements.append(Paragraph("Detalle de tareas asignadas - Semana 1", styles["Title"]))
+elements.append(Paragraph("Detalle actualizado de tareas asignadas - Semana 2", styles["Title"]))
 elements.append(Spacer(1, 20))
 
 # ============================
@@ -112,7 +112,7 @@ elements.append(Spacer(1, 25))
 # ============================
 data_resumen = [ ["ID", "Resumen"] ] + df_merge[cols_resumen].values.tolist()
 
-table_resumen = Table(data_resumen, repeatRows=1)
+table_resumen = Table(data_resumen, colWidths=[page_width* 0.1, page_width * 0.9], repeatRows=1)
 table_resumen.setStyle(TableStyle([
     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#50b848")),
     ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),

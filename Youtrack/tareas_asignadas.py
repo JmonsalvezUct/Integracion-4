@@ -16,7 +16,7 @@ def minutes_to_hhmm(minutes):
 
 # ===============================
 # Leer CSV original 
-df = pd.read_csv("Incidencias_sprint2_semana2.csv") 
+df = pd.read_csv("Incidencias_sprint2_semana3.csv") 
 
 # 🔄 Reemplazar valores en todo el DataFrame 
 df = df.replace({ 
@@ -63,7 +63,7 @@ styles = getSampleStyleSheet()
 elements = [] 
 
 # Título 
-elements.append(Paragraph("Tareas asignadas - Semana 2", styles["Title"]))
+elements.append(Paragraph("Tareas asignadas - Semana 3", styles["Title"]))
 elements.append(Spacer(1, 20)) 
 
 # ===============================
@@ -94,7 +94,7 @@ elements.append(Spacer(1, 30))
 # TABLA DE RESUMEN 
 data_resumen = [cols_resumen] + df_display[cols_resumen].values.tolist() 
 
-table_resumen = Table(data_resumen, repeatRows=1) 
+table_resumen = Table(data_resumen, colWidths=[0.1 * page_width, 0.9 * page_width], repeatRows=1) 
 table_resumen.setStyle(TableStyle([ 
     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#50b848")),
     ("TEXTCOLOR", (0, 0), (-1, 0), colors.white), 
