@@ -1,3 +1,4 @@
+
 import { SafeAreaView, View, Text, Platform, StyleSheet, TouchableOpacity, Switch, ScrollView, TextInput, Animated } from "react-native"; 
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -6,6 +7,9 @@ const PRIMARY = "#3B34FF";
 import { useLocalSearchParams } from "expo-router";
 import { DataTable } from "react-native-paper";
 import React, { useEffect, useMemo, useState } from "react";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getAccessToken } from "@/lib/secure-store";
+
 
 interface Task {
   id: number;
@@ -59,7 +63,8 @@ export default function TasksScreen() {
   const toggleCol = (key: keyof ColumnsState) =>
     setColumns((c) => ({ ...c, [key]: !c[key] }));
   
-  const projectId = 1; 
+  const userId = 1; 
+  console.log("📦 Project ID:", userId);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projectName, setProjectName] = useState("");
   
@@ -75,24 +80,61 @@ export default function TasksScreen() {
   const API_BASE = "https://integracion-4.onrender.com";
 
   useEffect(() => {
-    if (!projectId) return;
+    if (!userId) return;
     
-    const fetchTasks = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/tasks/project/${projectId}`);
-        const data = await res.json();
+const fetchTasks = async () => {
+  try {
+    // 1️⃣ Obtener el token de forma centralizada
+    const token = await getAccessToken();
 
-        setTasks(data || []);
-        setProjectName(data.project?.name || "Proyecto");
-        showToast("Tareas cargadas correctamente ", "success");
-      } catch (err) {
-        console.error("Error al cargar tareas:", err);
-        showToast("Error al cargar tareas ", "error");
-      }
-    };
+    if (!token) {
+      console.warn("⚠️ No hay token guardado. No se puede autenticar.");
+      showToast("No autorizado: falta token", "error");
+      return;
+    }
+
+    // 2️⃣ Petición para obtener tareas
+    const res = await fetch(`${API_BASE}/api/tasks/project/${userId}`, {
+  headers: {
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json",
+  },
+});
+
+
+    const data = await res.json();
+
+    if (Array.isArray(data)) {
+      setTasks(data);
+    } else {
+      console.warn("⚠️ La respuesta no es un array de tareas:", data);
+      setTasks([]);
+    }
+
+    // 3️⃣ Petición para obtener info del proyecto
+    const projectRes = await fetch(`${API_BASE}/api/projects/${userId}`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const projectData = await projectRes.json();
+    setProjectName(projectData.name || `Proyecto ${userId}`);
+
+    // 4️⃣ Notificación
+    showToast("Tareas cargadas correctamente", "success");
+
+  } catch (err) {
+    console.error("❌ Error al cargar tareas:", err);
+    showToast("Error al cargar tareas", "error");
+  }
+};
+
+
 
     fetchTasks();
-  }, [projectId]);
+  }, [userId]);
 
   const CL_TZ = "America/Santiago";
 
@@ -464,7 +506,7 @@ export default function TasksScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: "/features/task/CreateTask", params: { projectId } })}
+        onPress={() => router.push({ pathname: "/features/task/CreateTask", params: { userId } })}
         activeOpacity={0.9}
       >
         <Ionicons name="add" size={28} color="#fff" />
