@@ -16,8 +16,8 @@ export const tasksService = {
     return tasksRepository.getTasks();
   },
 
-  getTaskById: async (id: number) => {
-    return tasksRepository.getTaskById(id);
+  getTaskById: async (taskId: number) => {
+    return tasksRepository.getTaskById(taskId);
   },
 
   updateTask: async (id: number, data: UpdateTaskDTO) => {

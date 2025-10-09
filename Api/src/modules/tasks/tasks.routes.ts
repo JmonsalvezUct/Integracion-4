@@ -110,7 +110,7 @@ router.post('/:projectId', authMiddleware, rbacMiddleware(['admin', 'developer']
  *         description: Task details
  */
 
-router.get('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getTaskById);
+router.get('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getTaskById);
 
 /**
  * @swagger
@@ -258,7 +258,7 @@ router.delete('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'devel
  *       - authMiddleware
  */
 
-router.get('/project/:projectId', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getTasksByProject);
+router.get('/projects/:projectId/tasks', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getTasksByProject);
 
 /**
  * @swagger
