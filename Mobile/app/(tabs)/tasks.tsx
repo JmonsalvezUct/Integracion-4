@@ -35,6 +35,14 @@ const defaultColumns: ColumnsState = {
   priority: true,
 };
 
+// Traducciones de prioridad (inglés → español)
+const priorityLabels: Record<string, string> = {
+  high: "Alta",
+  medium: "Media",
+  low: "Baja",
+};
+
+
 export default function TasksScreen() {
   const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
@@ -73,7 +81,7 @@ const [users, setUsers] = useState<{ id: number; name: string }[]>([
     setColumns((c) => ({ ...c, [key]: !c[key] }));
   
   const projectId  = 1; 
-  console.log("📦 Project ID:", projectId );
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projectName, setProjectName] = useState("");
   
@@ -108,7 +116,7 @@ const [users, setUsers] = useState<{ id: number; name: string }[]>([
 
     showToast(" Tarea asignada correctamente", "success");
 
-    // Actualizar el responsable en el estado
+
     setTasks((prev) =>
       prev.map((t) =>
         t.id === taskId ? { ...t, assignee: { name: users.find((u) => u.id === userId)?.name || "—" } } : t
@@ -118,7 +126,7 @@ const [users, setUsers] = useState<{ id: number; name: string }[]>([
     setAssignModalVisible(false);
     setSelectedTaskId(null);
   } catch (err) {
-    console.error("❌ Error al asignar tarea:", err);
+    console.error(" Error al asignar tarea:", err);
     showToast("Error al asignar tarea", "error");
   }
 };
@@ -129,32 +137,35 @@ const [users, setUsers] = useState<{ id: number; name: string }[]>([
 
 
 const fetchTasks = async () => {
- try {
+  try {
     const token = await getAccessToken();
     const projectId = 1;
 
-    const taskIds = [1, 2, 3];
-    const allTasks: Task[] = [];
 
-    for (const taskId of taskIds) {
-      const res = await fetch(`${API_BASE}/api/tasks/${projectId}/${taskId}`, {
-        headers: {
-          "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+    const res = await fetch(`${API_BASE}/api/tasks/projects/${projectId}/tasks`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
 
-      const text = await res.text();
-      try {
-        const task = JSON.parse(text);
-        if (task?.id) allTasks.push(task);
-      } catch {
-        console.warn(` Error parseando tarea ${taskId}`);
-      }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Error ${res.status}: ${errorText}`);
     }
 
-    setTasks(allTasks);
-    showToast(`Se cargaron ${allTasks.length} tareas`, "success");
+    const data = await res.json();
+
+
+    setTasks(Array.isArray(data) ? data : []);
+    
+
+    if (Array.isArray(data) && data.length > 0) {
+      setProjectName(data[0]?.project?.name || "Proyecto");
+    }
+
+    showToast("Tareas cargadas correctamente", "success");
   } catch (err) {
     console.error(" Error al cargar tareas:", err);
     showToast("Error al cargar tareas", "error");
@@ -162,10 +173,8 @@ const fetchTasks = async () => {
 };
 
 
-
-
     fetchTasks();
-  }, [projectId ]);
+  }, [projectId]);
 
   const CL_TZ = "America/Santiago";
 
@@ -495,8 +504,26 @@ const fetchTasks = async () => {
                       </DataTable.Cell>
 
                       <DataTable.Cell style={columns.priority ? styles.colSmall : HIDDEN_CELL}>
-                        {t.priority ?? "—"}
-                      </DataTable.Cell>
+  {t.priority ? (
+    <Text
+      style={{
+        color:
+          t.priority === "high"
+            ? "#E74C3C"
+            : t.priority === "medium"
+            ? "#F1C40F"
+            : "#2ECC71",
+        fontWeight: "600",
+      }}
+    >
+      {priorityLabels[t.priority] || t.priority}
+    </Text>
+  ) : (
+    "—"
+  )}
+</DataTable.Cell>
+
+
 
 
                       <DataTable.Cell style={{ flex: 0.6, justifyContent: "center" }}>
@@ -632,6 +659,7 @@ const fetchTasks = async () => {
     </SafeAreaView>
   );
 }
+
 
 function ColSwitch({
   label,
