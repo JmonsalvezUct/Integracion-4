@@ -9,6 +9,9 @@ import {
   changeStatus,
 } from './tasks.controller.js';
 
+import { rbacMiddleware } from "../../middlewares/rbac.middleware.js";
+import { authMiddleware } from "../../middlewares/auth.middleware.js";
+
 const router = Router();
 
 /**
@@ -87,7 +90,7 @@ const router = Router();
  *     x-middleware:
  *       - authMiddleware
  */
-router.post('/', createTask);
+router.post('/:projectId', authMiddleware, rbacMiddleware(['admin', 'developer']), createTask);
 
 
 /**
@@ -107,7 +110,7 @@ router.post('/', createTask);
  *         description: Task details
  */
 
-router.get('/:id', getTaskById);
+router.get('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getTaskById);
 
 /**
  * @swagger
@@ -132,7 +135,7 @@ router.get('/:id', getTaskById);
  *         description: Task updated
  */
 
-router.put('/:id', updateTask);
+router.put('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'developer']), updateTask);
 
 /**
  * @swagger
@@ -151,7 +154,7 @@ router.put('/:id', updateTask);
  *         description: Task deleted
  */
 
-router.delete('/:id', deleteTask);
+router.delete('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'developer']), deleteTask);
 
 /**
  * @swagger
@@ -255,7 +258,7 @@ router.delete('/:id', deleteTask);
  *       - authMiddleware
  */
 
-router.get('/project/:projectId', getTasksByProject);
+router.get('/projects/:projectId/tasks', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getTasksByProject);
 
 /**
  * @swagger
@@ -283,7 +286,7 @@ router.get('/project/:projectId', getTasksByProject);
  *         description: Task assigned
  */
 
-router.post('/:id/assign', assignTask);
+router.post('/:projectId/:id/assign', authMiddleware, rbacMiddleware(['admin', 'developer']), assignTask);
 
 /**
  * @swagger
@@ -351,6 +354,6 @@ router.post('/:id/assign', assignTask);
  *       - authMiddleware
  */
 
-router.post('/:id/status', changeStatus);
+router.patch('/:projectId/:id/status', authMiddleware, rbacMiddleware(['admin', 'developer']), changeStatus);
 
 export default router;

@@ -3,8 +3,8 @@ import { projectsRepository } from './projects.repository.js';
 import type { CreateProjectDTO, UpdateProjectDTO } from './projects.validators.js';
 
 export const projectsService = {
-  async createProject(data: CreateProjectDTO) {
-    return projectsRepository.createProject(data);
+  async createProject(data: CreateProjectDTO, userId: number) {
+    return projectsRepository.createProject(data, userId);
   },
   async getProjects() {
     return projectsRepository.getProjects();
@@ -38,4 +38,7 @@ export const projectsService = {
     return projectsRepository.getProjectMembers(projectId);
   },
 
+  async patchProject(id: number, data: Partial<UpdateProjectDTO>) {
+    return projectsRepository.patchProject(id, data);
+  },
 };

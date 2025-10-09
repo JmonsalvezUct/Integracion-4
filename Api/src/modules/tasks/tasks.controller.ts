@@ -34,7 +34,7 @@ export const getTasks = async (_req: Request, res: Response) => {
 
 export const getTaskById = async (req: Request, res: Response) => {
   try {
-    const task = await tasksService.getTaskById(Number(req.params.id));
+    const task = await tasksService.getTaskById(Number(req.params.taskId));
     if (!task) return res.status(404).json({ error: 'Tarea no encontrada' });
     return res.json(task);
   } catch {
@@ -69,7 +69,9 @@ export const deleteTask = async (req: Request, res: Response) => {
 
 export const getTasksByProject = async (req: Request, res: Response) => {
   try {
+    console.log("get tasks", req.params.projectId)
     const projectId = Number(req.params.projectId);
+    console.log('Requesting tasks for project:', projectId);
     const tasks = await tasksService.getTasksByProject(projectId);
     return res.json(tasks);
   } catch {
