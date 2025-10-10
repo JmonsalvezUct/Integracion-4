@@ -42,7 +42,7 @@ export const projectsRepository = {
 
   getProjectMembers: (projectId: number) =>
     prisma.userProject.findMany({
-      where: { projectId },
+      where: { projectId: projectId },
       include: {
         user: true,
       },
