@@ -6,14 +6,16 @@
 
     export function useTasks() {
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [users, setUsers] = useState<User[]>([]); 
+    const [users, setUsers] = useState<User[]>([]);
     const [projectName, setProjectName] = useState("");
     const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "" });
     const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentStartDate, setCurrentStartDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date()); // 🔹 nuevo para vista calendario
 
     const projectId = 1;
+
 
     const fetchTasks = async () => {
         try {
@@ -23,10 +25,12 @@
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
+        console.log("📦 Tareas recibidas:", data);
         setTasks(Array.isArray(data) ? data : []);
         if (data.length > 0) setProjectName(data[0]?.project?.name || "Proyecto");
+        else setProjectName("Proyecto sin tareas");
         } catch (err) {
-        console.error("❌ Error al cargar tareas:", err);
+        console.error("Error al cargar tareas:", err);
         }
     };
 
@@ -40,64 +44,80 @@
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
 
-
         const formatted = data.map((m: any) => ({
-        id: m.user?.id ?? m.userId,
-        name: m.user?.name || m.user?.username || m.user?.email || "Sin nombre",
+            id: m.user?.id ?? m.userId,
+            name: m.user?.name || m.user?.username || m.user?.email || "Sin nombre",
         }));
 
-
+        console.log(" Miembros del proyecto:", formatted);
         setUsers(formatted);
         } catch (err) {
-        console.error(" Error al cargar miembros del proyecto:", err);
+        console.error("Error al cargar miembros del proyecto:", err);
         }
     };
 
+
     const assignTaskToUser = async (taskId: number, userId: number) => {
-    try {
+        try {
         const token = await getAccessToken();
         const url = `${API_BASE}/api/tasks/${projectId}/${taskId}/assign`;
         console.log("📡 POST:", url);
         console.log("📦 Payload:", { assigneeId: userId });
 
         const res = await fetch(url, {
-        method: "POST",
-        headers: {
+            method: "POST",
+            headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ assigneeId: userId }),
+            },
+            body: JSON.stringify({ assigneeId: userId }),
         });
 
         const data = await res.json();
-        console.log("🧩 Response:", data);
+        console.log(" Response:", data);
 
         if (!res.ok) {
-        console.error("❌ Error al asignar:", data);
-        throw new Error(data.error || "Error al asignar la tarea");
+            console.error(" Error al asignar:", data);
+            throw new Error(data.error || "Error al asignar la tarea");
         }
 
-
         setTasks((prev) =>
-        prev.map((t) =>
+            prev.map((t) =>
             t.id === taskId
-            ? {
-                ...t,
-                assignee: {
+                ? {
+                    ...t,
+                    assignee: {
                     name: users.find((u) => u.id === userId)?.name || "—",
-                },
+                    },
                 }
-            : t
-        )
+                : t
+            )
         );
 
         console.log(" Tarea asignada correctamente");
-    } catch (err) {
+        } catch (err) {
         console.error(" Error al asignar tarea:", err);
-    }
+        }
     };
 
 
+    const tasksForSelectedDate = useMemo(() => {
+        if (!selectedDate) return [];
+
+        return tasks.filter((task) => {
+        if (!task.dueDate) return false;
+        try {
+            const taskDate = new Date(task.dueDate);
+            return (
+            taskDate.getDate() === selectedDate.getDate() &&
+            taskDate.getMonth() === selectedDate.getMonth() &&
+            taskDate.getFullYear() === selectedDate.getFullYear()
+            );
+        } catch {
+            return false;
+        }
+        });
+    }, [tasks, selectedDate]);
 
 
     const visibleTasks = useMemo(() => {
@@ -144,9 +164,8 @@
 
     useEffect(() => {
         fetchTasks();
-        fetchProjectMembers(); 
+        fetchProjectMembers();
     }, []);
-
 
     return {
         tasks: visibleTasks,
@@ -161,5 +180,8 @@
         currentStartDate,
         setCurrentStartDate,
         users,
+        selectedDate, 
+        setSelectedDate, 
+        tasksForSelectedDate, 
     };
     }
