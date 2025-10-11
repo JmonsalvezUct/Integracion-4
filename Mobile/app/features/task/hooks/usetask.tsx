@@ -6,31 +6,45 @@
 
 const API_BASE = "https://integracion-4.onrender.com";
 
-    export function useTasks() {
+export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projectName, setProjectName] = useState("");
     const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "" });
     const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentStartDate, setCurrentStartDate] = useState(new Date());
+    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [users, setUsers] = useState<User[]>([]); 
-    const projectId = 1;
+    
+
     const CL_TZ = "America/Santiago";
 
     const fetchTasks = async () => {
         try {
+        if (!projectId) {
+            console.warn(" No se proporcionó projectId en useTasks()");
+            return;
+        }
+
         const token = await getAccessToken();
         const res = await fetch(`${API_BASE}/api/tasks/projects/${projectId}/tasks`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+
         if (!res.ok) throw new Error(await res.text());
+
         const data = await res.json();
-        setTasks(Array.isArray(data) ? data : []);
-        if (data.length > 0) setProjectName(data[0]?.project?.name || "Proyecto");
+
+
+        const taskList = Array.isArray(data) ? data : data.tasks ?? [];
+
+        setTasks(taskList);
+        setProjectName(taskList[0]?.project?.name ?? `Proyecto #${projectId}`);
         } catch (err) {
-        console.error("Error al cargar tareas:", err);
+        console.error(" Error al cargar tareas:", err);
         }
     };
+
 
     const assignTaskToUser = async (taskId: number, userId: number) => {
         try {
@@ -50,6 +64,36 @@ const API_BASE = "https://integracion-4.onrender.com";
         console.error("Error al asignar tarea:", err);
         }
     };
+
+    const tasksForSelectedDate = useMemo(() => {
+        if (!selectedDate) return [];
+        
+        console.log("Filtrando tareas para:", selectedDate.toLocaleDateString());
+        
+        return tasks.filter(task => {
+        if (!task.dueDate) {
+            console.log(" Tarea sin fecha:", task.title);
+            return false;
+        }
+        
+        try {
+            const taskDate = new Date(task.dueDate);
+            const isSameDate = 
+            taskDate.getDate() === selectedDate.getDate() &&
+            taskDate.getMonth() === selectedDate.getMonth() &&
+            taskDate.getFullYear() === selectedDate.getFullYear();
+            
+            if (isSameDate) {
+            console.log("Tarea encontrada para esta fecha:", task.title);
+            }
+            
+            return isSameDate;
+        } catch (error) {
+            console.log(" Error procesando fecha de tarea:", task.title, task.dueDate);
+            return false;
+        }
+        });
+    }, [tasks, selectedDate]);
 
     const visibleTasks = useMemo(() => {
         let filtered = tasks.filter((t) => {
@@ -91,8 +135,12 @@ const API_BASE = "https://integracion-4.onrender.com";
     }, [tasks, filters, sortBy, sortDirection]);
 
     useEffect(() => {
+    if (!projectId) {
+        console.warn(" No se proporcionó projectId en useTasks()");
+        return;
+    }
         fetchTasks();
-    }, []);
+    }, [projectId]);
 
     return {
         tasks: visibleTasks,
@@ -107,5 +155,8 @@ const API_BASE = "https://integracion-4.onrender.com";
         currentStartDate,
         setCurrentStartDate,
         users,
+        selectedDate,
+        setSelectedDate,
+        tasksForSelectedDate,
     };
-    }
+}

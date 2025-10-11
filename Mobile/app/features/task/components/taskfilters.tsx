@@ -41,11 +41,7 @@
     }: TaskFiltersProps) {
     return (
         <View style={styles.wrapper}>
-        <TouchableOpacity onPress={() => setShowFilters(!showFilters)} style={styles.toggle}>
-            <Text style={styles.toggleText}>
-            {showFilters ? "Ocultar filtros ▲" : "Mostrar filtros ▼"}
-            </Text>
-        </TouchableOpacity>
+
 
         {showFilters && (
             <View style={styles.container}>
@@ -98,16 +94,14 @@
     }
 
     const styles = StyleSheet.create({
-    wrapper: { paddingHorizontal: 12, paddingTop: 10, backgroundColor: "#EFEFFF" },
-    toggle: {
-        alignSelf: "flex-start",
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        backgroundColor: "#3B34FF",
-        borderRadius: 8,
-        marginBottom: 8,
+        wrapper: {
+        backgroundColor: "#fff",
+        marginBottom: 0,
+        paddingHorizontal: 0,
+        paddingVertical: 0,
     },
-    toggleText: { color: "#fff", fontWeight: "600", fontSize: 13 },
+
+    
     container: { flexDirection: "row", flexWrap: "wrap", gap: 10, backgroundColor: "#EFEFFF" },
     switchRow: {
         flexDirection: "row",

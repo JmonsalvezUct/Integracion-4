@@ -1,4 +1,4 @@
-// app/features/project/DetailProject.tsx
+
 import React from "react";
 import {
   View,
@@ -290,38 +290,7 @@ export default function DetailProject() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
-      {/* Header azul */}
-      <View
-        style={{
-          backgroundColor: "#3f3df8",
-          paddingTop: 28,
-          paddingBottom: 16,
-          paddingHorizontal: 16,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
-          </TouchableOpacity>
 
-          <Text
-            style={{
-              color: "white",
-              fontSize: 18,
-              fontWeight: "700",
-              marginLeft: 12,
-              flexShrink: 1,
-            }}
-            numberOfLines={1}
-          >
-            {project?.name ?? "Detalle del proyecto"}
-          </Text>
-        </View>
-      </View>
 
       {/* Contenido */}
       {loading ? (

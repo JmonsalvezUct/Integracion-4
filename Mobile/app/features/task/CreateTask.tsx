@@ -101,7 +101,7 @@ const submit = async () => {
 });
 
   try {
-    // 👇 Aquí va el projectId en la URL
+
     const res = await fetch(`${BASE_URL}/api/tasks/1`, {
   method: "POST",
   headers: {
