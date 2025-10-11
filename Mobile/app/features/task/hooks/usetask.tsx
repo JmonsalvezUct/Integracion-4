@@ -2,20 +2,20 @@
     import { getAccessToken } from "@/lib/secure-store";
     import type { Task, User } from "../types";
 
-    const API_BASE = "https://integracion-4.onrender.com";
+
+
+const API_BASE = "https://integracion-4.onrender.com";
 
     export function useTasks() {
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
     const [projectName, setProjectName] = useState("");
     const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "" });
     const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentStartDate, setCurrentStartDate] = useState(new Date());
-    const [selectedDate, setSelectedDate] = useState<Date | null>(new Date()); // 🔹 nuevo para vista calendario
-
+    const [users, setUsers] = useState<User[]>([]); 
     const projectId = 1;
-
+    const CL_TZ = "America/Santiago";
 
     const fetchTasks = async () => {
         try {
@@ -25,106 +25,35 @@
         });
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
-        console.log("📦 Tareas recibidas:", data);
         setTasks(Array.isArray(data) ? data : []);
         if (data.length > 0) setProjectName(data[0]?.project?.name || "Proyecto");
-        else setProjectName("Proyecto sin tareas");
         } catch (err) {
         console.error("Error al cargar tareas:", err);
         }
     };
 
-
-    const fetchProjectMembers = async () => {
-        try {
-        const token = await getAccessToken();
-        const res = await fetch(`${API_BASE}/api/projects/${projectId}/members`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-
-        const formatted = data.map((m: any) => ({
-            id: m.user?.id ?? m.userId,
-            name: m.user?.name || m.user?.username || m.user?.email || "Sin nombre",
-        }));
-
-        console.log(" Miembros del proyecto:", formatted);
-        setUsers(formatted);
-        } catch (err) {
-        console.error("Error al cargar miembros del proyecto:", err);
-        }
-    };
-
-
     const assignTaskToUser = async (taskId: number, userId: number) => {
         try {
         const token = await getAccessToken();
-        const url = `${API_BASE}/api/tasks/${projectId}/${taskId}/assign`;
-        console.log("📡 POST:", url);
-        console.log("📦 Payload:", { assigneeId: userId });
-
-        const res = await fetch(url, {
+        const res = await fetch(`${API_BASE}/api/tasks/${projectId}/${taskId}/assign`, {
             method: "POST",
-            headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-            },
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
             body: JSON.stringify({ assigneeId: userId }),
         });
-
-        const data = await res.json();
-        console.log(" Response:", data);
-
-        if (!res.ok) {
-            console.error(" Error al asignar:", data);
-            throw new Error(data.error || "Error al asignar la tarea");
-        }
-
+        if (!res.ok) throw new Error(await res.text());
         setTasks((prev) =>
             prev.map((t) =>
-            t.id === taskId
-                ? {
-                    ...t,
-                    assignee: {
-                    name: users.find((u) => u.id === userId)?.name || "—",
-                    },
-                }
-                : t
+            t.id === taskId ? { ...t, assignee: { name: users.find((u) => u.id === userId)?.name || "—" } } : t
             )
         );
-
-        console.log(" Tarea asignada correctamente");
         } catch (err) {
-        console.error(" Error al asignar tarea:", err);
+        console.error("Error al asignar tarea:", err);
         }
     };
 
-
-    const tasksForSelectedDate = useMemo(() => {
-        if (!selectedDate) return [];
-
-        return tasks.filter((task) => {
-        if (!task.dueDate) return false;
-        try {
-            const taskDate = new Date(task.dueDate);
-            return (
-            taskDate.getDate() === selectedDate.getDate() &&
-            taskDate.getMonth() === selectedDate.getMonth() &&
-            taskDate.getFullYear() === selectedDate.getFullYear()
-            );
-        } catch {
-            return false;
-        }
-        });
-    }, [tasks, selectedDate]);
-
-
     const visibleTasks = useMemo(() => {
         let filtered = tasks.filter((t) => {
-        const matchStatus = filters.status
-            ? t.status?.toLowerCase().includes(filters.status.toLowerCase())
-            : true;
+        const matchStatus = filters.status ? t.status?.toLowerCase().includes(filters.status.toLowerCase()) : true;
         const matchAssignee = filters.assignee
             ? t.assignee?.name?.toLowerCase().includes(filters.assignee.toLowerCase())
             : true;
@@ -132,7 +61,7 @@
         return matchStatus && matchAssignee && matchDate;
         });
 
-        if (!sortBy) return filtered;
+    if (!sortBy) return filtered;
 
         const sorted = [...filtered].sort((a, b) => {
         let valA: any, valB: any;
@@ -148,6 +77,7 @@
             valA = priorityA ? order[priorityA] : 0;
             valB = priorityB ? order[priorityB] : 0;
             break;
+
             case "dueDate":
             valA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
             valB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
@@ -157,14 +87,11 @@
         if (valA > valB) return sortDirection === "asc" ? 1 : -1;
         return 0;
         });
-
         return sorted;
     }, [tasks, filters, sortBy, sortDirection]);
 
-
     useEffect(() => {
         fetchTasks();
-        fetchProjectMembers();
     }, []);
 
     return {
@@ -180,8 +107,5 @@
         currentStartDate,
         setCurrentStartDate,
         users,
-        selectedDate, 
-        setSelectedDate, 
-        tasksForSelectedDate, 
     };
     }
