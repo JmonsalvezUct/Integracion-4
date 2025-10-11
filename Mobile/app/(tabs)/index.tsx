@@ -10,10 +10,8 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-// import * as SecureStore from "expo-secure-store";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-
 
 import { API_URL } from "@/constants/api";
 import { getAccessToken, getUserId } from "@/lib/secure-store";
@@ -70,6 +68,16 @@ export default function HomeScreen() {
       )
     : projects;
 
+  // Función para navegar al detalle del proyecto - RUTA CORREGIDA
+  const navigateToProjectDetail = (project: Project) => {
+    router.push({
+      pathname: "/features/project/DetailProject",
+      params: { 
+        id: project.id.toString()
+      }
+    });
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
       {/* Header menú, buscador y perfil */}
@@ -83,8 +91,6 @@ export default function HomeScreen() {
       >
         <View style={{ flexDirection: "row", alignItems: "center" }}>
           {/* Menú */}
-          
-
           <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
             <MaterialIcons name="menu" size={26} color="#ffffff" />
@@ -111,16 +117,16 @@ export default function HomeScreen() {
               style={{ flex: 1, marginLeft: 8, fontSize: 16 }}
               placeholderTextColor="#9b9b9b"
             />
-
-            
           </View>
-            <TouchableOpacity
-              onPress={() => router.push("/features/project/CreateProject")}
-              style={{ padding: 6 }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
-            </TouchableOpacity>
+          
+          <TouchableOpacity
+            onPress={() => router.push("/features/project/CreateProject")}
+            style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
+          </TouchableOpacity>
+          
           {/* Perfil */}
           <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -136,9 +142,6 @@ export default function HomeScreen() {
           <Text style={{ marginTop: 8 }}>Cargando proyectos…</Text>
         </View>
       ) : (
-
-
-        
         <FlatList
           contentContainerStyle={{ padding: 16, flexGrow: 1 }}
           data={filtered}
@@ -151,7 +154,8 @@ export default function HomeScreen() {
           }
           ListEmptyComponent={<View />} 
           renderItem={({ item }) => (
-            <View
+            <TouchableOpacity
+              onPress={() => navigateToProjectDetail(item)}
               style={{
                 backgroundColor: "white",
                 borderRadius: 16,
@@ -167,11 +171,10 @@ export default function HomeScreen() {
                   {item.activitiesCount} Actividades
                 </Text>
               ) : null}
-            </View>
+            </TouchableOpacity>
           )}
         />
       )}
     </View>
   );
 }
-

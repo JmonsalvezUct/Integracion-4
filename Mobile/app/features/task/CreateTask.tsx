@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { API_URL } from "@/constants/api";
+import { getAccessToken } from "@/lib/secure-store";
 
 
 const PRIMARY = "#3B34FF";
@@ -79,47 +79,51 @@ const submit = async () => {
   if (!canSave) {
     return Alert.alert("Falta título", "El título es obligatorio.");
   }
-  
-  const rawDate = date;
-  const normalizedDate = rawDate ? String(rawDate).trim().replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-') : '';
-  console.log('CreateTask.submit date raw=', JSON.stringify(rawDate), 'normalized=', JSON.stringify(normalizedDate));
-  if (normalizedDate !== '' && !isValidDate(normalizedDate)) {
-    return Alert.alert(
-      "Fecha inválida",
-      "Por favor ingresa una fecha válida en formato AAAA-MM-DD (por ejemplo 2025-10-01)."
-    );
+
+
+
+  const token = await getAccessToken();
+
+  if (!token) {
+    Alert.alert("Error", "No hay token de acceso. Inicia sesión nuevamente.");
+    return;
   }
 
-    const payload = clean({
-      title,
-      description: desc,
-      dueDate: normalizedDate ? toISODateTime(normalizedDate) : undefined,
-      priority: priorityMap[priority],
-      projectId: 1,
-      creatorId: 1,
-    });
+  const payload = clean({
+  title,
+  description: desc,
+  dueDate: toISODateTime(date),
+  priority: priorityMap[priority],
+  projectId: 1,  
+  creatorId: 1,  
+});
 
   try {
-    const res = await fetch(`${API_URL}/tasks`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    // 👇 Aquí va el projectId en la URL
+    const res = await fetch(`${BASE_URL}/api/tasks/1`, {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${token}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify(payload),
+});
+
+
+    console.log("🧪 Status:", res.status);
+    const raw = await res.text();
+    console.log("🧪 Raw response:", raw);
 
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Error ${res.status}: ${text}`);
+      throw new Error(`Error ${res.status}: ${raw}`);
     }
 
-    const data = await res.json();
-    console.log("Tarea creada:", data);
+    const data = JSON.parse(raw);
     Alert.alert("Éxito", "Tarea creada correctamente.");
-    router.back(); 
-  } catch (err: any) {
-    console.error("Error al crear tarea:", err);
-    Alert.alert("Error", "No se pudo conectar al servidor.");
+    router.back();
+  } catch (err) {
+    console.error("❌ Error al crear tarea:", err);
+    Alert.alert("Error", "No se pudo crear la tarea. Verifica los datos o el token.");
   }
 };
 
