@@ -3,7 +3,20 @@ import type { CreateProjectDTO, UpdateProjectDTO } from './projects.validators.j
 import type { ProjectRoleType } from '@prisma/client';
 
 export const projectsRepository = {
-  createProject: (data: CreateProjectDTO) => prisma.project.create({ data }),
+  createProject: (data: CreateProjectDTO, userId: number) => prisma.project.create({
+    data: {
+      ...data,
+      users: {
+        create: {
+          userId,
+          role: 'admin'
+        }
+      }
+    },
+    include: {
+      users: true
+    }
+  }),
   getProjects: () => prisma.project.findMany(),
   getProjectById: (id: number) => prisma.project.findUnique({ where: { id } }),
   updateProject: (id: number, data: UpdateProjectDTO) => prisma.project.update({ where: { id }, data }),
@@ -29,7 +42,7 @@ export const projectsRepository = {
 
   getProjectMembers: (projectId: number) =>
     prisma.userProject.findMany({
-      where: { projectId },
+      where: { projectId: projectId },
       include: {
         user: true,
       },
@@ -38,5 +51,11 @@ export const projectsRepository = {
   getProjectMemberByUserId: (projectId: number, userId: number) =>
     prisma.userProject.findFirst({
       where: { projectId, userId },
+    }),
+    
+  patchProject: (id: number, data: Partial<UpdateProjectDTO>) => 
+    prisma.project.update({
+      where: { id },
+      data
     }),
 };

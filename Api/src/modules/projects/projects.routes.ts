@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createProject, getProjects, getProjectById, updateProject, deleteProject, getProjectsByUserId, addUserToProject, updateUserRoleInProject, removeUserFromProject, getProjectMembers } from './projects.controller.js';
+import { createProject, getProjects, getProjectById, updateProject, deleteProject, getProjectsByUserId, addUserToProject, updateUserRoleInProject, removeUserFromProject, getProjectMembers, patchProject } from './projects.controller.js';
 import { rbacMiddleware } from "../../middlewares/rbac.middleware.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 
@@ -68,7 +68,7 @@ const router = Router();
  *     x-middleware:
  *       - authMiddleware
  */
-router.post('/', createProject);
+router.post('/', authMiddleware, createProject);
 
 /**
  * @swagger
@@ -209,7 +209,7 @@ router.get('/', getProjects);
  *       - authMiddleware
  */
 
-router.get('/:id',getProjectById);
+router.get('/:projectId', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getProjectById);
 
 /**
  * @swagger
@@ -284,12 +284,95 @@ router.get('/:id',getProjectById);
  *       - authMiddleware
  */
 
-router.put('/:id', updateProject);
+router.put('/:projectId', authMiddleware, rbacMiddleware(['admin']), updateProject);
 
 /**
  * @swagger
  * /projects/{id}:
- *   delete:
+ *   patch:
+ *     summary: Actualización parcial de proyecto
+ *     description: Permite actualizar campos específicos de un proyecto sin necesidad de enviar todos los datos.
+ *     tags: [Projects]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del proyecto a actualizar
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Proyecto Web v2"
+ *                 minLength: 2
+ *               description:
+ *                 type: string
+ *                 example: "Actualización parcial del proyecto"
+ *               startDate:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-10-01T00:00:00Z"
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-12-31T00:00:00Z"
+ *               status:
+ *                 type: string
+ *                 enum: [active, paused, completed]
+ *                 example: "active"
+ *     responses:
+ *       200:
+ *         description: Proyecto actualizado parcialmente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                 name:
+ *                   type: string
+ *                 description:
+ *                   type: string
+ *                 status:
+ *                   type: string
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *                 createdBy:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: No autorizado
+ *       403:
+ *         description: No tiene permisos para editar el proyecto
+ *       404:
+ *         description: Proyecto no encontrado
+ *     x-middleware:
+ *       - authMiddleware
+ */
+router.patch('/:projectId', authMiddleware, rbacMiddleware(['admin']), patchProject);
+
+/**
+ * @swagger
+
+/**delete:
  *     summary: Eliminar proyecto
  *     description: Permite a los administradores eliminar un proyecto y todos sus recursos asociados.
  *     tags: [Projects]
@@ -318,7 +401,7 @@ router.put('/:id', updateProject);
  *       - rbacMiddleware
  */
 
-router.delete('/:id', deleteProject);
+router.delete('/:projectId', authMiddleware, rbacMiddleware(['admin']), deleteProject);
 
 /**
  * @swagger
@@ -337,7 +420,7 @@ router.delete('/:id', deleteProject);
  *         description: List of projects for user
  */
 
-router.get('/user/:userId', getProjectsByUserId);
+router.get('/user/:userId', authMiddleware, getProjectsByUserId);
 
 /**
  * @swagger
@@ -582,6 +665,6 @@ router.delete('/member', authMiddleware, rbacMiddleware(['admin']), removeUserFr
  *       - rbacMiddleware
  */
 
-router.get('/:id/members', authMiddleware, rbacMiddleware(['admin']), getProjectMembers);
+router.get('/:projectId/members', authMiddleware, rbacMiddleware(['admin']), getProjectMembers);
 
 export default router;

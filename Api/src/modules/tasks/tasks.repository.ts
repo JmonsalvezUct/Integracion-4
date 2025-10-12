@@ -13,9 +13,9 @@ export const tasksRepository = {
     },
   }),
 
-  getTaskById: (id: number) =>
+  getTaskById: (taskId: number) =>
     prisma.task.findUnique({
-      where: { id },
+      where: { id: taskId },
       include: {
         assignee: true,
         creator: true,
@@ -32,11 +32,18 @@ export const tasksRepository = {
 
   getTasksByProject: (projectId: number) =>
     prisma.task.findMany({
-      where: { projectId },
+      where: {
+        projectId: projectId
+      },
       include: {
         assignee: true,
         creator: true,
+        project: true,
+        attachments: true
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     }),
 
   assignTask: (id: number, assigneeId: number) =>
