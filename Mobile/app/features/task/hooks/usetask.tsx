@@ -72,7 +72,6 @@ export function useTasks(projectId?: string | number) {
         
         return tasks.filter(task => {
         if (!task.dueDate) {
-            console.log(" Tarea sin fecha:", task.title);
             return false;
         }
         

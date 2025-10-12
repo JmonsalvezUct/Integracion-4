@@ -8,52 +8,98 @@
     StyleSheet,
     ActivityIndicator,
     } from "react-native";
-    import { useLocalSearchParams, useRouter } from "expo-router";
+    import {  useRouter } from "expo-router";
+    import { getAccessToken } from "@/lib/secure-store"; 
 
-    export default function EditProjectScreen() {
-    const { id } = useLocalSearchParams();
+    const API_BASE = "https://integracion-4.onrender.com";
+    const PRIMARY_COLOR = "#3B34FF";
+
+    export default function EditProjectScreen({ projectId }: { projectId: string }) {
+
+    const id = projectId;
     const router = useRouter();
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
     const [status, setStatus] = useState("active");
-    const [projectTitle, setProjectTitle] = useState(""); 
+    const [projectTitle, setProjectTitle] = useState("");
     const [loading, setLoading] = useState(true);
 
-    const API_BASE = "https://integracion-4.onrender.com";
 
     useEffect(() => {
         const loadProject = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/projects/1`);
+            console.log("🧠 ID del proyecto:", id);
+
+            const token = await getAccessToken();
+            if (!token) {
+            console.warn("⚠️ No hay token guardado");
+            Alert.alert("No autorizado", "Debes iniciar sesión nuevamente.");
+            return;
+            }
+
+            const res = await fetch(`${API_BASE}/api/projects/${id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Error al obtener proyecto");
+            }
+
             const data = await res.json();
             setName(data.name);
             setDescription(data.description || "");
-            setStatus(data.status);
-            setProjectTitle(data.name); 
+            setStatus(data.status || "active");
+            setProjectTitle(data.name);
+            
         } catch (error) {
-            Alert.alert("Error", "No se pudo cargar el proyecto");
+            console.error(" Error al cargar proyecto:", error);
+            Alert.alert("Error", "No se pudo cargar el proyecto.");
         } finally {
             setLoading(false);
         }
         };
 
-        loadProject();
+        if (id) loadProject();
     }, [id]);
 
     const handleSave = async () => {
         try {
-        const res = await fetch(`${API_BASE}/api/projects/1`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name, description, status }),
+        const token = await getAccessToken();
+        if (!token) {
+            Alert.alert("No autorizado", "Debes iniciar sesión nuevamente.");
+            return;
+        }
+
+        const body = {
+            ...(name && { name }),
+            ...(description && { description }),
+            ...(status && { status }),
+        };
+
+        console.log("📤 PATCH URL:", `${API_BASE}/api/projects/${id}`);
+        console.log("📦 Body:", body);
+
+        const res = await fetch(`${API_BASE}/api/projects/${id}`, {
+            method: "PATCH", 
+            headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`, 
+            },
+            body: JSON.stringify(body),
         });
 
-        if (!res.ok) throw new Error("Error HTTP");
-        Alert.alert(" Éxito", "Proyecto actualizado correctamente");
+        const text = await res.text();
+        console.log(" Respuesta del servidor:", res.status, text);
+
+        if (!res.ok) throw new Error(`Error HTTP (${res.status})`);
+
+        Alert.alert("Éxito", "Proyecto actualizado correctamente");
         router.back();
         } catch (error) {
-        Alert.alert("Error", "No se pudo actualizar");
+        console.error(" Error al guardar proyecto:", error);
+        Alert.alert("Error", "No se pudo actualizar el proyecto.");
         }
     };
 
@@ -94,8 +140,6 @@
         </View>
     );
     }
-
-    const PRIMARY_COLOR = "#3B34FF";
 
     const styles = StyleSheet.create({
     container: {
