@@ -1,7 +1,7 @@
 // services/auth.ts
 import { API_URL } from "@/constants/api";
 import { saveAuth } from "@/lib/secure-store";
-import { getAccessToken, getRefreshToken, clearAuth } from "@/lib/secure-store";
+import { getAccessToken, getRefreshToken, getUserId, clearAuth } from "@/lib/secure-store";
 
 //Login
 export type LoginResponse = {
@@ -77,25 +77,58 @@ export async function registerUser(payload: RegisterPayload) {
 // Renueva tokens
 export async function refreshTokens() {
   const refreshToken = await getRefreshToken();
-  if (!refreshToken) throw new Error("No refresh token");
+  if (!refreshToken) throw new Error("No existe un refresh token");
 
+  console.log("auth.refreshTokens: solicitando /auth/refresh");
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refreshToken }),
   });
 
+  //Lee respuesta del servidor
   const text = await res.text();
-  if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+  if (!res.ok) {
+    console.error("auth.refreshTokens: el endpoint devolvió un error:", res.status, text);
+    throw new Error(text || `HTTP ${res.status}`);
+  }
 
-  const data = JSON.parse(text) as LoginResponse; // mismo shape: accessToken, refreshToken, user
+  //Convierte respuesta de texto a objeto javaScript
+  let data: any = {};
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (err) {
+    console.error("auth.refreshTokens:  error al convertir la respuesta JSON::", err, text);
+    throw new Error("El endpoint de refresh devolvió un JSON inválido");
+  }
+
+  // Extrae los nuevos tokens del backend
+  const newAccess = data?.accessToken;
+  const newRefresh = data?.refreshToken;
+  let userId = data?.user?.id;
+
+  if (!newAccess || !newRefresh) {
+    console.error("auth.refreshTokens: faltan tokens en la respuesta:", data);
+    throw new Error("El refresh no devolvió tokens");
+  }
+
+  if (userId === undefined || userId === null) {
+    // fallback: keep existing stored userId if server didn't return it
+    userId = await getUserId();
+    if (!userId) {
+      console.warn("auth.refreshTokens: el servidor no devolvió userId, se guarda vacío");
+      userId = "";
+    }
+  }
+
   await saveAuth({
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
-    userId: data.user.id,
+    accessToken: newAccess,
+    refreshToken: newRefresh,
+    userId,
   });
 
-  return data;
+  console.log("auth.refreshTokens: tokens actualizados (userId=", userId, ")");
+  return { accessToken: newAccess, refreshToken: newRefresh, user: data?.user } as LoginResponse;
 }
 
 // Cierra sesión (borra tokens + id)

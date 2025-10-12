@@ -13,8 +13,8 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 
-import { API_URL } from "@/constants/api";
 import { getAccessToken, getUserId } from "@/lib/secure-store";
+import { apiFetch } from "@/lib/api-fetch";
 
 type Project = { id: number; name: string; activitiesCount?: number };
 
@@ -34,9 +34,7 @@ export default function HomeScreen() {
       if (!userId || !token) {
         setProjects([]);
       } else {
-        const res = await fetch(`${API_URL}/projects/user/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await apiFetch(`/projects/user/${userId}`);
 
         const data = res.ok ? await res.json() : [];
         // backend devuelve userProject[] 

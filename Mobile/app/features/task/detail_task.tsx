@@ -4,8 +4,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
 const PRIMARY = '#3B34FF';
-import { API_URL } from '@/constants/api';
 import { getAccessToken } from '@/lib/secure-store';
+import { apiFetch } from "@/lib/api-fetch";
 
 
 export default function DetailTask() {
@@ -26,7 +26,7 @@ export default function DetailTask() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_URL}/tasks/${taskId}`);
+        const res = await apiFetch(`/tasks/${taskId}`);
         const json = await res.json();
         setTask(json);
         setEditState({
@@ -60,8 +60,8 @@ export default function DetailTask() {
       if (editState.priority) payload.priority = editState.priority;
 
       const token = await getAccessToken();
-      console.log('PUT', `${API_URL}/tasks/${taskId}`, payload, 'token?', !!token);
-      const res = await fetch(`${API_URL}/tasks/${taskId}`, {
+      console.log('PUT', `/tasks/${taskId}`, payload, 'token?', !!token);
+      const res = await apiFetch(`/tasks/${taskId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -90,7 +90,7 @@ export default function DetailTask() {
   const postComment = async () => {
     if (!taskId || !newComment.trim()) return;
     try {
-      const res = await fetch(`${API_URL}/tasks/${taskId}/comments`, {
+      const res = await apiFetch(`/tasks/${taskId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: newComment }),

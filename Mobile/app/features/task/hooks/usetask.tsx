@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getAccessToken } from "@/lib/secure-store";
 import type { Task, User } from "../types";
+import { apiFetch } from "@/lib/api-fetch";
 
 const API_BASE = "https://integracion-4.onrender.com";
 
@@ -24,10 +25,8 @@ export function useTasks() {
     try {
       const token = await getAccessToken();
       console.log("🔑 Token obtenido:", token ? "SÍ" : "NO");
-      
-      const res = await fetch(`${API_BASE}/api/tasks/projects/${projectId}/tasks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+
+      const res = await apiFetch(`/tasks/projects/${projectId}/tasks`);
       
       console.log("📡 Estado de respuesta:", res.status, res.statusText);
       
@@ -90,9 +89,9 @@ export function useTasks() {
   const assignTaskToUser = async (taskId: number, userId: number) => {
     try {
       const token = await getAccessToken();
-      const res = await fetch(`${API_BASE}/api/tasks/${projectId}/${taskId}/assign`, {
+      const res = await apiFetch(`/tasks/${projectId}/${taskId}/assign`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assigneeId: userId }),
       });
       if (!res.ok) throw new Error(await res.text());

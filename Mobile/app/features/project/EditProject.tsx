@@ -9,6 +9,7 @@
     ActivityIndicator,
     } from "react-native";
     import { useLocalSearchParams, useRouter } from "expo-router";
+    import { apiFetch } from "@/lib/api-fetch";
 
     export default function EditProjectScreen() {
     const { id } = useLocalSearchParams();
@@ -20,12 +21,12 @@
     const [projectTitle, setProjectTitle] = useState(""); 
     const [loading, setLoading] = useState(true);
 
-    const API_BASE = "https://integracion-4.onrender.com";
+    
 
     useEffect(() => {
         const loadProject = async () => {
         try {
-            const res = await fetch(`${API_BASE}/api/projects/1`);
+            const res = await apiFetch(`/projects/1`);
             const data = await res.json();
             setName(data.name);
             setDescription(data.description || "");
@@ -43,7 +44,7 @@
 
     const handleSave = async () => {
         try {
-        const res = await fetch(`${API_BASE}/api/projects/1`, {
+        const res = await apiFetch(`/projects/1`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, description, status }),

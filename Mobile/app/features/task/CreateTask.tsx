@@ -42,7 +42,7 @@ function clean<T extends object>(obj: T): Partial<T> {
 
 
 
-//const BASE_URL = "https://integracion-4.onrender.com";
+const BASE_URL = "https://integracion-4.onrender.com";
 
 function isValidDate(dateStr: string) {
   if (!dateStr) return false;
