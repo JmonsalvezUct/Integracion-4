@@ -1,9 +1,8 @@
     import { useEffect, useMemo, useState } from "react";
     import { getAccessToken } from "@/lib/secure-store";
     import type { Task, User } from "../types";
-import { apiFetch } from "@/lib/api-fetch";
+    import { apiFetch } from "@/lib/api-fetch";
 
-const API_BASE = "https://integracion-4.onrender.com";
 
 export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -26,9 +25,7 @@ export function useTasks(projectId?: string | number) {
         }
 
         const token = await getAccessToken();
-        const res = await fetch(`${API_BASE}/api/tasks/projects/${projectId}/tasks`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await apiFetch(`/tasks/projects/${projectId}/tasks`);
 
         if (!res.ok) throw new Error(await res.text());
 

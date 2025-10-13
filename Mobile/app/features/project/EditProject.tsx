@@ -11,7 +11,7 @@
     import {  useRouter } from "expo-router";
     import { getAccessToken } from "@/lib/secure-store"; 
 
-    const API_BASE = "https://integracion-4.onrender.com";
+
     const PRIMARY_COLOR = "#3B34FF";
     import { apiFetch } from "@/lib/api-fetch";
 
@@ -80,8 +80,6 @@
             ...(status && { status }),
         };
 
-        console.log("📤 PATCH URL:", `${API_BASE}/api/projects/${id}`);
-        console.log("📦 Body:", body);
 
         const res = await apiFetch(`/projects/${id}`, {
             method: "PATCH", 
@@ -93,7 +91,6 @@
         });
 
         const text = await res.text();
-        console.log(" Respuesta del servidor:", res.status, text);
 
         if (!res.ok) throw new Error(`Error HTTP (${res.status})`);
 

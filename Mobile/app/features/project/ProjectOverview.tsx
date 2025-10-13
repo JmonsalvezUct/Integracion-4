@@ -7,6 +7,7 @@
     import DetailProject from "../project/DetailProject";
     import EditProject from "../project/EditProject";
     import { TaskScreen } from "../task/screens/taskscreen";
+    import { apiFetch } from "@/lib/api-fetch";
 
     const PRIMARY = "#3B34FF";
     const API_BASE = "https://integracion-4.onrender.com";
@@ -30,7 +31,7 @@
             return;
             }
 
-            const res = await fetch(`${API_BASE}/api/projects/${projectId}`, {
+            const res = await apiFetch(`/projects/${projectId}`, {
             headers: { Authorization: `Bearer ${token}` },
             });
 
