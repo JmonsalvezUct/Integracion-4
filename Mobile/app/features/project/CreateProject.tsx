@@ -46,7 +46,7 @@
 
         if (res.ok) {
             Alert.alert("Proyecto creado exitosamente");
-            router.replace("/");
+            router.back()
         } else {
             const error = await res.text();
             Alert.alert("Error al crear proyecto", error || "Error desconocido");

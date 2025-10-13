@@ -1,1 +1,1 @@
-export { default } from "./screens/taskscreen";
+export { TaskScreen } from "./screens/taskscreen";

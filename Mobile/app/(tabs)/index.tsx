@@ -69,7 +69,7 @@ export default function HomeScreen() {
   // Función para navegar al detalle del proyecto - RUTA CORREGIDA
   const navigateToProjectDetail = (project: Project) => {
     router.push({
-      pathname: "/features/project/DetailProject",
+      pathname: "/features/project/ProjectOverview",
       params: { 
         id: project.id.toString()
       }
