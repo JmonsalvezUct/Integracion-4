@@ -51,7 +51,7 @@ export const updateTask = async (req: Request, res: Response) => {
   }
 
   try {
-    const task = await tasksService.updateTask(Number(req.params.id), parse.data);
+    const task = await tasksService.updateTask(Number(req.params.taskId), parse.data);
     return res.json(task);
   } catch {
     return res.status(500).json({ error: 'Error al actualizar la tarea' });
@@ -60,7 +60,7 @@ export const updateTask = async (req: Request, res: Response) => {
 
 export const deleteTask = async (req: Request, res: Response) => {
   try {
-    await tasksService.deleteTask(Number(req.params.id));
+    await tasksService.deleteTask(Number(req.params.taskId));
     return res.status(204).send();
   } catch {
     return res.status(500).json({ error: 'Error al eliminar la tarea' });
@@ -90,7 +90,7 @@ export const assignTask = async (req: Request, res: Response) => {
   }
 
   try {
-    const updated = await tasksService.assignTask(Number(req.params.id), parse.data);
+    const updated = await tasksService.assignTask(Number(req.params.taskId), parse.data);
     return res.json(updated);
   } catch {
     return res.status(500).json({ error: 'Error al asignar la tarea' });
@@ -106,7 +106,7 @@ export const changeStatus = async (req: Request, res: Response) => {
   }
 
   try {
-    const updated = await tasksService.changeStatus(Number(req.params.id), parse.data);
+    const updated = await tasksService.changeStatus(Number(req.params.taskId), parse.data);
     return res.json(updated);
   } catch {
     return res.status(500).json({ error: 'Error al cambiar el estado de la tarea' });

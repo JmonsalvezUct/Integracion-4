@@ -20,24 +20,24 @@ export const tasksService = {
     return tasksRepository.getTaskById(taskId);
   },
 
-  updateTask: async (id: number, data: UpdateTaskDTO) => {
-    return tasksRepository.updateTask(id, data);
+  updateTask: async (taskId: number, data: UpdateTaskDTO) => {
+    return tasksRepository.updateTask(taskId, data);
   },
 
-  deleteTask: async (id: number) => {
-    return tasksRepository.deleteTask(id);
+  deleteTask: async (taskId: number) => {
+    return tasksRepository.deleteTask(taskId);
   },
 
   getTasksByProject: async (projectId: number) => {
     return tasksRepository.getTasksByProject(projectId);
   },
 
-  assignTask: async (id: number, data: AssignTaskDTO) => {
-    return tasksRepository.assignTask(id, data.assigneeId);
+  assignTask: async (taskId: number, data: AssignTaskDTO) => {
+    return tasksRepository.assignTask(taskId, data.assigneeId);
   },
 
-  changeStatus: async (id: number, data: ChangeStatusDTO) => {
-    return tasksRepository.changeStatus(id, data.status as StatusType);
+  changeStatus: async (taskId: number, data: ChangeStatusDTO) => {
+    return tasksRepository.changeStatus(taskId, data.status as StatusType);
   },
 
   changePriority: async (id: number, priority: PriorityType) => {

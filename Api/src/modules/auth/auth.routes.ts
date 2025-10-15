@@ -128,8 +128,8 @@ router.post('/login', authLimiter, login);
  * @swagger
  * /auth/refresh:
  *   post:
- *     summary: Refrescar token JWT
- *     description: Genera un nuevo token JWT usando el token de refresco.
+ *     summary: Refrescar access token JWT
+ *     description: Genera un nuevo token de acceso JWT usando el token de refresco.
  *     tags: [Auth]
  *     requestBody:
  *       required: true

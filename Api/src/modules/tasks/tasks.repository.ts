@@ -24,11 +24,11 @@ export const tasksRepository = {
       },
     }),
 
-  updateTask: (id: number, data: UpdateTaskDTO) =>
-    prisma.task.update({ where: { id }, data }),
+  updateTask: (taskId: number, data: UpdateTaskDTO) =>
+    prisma.task.update({ where: { id: taskId }, data }),
 
-  deleteTask: (id: number) =>
-    prisma.task.delete({ where: { id } }),
+  deleteTask: (taskId: number) =>
+    prisma.task.delete({ where: { id: taskId } }),
 
   getTasksByProject: (projectId: number) =>
     prisma.task.findMany({
@@ -46,15 +46,15 @@ export const tasksRepository = {
       }
     }),
 
-  assignTask: (id: number, assigneeId: number) =>
+  assignTask: (taskId: number, assigneeId: number) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { assigneeId },
     }),
 
-  changeStatus: (id: number, status: StatusType) =>
+  changeStatus: (taskId: number, status: StatusType) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { status },
     }),
 
