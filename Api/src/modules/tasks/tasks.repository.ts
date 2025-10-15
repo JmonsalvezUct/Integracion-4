@@ -3,7 +3,8 @@ import type { CreateTaskDTO, UpdateTaskDTO } from './tasks.validators.js';
 import type { StatusType, PriorityType } from '@prisma/client';
 
 export const tasksRepository = {
-  createTask: (data: CreateTaskDTO) => prisma.task.create({ data }),
+  createTask: (data: CreateTaskDTO & { creatorId: number }) =>
+  prisma.task.create({ data }),
 
   getTasks: () => prisma.task.findMany({
     include: {
