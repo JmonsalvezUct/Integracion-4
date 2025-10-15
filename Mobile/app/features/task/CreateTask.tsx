@@ -6,7 +6,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
-
+  import { apiFetch } from "@/lib/api-fetch";
 
 const PRIMARY = "#3B34FF";
 
@@ -100,14 +100,15 @@ const submit = async () => {
 
   try {
 
-    const res = await fetch(`${BASE_URL}/api/tasks/1`, {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify(payload),
-});
+
+
+  const res = await apiFetch(`/api/tasks/1`, {
+      method: "POST",
+      headers: {
+      "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+  });
 
 
     console.log("🧪 Status:", res.status);

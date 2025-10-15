@@ -30,7 +30,8 @@
     authMiddleware,
     changeHistoryController.getByTask
     );
-    router.get("/project/:projectId", authMiddleware, changeHistoryController.getHistoryByProject); // 👈 NUEVO
+    
+    router.get("/project/:projectId", authMiddleware, changeHistoryController.getHistoryByProject); 
 
 
 

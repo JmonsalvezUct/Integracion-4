@@ -82,7 +82,7 @@ deleteTask: async (id: number, userId: number) => {
   if (!task) {
     throw new Error(`No se encontró la tarea con id ${id}`);
   }
-
+  
   const action = await prisma.action.findUnique({ where: { action: 'DELETED' } });//busca en la tabla acciones la accion deleted
   if (!action) throw new Error("Action type 'DELETED' not found");
 

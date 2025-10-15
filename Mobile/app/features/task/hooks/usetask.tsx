@@ -1,9 +1,67 @@
-    import { useEffect, useMemo, useState } from "react";
+    import { useEffect, useMemo, useState, useCallback  } from "react";
     import { getAccessToken } from "@/lib/secure-store";
     import type { Task, User } from "../types";
     import { apiFetch } from "@/lib/api-fetch";
+    
+
+    export interface TaskHistoryEntry {
+    id: number;
+    date: string;
+    description: string;
+    action: {
+        id: number;
+        action: string;
+    };
+    user: {
+        id: number;
+        name: string;
+        email: string;
+    };
+}
+    export function useTaskHistory(taskId?: string | number) {
+    const [history, setHistory] = useState<TaskHistoryEntry[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchHistory = useCallback(async () => {
+        if (!taskId) {
+        console.warn("⚠️ No se proporcionó taskId en useTaskHistory()");
+        return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        try {
+        const token = await getAccessToken();
+        const data = await apiFetch(`/history/task/${taskId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
 
 
+        if (!Array.isArray(data) || data.length === 0) {
+            setHistory([]);
+            return;
+        }
+
+        setHistory(data);
+        } catch (err: any) {
+        console.error("Error al cargar historial:", err);
+        setError(err.message || "Error al cargar historial");
+        } finally {
+        setLoading(false);
+        }
+    }, [taskId]);
+
+    useEffect(() => {
+        fetchHistory();
+    }, [fetchHistory]);
+
+    return { history, loading, error, refresh: fetchHistory };
+    }
+
+
+    
 export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projectName, setProjectName] = useState("");
@@ -14,6 +72,8 @@ export function useTasks(projectId?: string | number) {
     const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
     const [users, setUsers] = useState<User[]>([]); 
     
+
+
 
     const CL_TZ = "America/Santiago";
 
@@ -129,12 +189,40 @@ export function useTasks(projectId?: string | number) {
         return sorted;
     }, [tasks, filters, sortBy, sortDirection]);
 
+    const fetchUsers = async () => {
+    try {
+        if (!projectId) return;
+
+        const token = await getAccessToken();
+        const res = await apiFetch(`/projects/${projectId}/members`, {
+        headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+
+        const data = await res.json();
+
+
+        const list = Array.isArray(data)
+        ? data.map((member) => ({
+            id: member.user?.id,
+            name: member.user?.name,
+            }))
+        : [];
+
+        setUsers(list);
+    } catch (err) {
+        console.error("Error al cargar miembros del proyecto:", err);
+    }
+    };
+
     useEffect(() => {
     if (!projectId) {
         console.warn(" No se proporcionó projectId en useTasks()");
         return;
     }
         fetchTasks();
+        fetchUsers();
     }, [projectId]);
 
     return {

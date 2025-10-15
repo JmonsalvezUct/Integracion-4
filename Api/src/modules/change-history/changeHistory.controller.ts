@@ -2,7 +2,7 @@
     import { changeHistoryService } from "./changeHistory.service.js";
 
     export const changeHistoryController = {
-    // 🟢 Obtener historial de cambios por tarea
+
     async getByTask(req: Request, res: Response) {
         try {
         const taskId = Number(req.params.taskId);
