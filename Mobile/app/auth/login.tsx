@@ -29,6 +29,7 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
 
+  // Al momento de abrir el login comprueba si hay refresh token y permite entrar sin volver a loguearse
   React.useEffect(() => {
     let mounted = true;
     (async () => {

@@ -11,8 +11,9 @@
     import {  useRouter } from "expo-router";
     import { getAccessToken } from "@/lib/secure-store"; 
 
-    const API_BASE = "https://integracion-4.onrender.com";
+
     const PRIMARY_COLOR = "#3B34FF";
+    import { apiFetch } from "@/lib/api-fetch";
 
     export default function EditProjectScreen({ projectId }: { projectId: string }) {
 
@@ -25,6 +26,7 @@
     const [projectTitle, setProjectTitle] = useState("");
     const [loading, setLoading] = useState(true);
 
+    
 
     useEffect(() => {
         const loadProject = async () => {
@@ -38,7 +40,7 @@
             return;
             }
 
-            const res = await fetch(`${API_BASE}/api/projects/${id}`, {
+            const res = await apiFetch(`/projects/${id}`, {
             headers: { Authorization: `Bearer ${token}` },
             });
 
@@ -78,10 +80,8 @@
             ...(status && { status }),
         };
 
-        console.log("📤 PATCH URL:", `${API_BASE}/api/projects/${id}`);
-        console.log("📦 Body:", body);
 
-        const res = await fetch(`${API_BASE}/api/projects/${id}`, {
+        const res = await apiFetch(`/projects/${id}`, {
             method: "PATCH", 
             headers: {
             "Content-Type": "application/json",
@@ -91,7 +91,6 @@
         });
 
         const text = await res.text();
-        console.log(" Respuesta del servidor:", res.status, text);
 
         if (!res.ok) throw new Error(`Error HTTP (${res.status})`);
 

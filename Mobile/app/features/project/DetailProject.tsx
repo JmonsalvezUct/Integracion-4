@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 import { API_URL } from "@/constants/api";
 import { getAccessToken } from "@/lib/secure-store";
+import { apiFetch } from "@/lib/api-fetch";
 
 type ProjectDetail = {
   id: number;
@@ -81,9 +82,8 @@ export default function DetailProject() {
       } : {};
 
       // 1) Detalle del proyecto
-      console.log("🌐 Llamando a:", `${API_URL}/projects/${projectId}`);
-      const projRes = await fetch(`${API_URL}/projects/${projectId}`, { 
-        headers,
+      console.log("🌐 Llamando a:", `/projects/${projectId}`);
+      const projRes = await apiFetch(`/projects/${projectId}`, { 
         method: 'GET'
       });
       
@@ -97,7 +97,7 @@ export default function DetailProject() {
         const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : NaN;
         
         if (Number.isFinite(currentUserId)) {
-          const userProjectsRes = await fetch(`${API_URL}/projects/user/${currentUserId}`, { headers });
+          const userProjectsRes = await apiFetch(`/projects/user/${currentUserId}`);
           if (userProjectsRes.ok) {
             const userProjects = await userProjectsRes.json();
             console.log("📋 Proyectos del usuario:", userProjects);

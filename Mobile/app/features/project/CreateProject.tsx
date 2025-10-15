@@ -2,6 +2,7 @@
     import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from "react-native";
     import { useRouter } from "expo-router";
     import { getAccessToken } from "@/lib/secure-store";
+    import { apiFetch } from "@/lib/api-fetch";
 
     export default function CreateProject() {
     const [name, setName] = useState("");
@@ -33,14 +34,12 @@
         userId: 1,
         };
 
-        const API_BASE = "https://integracion-4.onrender.com";
         setLoading(true);
         try {
-        const res = await fetch(`${API_BASE}/api/projects`, {
+        const res = await apiFetch(`/projects`, {
             method: "POST",
             headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(projectPayload),
         });
