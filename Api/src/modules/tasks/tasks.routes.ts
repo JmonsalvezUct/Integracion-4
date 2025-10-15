@@ -114,7 +114,7 @@ router.get('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(
 
 /**
  * @swagger
- * /tasks/projects/{projectId}/tasks/{taskId}
+ * /tasks/projects/{projectId}/tasks/{taskId}:
  *   put:
  *     summary: Update a task
  *     tags: [Tasks]
@@ -158,7 +158,7 @@ router.delete('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddlewa
 
 /**
  * @swagger
- * /tasks/projects/{projectId}/tasks':
+ * /tasks/projects/{projectId}/tasks:
  *   get:
  *     summary: Obtener tareas por proyecto
  *     description: Lista todas las tareas de un proyecto específico con filtros y paginación.
@@ -262,7 +262,7 @@ router.get('/projects/:projectId/tasks', authMiddleware, rbacMiddleware(['admin'
 
 /**
  * @swagger
- * /tasks/{projectId}/{taskId}/assign
+ * /tasks/{projectId}/{taskId}/assign:
  *   post:
  *     summary: Assign a task to a user
  *     tags: [Tasks]
