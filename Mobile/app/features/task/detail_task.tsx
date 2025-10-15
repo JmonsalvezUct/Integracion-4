@@ -8,8 +8,6 @@ const PRIMARY = '#3B34FF';
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from "@/lib/api-fetch";
 
-
-
 export default function DetailTask() {
   const params = useLocalSearchParams();
   const router = useRouter();
@@ -28,6 +26,26 @@ export default function DetailTask() {
   const [attachModalVisible, setAttachModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
+
+  // Función para subir archivos con FormData (similar a apiFetch)
+  const apiFetchWithFormData = async (url: string, options: any = {}) => {
+    const token = await getAccessToken();
+    
+    const headers = {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    };
+
+    // Si es FormData, no establecer Content-Type (se establece automáticamente con boundary)
+    if (options.body instanceof FormData) {
+      delete headers['Content-Type'];
+    }
+
+    return fetch(`https://integracion-4.onrender.com/api${url}`, {
+      ...options,
+      headers,
+    });
+  };
 
   useEffect(() => {
     if (taskDataParam) {
@@ -138,8 +156,6 @@ export default function DetailTask() {
 
     setUploading(true);
     try {
-      const token = await getAccessToken();
-      
       // Crear FormData
       const formData = new FormData();
       formData.append('file', {
@@ -153,16 +169,11 @@ export default function DetailTask() {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
         fileType: selectedFile.type,
-        apiUrl: `/attachments/${taskId}`
       });
 
-      // Usar fetch directamente para FormData con la URL correcta
-      const res = await apiFetch(`/attachments/${taskId}`, {
+      // Usar la nueva función apiFetchWithFormData en lugar de fetch directo
+      const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          // NO incluir 'Content-Type' - FormData lo establece automáticamente
-        },
         body: formData,
       });
 
