@@ -26,6 +26,36 @@ export default function LoginScreen() {
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  // Al momento de abrir el login comprueba si hay refresh token y permite entrar sin volver a loguearse
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const refresh = await getRefreshToken();
+        if (!mounted) return;
+        if (refresh) {
+          try {
+            await refreshTokens();
+            if (!mounted) return;
+            router.replace("/(tabs)");
+            return;
+          } catch (e) {
+            // fallo al renovar -> limpiar tokens
+            await clearAuth();
+          }
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        if (mounted) setChecking(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // dentro del componente:
 const onSubmit = async () => {

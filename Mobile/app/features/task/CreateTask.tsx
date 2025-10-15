@@ -45,18 +45,16 @@ function clean<T extends object>(obj: T): Partial<T> {
 const BASE_URL = "https://integracion-4.onrender.com";
 
 function isValidDate(dateStr: string) {
-
+  if (!dateStr) return false;
+  
+  const s = String(dateStr).trim().replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-');
   const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(dateStr)) return false;
+  if (!regex.test(s)) return false;
 
-  const [year, month, day] = dateStr.split("-").map(Number);
-  const date = new Date(dateStr);
-
-  return (
-    date.getFullYear() === year &&
-    date.getMonth() + 1 === month &&
-    date.getDate() === day
-  );
+  const [year, month, day] = s.split('-').map(Number);
+  
+  const d = new Date(Date.UTC(year, month - 1, day));
+  return d.getUTCFullYear() === year && d.getUTCMonth() + 1 === month && d.getUTCDate() === day;
 }
 
 
@@ -101,7 +99,7 @@ const submit = async () => {
 });
 
   try {
-    // 👇 Aquí va el projectId en la URL
+
     const res = await fetch(`${BASE_URL}/api/tasks/1`, {
   method: "POST",
   headers: {

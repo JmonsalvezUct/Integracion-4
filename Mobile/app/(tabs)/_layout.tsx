@@ -32,13 +32,7 @@ export default function TabsLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="tasks"
-        options={{
-          title: "Tareas",
-          tabBarIcon: ({ color, size }) => <Ionicons name="list" color={color} size={size} />,
-        }}
-      />
+
 
       
     </Tabs>

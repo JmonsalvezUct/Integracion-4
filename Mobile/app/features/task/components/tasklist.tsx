@@ -14,12 +14,12 @@
     const priorityLabels = { high: "Alta", medium: "Media", low: "Baja" };
 
     return (
-    
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flex: 1, minWidth: 700 }}>
+            <View style={{ flex: 1, minWidth: 650 }}>
             <DataTable style={{ backgroundColor: "#fff", borderRadius: 12 }}>
-
+                
+                {/* Encabezado */}
                 <DataTable.Header>
                 <DataTable.Title onPress={() => onSort("title")}>
                     <Text>Título {sortBy === "title" ? (sortDirection === "asc" ? "▲" : "▼") : "△"}</Text>
@@ -32,7 +32,6 @@
                 <DataTable.Title onPress={() => onSort("priority")}>
                     <Text>Prioridad {sortBy === "priority" ? (sortDirection === "asc" ? "▲" : "▼") : "△"}</Text>
                 </DataTable.Title>
-                <DataTable.Title>Acciones</DataTable.Title>
                 </DataTable.Header>
 
 
@@ -41,11 +40,32 @@
                     <DataTable.Cell style={{ width: 150 }}>
                     <Text style={{ fontWeight: "600" }}>{t.title}</Text>
                     </DataTable.Cell>
-                    <DataTable.Cell style={{ width: 100 }}>{t.status ?? "—"}</DataTable.Cell>
-                    <DataTable.Cell style={{ width: 120 }}>{t.assignee?.name ?? "—"}</DataTable.Cell>
-                    <DataTable.Cell style={{ width: 130 }}>
-                    {t.dueDate ? new Date(t.dueDate).toLocaleDateString("es-CL") : "—"}
+
+                    <DataTable.Cell style={{ width: 100 }}>
+                    {t.status ?? "—"}
                     </DataTable.Cell>
+
+
+                    <DataTable.Cell style={{ width: 120 }}>
+                    <TouchableOpacity onPress={() => onAssign(t.id)}>
+                        <Text
+                        style={{
+                            color: t.assignee?.name ? "#000" : "#3B34FF",
+                            fontWeight: t.assignee?.name ? "400" : "600",
+                            textAlign: "center",
+                        }}
+                        >
+                        {t.assignee?.name || "Asignar"}
+                        </Text>
+                    </TouchableOpacity>
+                    </DataTable.Cell>
+
+                    <DataTable.Cell style={{ width: 130 }}>
+                    {t.dueDate
+                        ? new Date(t.dueDate).toLocaleDateString("es-CL")
+                        : "—"}
+                    </DataTable.Cell>
+
                     <DataTable.Cell style={{ width: 90 }}>
                     <Text
                         style={{
@@ -60,19 +80,6 @@
                     >
                         {priorityLabels[t.priority ?? "low"]}
                     </Text>
-                    </DataTable.Cell>
-                    <DataTable.Cell style={{ width: 100 }}>
-                    <TouchableOpacity
-                        onPress={() => onAssign(t.id)}
-                        style={{
-                        backgroundColor: "#3B34FF",
-                        paddingHorizontal: 8,
-                        paddingVertical: 4,
-                        borderRadius: 6,
-                        }}
-                    >
-                        <Text style={{ color: "#fff" }}>Asignar</Text>
-                    </TouchableOpacity>
                     </DataTable.Cell>
                 </DataTable.Row>
                 ))}

@@ -1,4 +1,4 @@
-// app/features/project/DetailProject.tsx
+
 import React from "react";
 import {
   View,
@@ -14,6 +14,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 
 import { API_URL } from "@/constants/api";
 import { getAccessToken } from "@/lib/secure-store";
+import { apiFetch } from "@/lib/api-fetch";
 
 type ProjectDetail = {
   id: number;
@@ -81,9 +82,8 @@ export default function DetailProject() {
       } : {};
 
       // 1) Detalle del proyecto
-      console.log("🌐 Llamando a:", `${API_URL}/projects/${projectId}`);
-      const projRes = await fetch(`${API_URL}/projects/${projectId}`, { 
-        headers,
+      console.log("🌐 Llamando a:", `/projects/${projectId}`);
+      const projRes = await apiFetch(`/projects/${projectId}`, { 
         method: 'GET'
       });
       
@@ -97,7 +97,7 @@ export default function DetailProject() {
         const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : NaN;
         
         if (Number.isFinite(currentUserId)) {
-          const userProjectsRes = await fetch(`${API_URL}/projects/user/${currentUserId}`, { headers });
+          const userProjectsRes = await apiFetch(`/projects/user/${currentUserId}`);
           if (userProjectsRes.ok) {
             const userProjects = await userProjectsRes.json();
             console.log("📋 Proyectos del usuario:", userProjects);
@@ -290,38 +290,7 @@ export default function DetailProject() {
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
-      {/* Header azul */}
-      <View
-        style={{
-          backgroundColor: "#3f3df8",
-          paddingTop: 28,
-          paddingBottom: 16,
-          paddingHorizontal: 16,
-        }}
-      >
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="arrow-back" size={26} color="#ffffff" />
-          </TouchableOpacity>
 
-          <Text
-            style={{
-              color: "white",
-              fontSize: 18,
-              fontWeight: "700",
-              marginLeft: 12,
-              flexShrink: 1,
-            }}
-            numberOfLines={1}
-          >
-            {project?.name ?? "Detalle del proyecto"}
-          </Text>
-        </View>
-      </View>
 
       {/* Contenido */}
       {loading ? (
