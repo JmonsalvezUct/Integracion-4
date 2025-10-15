@@ -5,7 +5,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  ScrollView,Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -18,6 +18,8 @@ import { AssignModal } from "../components/assignmodal";
 import { ToastMessage } from "../components/toastmessage";
 import { TaskKanban } from "../components/taskkanban";
 import type { Task } from "../types";
+import { getUserId } from "@/lib/secure-store";
+import { useFocusEffect } from "@react-navigation/native";
 
 const PRIMARY = "#3B34FF";
 
@@ -51,7 +53,13 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     selectedDate,
     setSelectedDate,
     tasksForSelectedDate,
+    fetchTasks,
   } = useTasks(projectId);
+useFocusEffect(
+  React.useCallback(() => {
+    fetchTasks();
+  }, [fetchTasks])
+);
 
   const [showFilters, setShowFilters] = useState(false);
   const [columns, setColumns] = useState({
@@ -87,14 +95,14 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     setToastVisible(true);
   };
 
-  // ✅ CORREGIDO: Pasamos la tarea COMPLETA al detalle
+
   const handleTaskPress = (task: Task) => {
     console.log('🔄 Navegando a detalle con task:', task);
     
     router.push({
       pathname: "/features/task/detail_task",
       params: { 
-        taskId: String(task.id), // ✅ Asegurar que sea string
+        taskId: String(task.id),
         taskData: JSON.stringify(task)
       }
     });
@@ -203,17 +211,33 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
         )}
       </View>
 
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() =>
-          router.push({
-            pathname: "/features/task/CreateTask",
-            params: { projectId: 1 },
-          })
+    <TouchableOpacity
+      style={styles.fab}
+      onPress={async () => {
+        const userId = await getUserId();
+
+        if (!userId) {
+          Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
+          return;
         }
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
+
+        if (!projectId) {
+          Alert.alert("Error", "No se encontró el ID del proyecto.");
+          return;
+        }
+
+        router.push({
+          pathname: "/features/task/components/CreateTask",
+          params: {
+            projectId: projectId.toString(),
+            creatorId: userId.toString(),
+          },
+        });
+      }}
+    >
+      <Ionicons name="add" size={28} color="#fff" />
+    </TouchableOpacity>
+
 
       <AssignModal
         visible={assignModalVisible}

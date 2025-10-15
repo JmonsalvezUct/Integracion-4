@@ -6,11 +6,9 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
-
+  import { apiFetch } from "@/lib/api-fetch";
 
 const PRIMARY = "#3B34FF";
-
-
 
 const priorityMap: Record<"Alta" | "Media" | "Baja", "high" | "medium" | "low"> = {
   Alta: "high",
@@ -18,14 +16,6 @@ const priorityMap: Record<"Alta" | "Media" | "Baja", "high" | "medium" | "low"> 
   Baja: "low",
 };
 
-
-
-function toISODateTime(d?: string) {
-  if (!d) return undefined as unknown as string;
-  const [y, m, dd] = d.split("-");
-  if (!y || !m || !dd) return undefined as unknown as string;
-  return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${dd.padStart(2, "0")}T00:00:00.000Z`;
-}
 
 function clean<T extends object>(obj: T): Partial<T> {
   const out: any = {};
@@ -38,24 +28,37 @@ function clean<T extends object>(obj: T): Partial<T> {
 }
 
 
-
-
-
-
-const BASE_URL = "https://integracion-4.onrender.com";
+function normalizeDate(dateStr?: string) {
+  if (!dateStr) return null;
+  const cleaned = dateStr.replace(/[^\d]/g, ""); 
+  if (cleaned.length !== 8) return null;
+  const y = cleaned.slice(0, 4);
+  const m = cleaned.slice(4, 6);
+  const d = cleaned.slice(6, 8);
+  return `${y}-${m}-${d}`;
+}
 
 function isValidDate(dateStr: string) {
-  if (!dateStr) return false;
-  
-  const s = String(dateStr).trim().replace(/\u2010|\u2011|\u2012|\u2013|\u2014/g, '-');
-  const regex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!regex.test(s)) return false;
+  const norm = normalizeDate(dateStr);
+  if (!norm) return false;
 
-  const [year, month, day] = s.split('-').map(Number);
-  
-  const d = new Date(Date.UTC(year, month - 1, day));
-  return d.getUTCFullYear() === year && d.getUTCMonth() + 1 === month && d.getUTCDate() === day;
+  const [y, m, d] = norm.split("-").map(Number);
+  if (m < 1 || m > 12) return false;
+
+  const daysInMonth = [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (d < 1 || d > daysInMonth[m - 1]) return false;
+
+
+  const dt = new Date(y, m - 1, d);
+  return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
 }
+
+function toISODateTime(dateStr?: string) {
+  const norm = normalizeDate(dateStr);
+  if (!norm) return undefined;
+  return norm; 
+}
+
 
 
 
@@ -72,13 +75,12 @@ export default function NewTaskScreen() {
   const canSave = title.trim().length > 0; 
 
 
-
   
 
-const submit = async () => {
-  if (!canSave) {
-    return Alert.alert("Falta título", "El título es obligatorio.");
-  }
+  const submit = async () => {
+    if (!canSave) {
+      return Alert.alert("Falta título", "El título es obligatorio.");
+    }
 
 
 
@@ -89,25 +91,38 @@ const submit = async () => {
     return;
   }
 
-  const payload = clean({
+  const projectId = Number(params.projectId);
+  const creatorId = Number(params.creatorId);
+
+  if (!projectId || !creatorId) {
+    Alert.alert("Error", "Faltan los IDs de proyecto o usuario.");
+    return;
+  }
+
+const payload = clean({
   title,
   description: desc,
-  dueDate: toISODateTime(date),
+  dueDate: normalizeDate(date), 
   priority: priorityMap[priority],
-  projectId: 1,  
-  creatorId: 1,  
+  projectId,
+  creatorId,
 });
+if (!isValidDate(date)) {
+  Alert.alert("Fecha inválida", "Usa el formato YYYY-MM-DD.");
+  return;
+}
 
   try {
+  console.log("📤 Payload enviado:", JSON.stringify(payload, null, 2));
 
-    const res = await fetch(`${BASE_URL}/api/tasks/1`, {
-  method: "POST",
-  headers: {
-    "Authorization": `Bearer ${token}`,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify(payload),
-});
+  const res = await apiFetch(`/tasks/${projectId}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
 
 
     console.log("🧪 Status:", res.status);
@@ -126,6 +141,18 @@ const submit = async () => {
     Alert.alert("Error", "No se pudo crear la tarea. Verifica los datos o el token.");
   }
 };
+const handleDateChange = (text: string) => {
+  const cleaned = text.replace(/[^\d]/g, "");
+  let formatted = cleaned;
+  if (cleaned.length > 4 && cleaned.length <= 6) {
+    formatted = `${cleaned.slice(0, 4)}/${cleaned.slice(4)}`;
+  } else if (cleaned.length > 6) {
+    formatted = `${cleaned.slice(0, 4)}/${cleaned.slice(4, 6)}/${cleaned.slice(6, 8)}`;
+  }
+  setDate(formatted);
+};
+
+
 
 
   return (
@@ -161,12 +188,16 @@ const submit = async () => {
 
           <Text style={styles.label}>Fecha</Text>
           <TextInput
-            placeholder="2025-10-01"
+            placeholder="YYYY/MM/DD"
             placeholderTextColor="#9aa0a6"
             value={date}
-            onChangeText={setDate}
+            onChangeText={handleDateChange}
+            keyboardType="numeric"
+            maxLength={10} 
             style={styles.input}
           />
+
+
 
           <Text style={styles.label}>Prioridad</Text>
           <View style={styles.priorityRow}>

@@ -1,4 +1,4 @@
-// app/(tabs)/index.tsx
+
 import React from "react";
 import {
   View,
@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 
 import { getAccessToken, getUserId } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
+import { useFocusEffect } from "@react-navigation/native";
 
 type Project = { id: number; name: string; activitiesCount?: number };
 
@@ -53,7 +54,12 @@ export default function HomeScreen() {
   React.useEffect(() => {
     load();
   }, [load]);
-
+useFocusEffect(
+  React.useCallback(() => {
+  
+    load();
+  }, [load])
+);
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
     await load();

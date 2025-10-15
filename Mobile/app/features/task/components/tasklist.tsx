@@ -8,7 +8,7 @@ interface TaskListProps {
   sortDirection: "asc" | "desc";
   onSort: (key: "title" | "priority" | "dueDate") => void;
   onAssign: (taskId: number) => void;
-  onTaskPress: (task: Task) => void; // ✅ Cambiado para recibir la tarea completa
+  onTaskPress: (task: Task) => void; 
 }
 
 export function TaskList({ 
@@ -44,10 +44,10 @@ export function TaskList({
 
             {tasks.map((t) => (
               <DataTable.Row key={t.id}>
-                {/* Celda del título - Ahora es clickeable */}
+                {/* Celda del título  */}
                 <DataTable.Cell style={{ width: 150 }}>
                   <TouchableOpacity 
-                    onPress={() => onTaskPress(t)} // ✅ Pasamos la tarea completa
+                    onPress={() => onTaskPress(t)} 
                     style={{ flex: 1 }}
                   >
                     <Text style={{ 
@@ -77,11 +77,12 @@ export function TaskList({
                   </TouchableOpacity>
                 </DataTable.Cell>
 
-                <DataTable.Cell style={{ width: 130 }}>
-                  {t.dueDate
-                    ? new Date(t.dueDate).toLocaleDateString("es-CL")
-                    : "—"}
-                </DataTable.Cell>
+              <DataTable.Cell style={{ width: 130 }}>
+                {t.dueDate
+                  ? t.dueDate.split("T")[0].replace(/-/g, "/")
+                  : "—"}
+              </DataTable.Cell>
+
 
                 <DataTable.Cell style={{ width: 90 }}>
                   <Text

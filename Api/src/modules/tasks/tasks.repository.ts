@@ -3,7 +3,8 @@ import type { CreateTaskDTO, UpdateTaskDTO } from './tasks.validators.js';
 import type { StatusType, PriorityType } from '@prisma/client';
 
 export const tasksRepository = {
-  createTask: (data: CreateTaskDTO) => prisma.task.create({ data }),
+  createTask: (data: CreateTaskDTO & { creatorId: number }) =>
+  prisma.task.create({ data }),
 
   getTasks: () => prisma.task.findMany({
     include: {
@@ -13,9 +14,9 @@ export const tasksRepository = {
     },
   }),
 
-  getTaskById: (id: number) =>
+  getTaskById: (taskId: number) =>
     prisma.task.findUnique({
-      where: { id },
+      where: { id: taskId },
       include: {
         assignee: true,
         creator: true,
@@ -32,11 +33,18 @@ export const tasksRepository = {
 
   getTasksByProject: (projectId: number) =>
     prisma.task.findMany({
-      where: { projectId },
+      where: {
+        projectId: projectId
+      },
       include: {
         assignee: true,
         creator: true,
+        project: true,
+        attachments: true
       },
+      orderBy: {
+        createdAt: 'desc'
+      }
     }),
 
   assignTask: (id: number, assigneeId: number) =>
