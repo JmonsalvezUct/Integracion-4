@@ -64,9 +64,10 @@ export const updateTask = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
+  const userId = (req as any).user?.id;
 
   try {
-    const task = await tasksService.updateTask(Number(req.params.taskId), parse.data);
+    const task = await tasksService.updateTask(Number(req.params.taskId), {...parse.data, userId});
     return res.json(task);
   } catch {
     return res.status(500).json({ error: 'Error al actualizar la tarea' });
@@ -74,9 +75,9 @@ export const updateTask = async (req: Request, res: Response) => {
 };
 
 export const deleteTask = async (req: Request, res: Response) => {
-
+  const userId = (req as any).user?.id;
   try {
-    await tasksService.deleteTask(Number(req.params.taskId));
+    await tasksService.deleteTask(Number(req.params.taskId), userId);
     return res.status(204).send();
   } catch {
     return res.status(500).json({ error: 'Error al eliminar la tarea' });
@@ -104,9 +105,9 @@ export const assignTask = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
-
+  const userId = (req as any).user?.id;
   try {
-    const updated = await tasksService.assignTask(Number(req.params.taskId), parse.data);
+    const updated = await tasksService.assignTask(Number(req.params.taskId), {...parse.data, userId});
     return res.json(updated);
   } catch {
     return res.status(500).json({ error: 'Error al asignar la tarea' });
@@ -120,9 +121,9 @@ export const changeStatus = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
-
+  const userId = (req as any).user?.id;
   try {
-    const updated = await tasksService.changeStatus(Number(req.params.taskId), parse.data);
+    const updated = await tasksService.changeStatus(Number(req.params.taskId), {...parse.data, userId});
     return res.json(updated);
   } catch {
     return res.status(500).json({ error: 'Error al cambiar el estado de la tarea' });
