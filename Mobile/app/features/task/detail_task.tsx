@@ -27,7 +27,7 @@ export default function DetailTask() {
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
 
-  // Función para subir archivos con FormData (similar a apiFetch)
+  // Función para subir archivos con FormData (usa apiFetch internamente)
   const apiFetchWithFormData = async (url: string, options: any = {}) => {
     const token = await getAccessToken();
     
@@ -41,7 +41,8 @@ export default function DetailTask() {
       delete headers['Content-Type'];
     }
 
-    return fetch(`https://integracion-4.onrender.com/api${url}`, {
+    // Usar apiFetch en lugar de fetch directo
+    return apiFetch(url, {
       ...options,
       headers,
     });
@@ -171,7 +172,7 @@ export default function DetailTask() {
         fileType: selectedFile.type,
       });
 
-      // Usar la nueva función apiFetchWithFormData en lugar de fetch directo
+      // Usar la nueva función apiFetchWithFormData
       const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
         method: 'POST',
         body: formData,
