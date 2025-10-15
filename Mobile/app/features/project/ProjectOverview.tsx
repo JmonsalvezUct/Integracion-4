@@ -2,7 +2,7 @@
     import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
     import { Ionicons } from "@expo/vector-icons";
     import { useRouter, useLocalSearchParams } from "expo-router";
-    import { getAccessToken } from "@/lib/secure-store";
+    import { getAccessToken, getUserId  } from "@/lib/secure-store";
 
     import DetailProject from "../project/DetailProject";
     import EditProject from "../project/EditProject";

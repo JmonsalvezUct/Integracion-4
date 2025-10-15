@@ -241,5 +241,6 @@ export function useTasks(projectId?: string | number) {
         selectedDate,
         setSelectedDate,
         tasksForSelectedDate,
+        fetchTasks,
     };
 }
