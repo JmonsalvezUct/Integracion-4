@@ -8,8 +8,7 @@ const PRIMARY = '#3B34FF';
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from "@/lib/api-fetch";
 
-// URL base de la API
-const API_URL = 'https://integracion-4.onrender.com/api';
+
 
 export default function DetailTask() {
   const params = useLocalSearchParams();
@@ -154,11 +153,11 @@ export default function DetailTask() {
         fileName: selectedFile.name,
         fileSize: selectedFile.size,
         fileType: selectedFile.type,
-        apiUrl: `${API_URL}/attachments/${taskId}`
+        apiUrl: `/attachments/${taskId}`
       });
 
       // Usar fetch directamente para FormData con la URL correcta
-      const res = await fetch(`${API_URL}/attachments/${taskId}`, {
+      const res = await apiFetch(`/attachments/${taskId}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
