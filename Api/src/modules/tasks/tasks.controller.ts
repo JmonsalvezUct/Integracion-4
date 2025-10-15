@@ -64,7 +64,7 @@ export const updateTask = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
-  const userId = (req as any).user?.id;
+
   try {
     const task = await tasksService.updateTask(Number(req.params.taskId), parse.data);
     return res.json(task);
@@ -74,7 +74,7 @@ export const updateTask = async (req: Request, res: Response) => {
 };
 
 export const deleteTask = async (req: Request, res: Response) => {
-  const userId = (req as any).user?.id;
+
   try {
     await tasksService.deleteTask(Number(req.params.taskId));
     return res.status(204).send();
@@ -104,7 +104,6 @@ export const assignTask = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
-  const userId = (req as any).user?.id;
 
   try {
     const updated = await tasksService.assignTask(Number(req.params.taskId), parse.data);
@@ -121,7 +120,6 @@ export const changeStatus = async (req: Request, res: Response) => {
       .status(400)
       .json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
   }
-  const userId = (req as any).user?.id;
 
   try {
     const updated = await tasksService.changeStatus(Number(req.params.taskId), parse.data);
