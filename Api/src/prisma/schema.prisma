@@ -100,18 +100,22 @@ model ChangeHistory {
   userId      Int
   taskId      Int?
   projectId   Int?
-  actionId    Int
+  action      ActionType 
   createdAt   DateTime @default(now())
-  action      Action   @relation(fields: [actionId], references: [id])
   project     Project? @relation(fields: [projectId], references: [id])
   task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id])
 }
 
-model Action {
-  id      Int             @id @default(autoincrement())
-  action  String          @unique
-  history ChangeHistory[]
+
+
+enum ActionType {
+  CREATED
+  UPDATED
+  DELETED
+  ASSIGNED
+  STATUS_CHANGED
+  PRIORITY_CHANGED
 }
 
 model RefreshToken {
