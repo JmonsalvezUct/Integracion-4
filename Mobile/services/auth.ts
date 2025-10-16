@@ -2,8 +2,26 @@
 import { API_URL } from "@/constants/api";
 import { saveAuth } from "@/lib/secure-store";
 import { getAccessToken, getRefreshToken, getUserId, clearAuth } from "@/lib/secure-store";
+import * as SecureStore from "expo-secure-store"; 
 
-//Login
+const USER_KEY = "fp.user";
+
+async function saveUserToStore(user: LoginResponse["user"]) {
+  try { await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user)); } catch {}
+}
+export async function getSavedUser(): Promise<LoginResponse["user"] | null> {
+  try {
+    const raw = await SecureStore.getItemAsync(USER_KEY);
+    return raw ? (JSON.parse(raw) as LoginResponse["user"]) : null;
+  } catch {
+    return null;
+  }
+}
+async function clearSavedUser() {
+  try { await SecureStore.deleteItemAsync(USER_KEY); } catch {}
+}
+
+// ---------- Types ----------
 export type LoginResponse = {
   accessToken: string;
   refreshToken: string;
@@ -15,6 +33,7 @@ export type LoginResponse = {
   };
 };
 
+// ---------- Login ----------
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const res = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -23,24 +42,26 @@ export async function login(email: string, password: string): Promise<LoginRespo
   });
 
   if (!res.ok) {
-    
     const msg = await res.text();
     throw new Error(msg || `HTTP ${res.status}`);
   }
 
   const data = (await res.json()) as LoginResponse;
 
-  
+  // Se guarda tokens + id
   await saveAuth({
     accessToken: data.accessToken,
     refreshToken: data.refreshToken,
     userId: data.user.id,
   });
 
+  // se guarda también el usuario completo
+  await saveUserToStore(data.user);
+
   return data;
 }
 
-//Registro
+// ---------- Registro ----------
 export type RegisterPayload = {
   name: string;
   email: string;
@@ -59,7 +80,6 @@ export async function registerUser(payload: RegisterPayload) {
     throw new Error(text || `HTTP ${res.status}`);
   }
 
- 
   let data: any = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
 
@@ -69,12 +89,16 @@ export async function registerUser(payload: RegisterPayload) {
       refreshToken: data.refreshToken,
       userId: data.user.id,
     });
+    // si el backend devuelve user en /register, también se guarda
+    if (data.user) {
+      await saveUserToStore(data.user);
+    }
   }
 
-  return data;
+  return data as Partial<LoginResponse>;
 }
 
-// Renueva tokens
+// ---------- Refresh tokens ----------
 export async function refreshTokens() {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) throw new Error("No existe un refresh token");
@@ -86,14 +110,12 @@ export async function refreshTokens() {
     body: JSON.stringify({ refreshToken }),
   });
 
-  //Lee respuesta del servidor
   const text = await res.text();
   if (!res.ok) {
     console.error("auth.refreshTokens: el endpoint devolvió un error:", res.status, text);
     throw new Error(text || `HTTP ${res.status}`);
   }
 
-  //Convierte respuesta de texto a objeto javaScript
   let data: any = {};
   try {
     data = text ? JSON.parse(text) : {};
@@ -102,7 +124,6 @@ export async function refreshTokens() {
     throw new Error("El endpoint de refresh devolvió un JSON inválido");
   }
 
-  // Extrae los nuevos tokens del backend
   const newAccess = data?.accessToken;
   const newRefresh = data?.refreshToken;
   let userId = data?.user?.id;
@@ -113,7 +134,7 @@ export async function refreshTokens() {
   }
 
   if (userId === undefined || userId === null) {
-    // fallback: keep existing stored userId if server didn't return it
+    //conservar el userId que ya se tenía guardado
     userId = await getUserId();
     if (!userId) {
       console.warn("auth.refreshTokens: el servidor no devolvió userId, se guarda vacío");
@@ -127,11 +148,23 @@ export async function refreshTokens() {
     userId,
   });
 
+  // Si el refresh devolvió user, se actualiza; si no, se conserva el guardado
+  if (data?.user && data.user.email) {
+    await saveUserToStore(data.user);
+  } else {
+    // nada: mantiene el usuario ya persistido
+  }
+
+  // Para quien llame a refreshTokens, se devuelve un "user" consistente
+  const storedUser = await getSavedUser();
+  const user = data?.user ?? storedUser ?? null;
+
   console.log("auth.refreshTokens: tokens actualizados (userId=", userId, ")");
-  return { accessToken: newAccess, refreshToken: newRefresh, user: data?.user } as LoginResponse;
+  return { accessToken: newAccess, refreshToken: newRefresh, user } as LoginResponse;
 }
 
-// Cierra sesión (borra tokens + id)
+// ---------- Logout ----------
 export async function logout() {
   await clearAuth();
+  await clearSavedUser(); //también se borra el usuario persistido
 }
