@@ -28,8 +28,12 @@ export const createApp = () => {
   app.use("/api", routes);
 
 
-  app.use("/api", (_req, res) => res.status(404).json({ message: "Recurso no encontrado" }));//*
   app.use(errorHandler);
+
+  app.use((_req, res) => {
+    res.status(404).json({ message: "Recurso no encontrado" });
+  });
+
 
   return app;
 };
