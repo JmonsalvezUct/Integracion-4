@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
+import { SafeAreaView, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert, Linking, Image, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
+import WebView from 'react-native-webview';
 const PRIMARY = '#3B34FF';
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from "@/lib/api-fetch";
@@ -26,8 +28,14 @@ export default function DetailTask() {
   const [attachModalVisible, setAttachModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
+  
+  // Estados para el visor de archivos
+  const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [currentFileUrl, setCurrentFileUrl] = useState<string | null>(null);
+  const [currentFileName, setCurrentFileName] = useState<string>('');
 
-  // Función para subir archivos con FormData (usa apiFetch internamente)
+  // Función para subir archivos con FormData
   const apiFetchWithFormData = async (url: string, options: any = {}) => {
     const token = await getAccessToken();
     
@@ -36,12 +44,10 @@ export default function DetailTask() {
       ...options.headers,
     };
 
-    // Si es FormData, no establecer Content-Type (se establece automáticamente con boundary)
     if (options.body instanceof FormData) {
       delete headers['Content-Type'];
     }
 
-    // Usar apiFetch en lugar de fetch directo
     return apiFetch(url, {
       ...options,
       headers,
@@ -71,7 +77,6 @@ export default function DetailTask() {
           assigneeId: correctedTask.assigneeId,
         });
 
-        // Cargar adjuntos después de cargar la tarea
         loadAttachments();
       } catch (e: any) {
         console.error('detail fetch error', e);
@@ -157,7 +162,6 @@ export default function DetailTask() {
 
     setUploading(true);
     try {
-      // Crear FormData
       const formData = new FormData();
       formData.append('file', {
         uri: selectedFile.uri,
@@ -165,31 +169,18 @@ export default function DetailTask() {
         name: selectedFile.name,
       } as any);
 
-      console.log('📤 Subiendo archivo:', {
-        taskId,
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        fileType: selectedFile.type,
-      });
-
-      // Usar la nueva función apiFetchWithFormData
       const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
         method: 'POST',
         body: formData,
       });
-
-      console.log('📡 Response status:', res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('❌ Upload failed:', res.status, errorText);
         throw new Error(`Error ${res.status}: ${errorText}`);
       }
 
       const result = await res.json();
-      console.log('✅ Upload success:', result);
       
-      // Actualizar la lista de adjuntos
       setTask((prev: any) => ({
         ...prev,
         attachments: [...(prev.attachments || []), result.attachment]
@@ -199,11 +190,10 @@ export default function DetailTask() {
       setAttachModalVisible(false);
       setSelectedFile(null);
       
-      // Recargar adjuntos
       loadAttachments();
     } catch (error: any) {
       console.error('❌ Upload error:', error);
-      Alert.alert('Error', error.message || 'Error al subir el archivo. Verifica tu conexión.');
+      Alert.alert('Error', error.message || 'Error al subir el archivo');
     } finally {
       setUploading(false);
     }
@@ -215,21 +205,16 @@ export default function DetailTask() {
         'Eliminar archivo',
         '¿Estás seguro de que quieres eliminar este archivo?',
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Cancelar', style: 'cancel' as const },
           {
             text: 'Eliminar',
-            style: 'destructive',
+            style: 'destructive' as const,
             onPress: async () => {
-              const token = await getAccessToken();
               const res = await apiFetch(`/attachments/${attachmentId}`, {
                 method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
               });
 
               if (res.ok) {
-                // Remover el archivo de la lista
                 setTask((prev: any) => ({
                   ...prev,
                   attachments: prev.attachments.filter((a: any) => a.id !== attachmentId)
@@ -248,16 +233,192 @@ export default function DetailTask() {
     }
   };
 
-  const downloadAttachment = async (attachmentId: number, fileName: string) => {
+  // Función para descargar archivo
+  const downloadAttachment = async (attachment: any) => {
     try {
-      // Para descargar en React Native necesitarías una librería adicional
-      // Por ahora solo mostramos un mensaje
-      Alert.alert('Descargar', `Funcionalidad de descarga en desarrollo para: ${fileName}`);
-      console.log('📥 Descargando archivo:', attachmentId, fileName);
-    } catch (error) {
-      console.error('Download error:', error);
-      Alert.alert('Error', 'No se pudo descargar el archivo');
+      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
+      
+      // Abrir en el navegador para descarga
+      await WebBrowser.openBrowserAsync(downloadUrl);
+      
+    } catch (error: any) {
+      console.error('Error en descarga:', error);
+      Alert.alert('Error', `No se pudo descargar el archivo: ${error.message}`);
     }
+  };
+
+  // Función para previsualizar PDF usando Google Docs Viewer
+  const previewPdf = async (attachment: any) => {
+    try {
+      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
+      
+      // Usar Google Docs Viewer para mostrar el PDF
+      const googleDocsViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`;
+      
+      setCurrentFileUrl(googleDocsViewerUrl);
+      setCurrentFileName(attachment.originalName);
+      setPdfViewerVisible(true);
+      
+    } catch (error: any) {
+      console.error('Error al abrir PDF:', error);
+      Alert.alert('Error', 'No se pudo abrir el PDF para visualización');
+    }
+  };
+
+  // Función para previsualizar imágenes
+  const previewImage = async (attachment: any) => {
+    try {
+      const imageUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
+      
+      setCurrentFileUrl(imageUrl);
+      setCurrentFileName(attachment.originalName);
+      setImageViewerVisible(true);
+      
+    } catch (error: any) {
+      console.error('Error al abrir imagen:', error);
+      Alert.alert('Error', 'No se pudo abrir la imagen para visualización');
+    }
+  };
+
+  // Función para determinar el tipo de archivo y mostrar opciones apropiadas
+  const getFileType = (fileName: string) => {
+    const lowerName = fileName.toLowerCase();
+    if (lowerName.endsWith('.pdf')) return 'pdf';
+    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || 
+        lowerName.endsWith('.png') || lowerName.endsWith('.gif') || 
+        lowerName.endsWith('.bmp') || lowerName.endsWith('.webp')) return 'image';
+    return 'other';
+  };
+
+  // Función para manejar el clic en un adjunto - CORREGIDA
+  const handleAttachmentPress = (attachment: any) => {
+    const fileType = getFileType(attachment.originalName);
+    
+    const actions: any[] = [];
+    
+    // Agregar acción de visualización según el tipo de archivo
+    if (fileType === 'pdf') {
+      actions.push({
+        text: '📄 Visualizar PDF',
+        onPress: () => previewPdf(attachment)
+      });
+    } else if (fileType === 'image') {
+      actions.push({
+        text: '🖼️ Visualizar Imagen',
+        onPress: () => previewImage(attachment)
+      });
+    }
+    
+    // Acciones comunes para todos los tipos de archivo
+    actions.push(
+      {
+        text: '📥 Descargar',
+        onPress: () => downloadAttachment(attachment)
+      },
+      {
+        text: '🗑️ Eliminar',
+        style: 'destructive' as const,
+        onPress: () => deleteAttachment(attachment.id)
+      },
+      {
+        text: 'Cancelar',
+        style: 'cancel' as const
+      }
+    );
+
+    Alert.alert(
+      attachment.originalName,
+      `Tipo: ${fileType === 'pdf' ? 'PDF' : fileType === 'image' ? 'Imagen' : 'Archivo'}`,
+      actions
+    );
+  };
+
+  // Componente del visor de PDF con Google Docs Viewer
+  const PdfViewer = () => {
+    if (!currentFileUrl) return null;
+
+    return (
+      <Modal
+        visible={pdfViewerVisible}
+        animationType="slide"
+        onRequestClose={() => setPdfViewerVisible(false)}
+      >
+        <View style={styles.viewerContainer}>
+          <View style={styles.viewerHeader}>
+            <TouchableOpacity 
+              onPress={() => setPdfViewerVisible(false)}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.viewerTitle} numberOfLines={1}>
+              {currentFileName}
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <WebView
+            source={{ uri: currentFileUrl }}
+            style={styles.webview}
+            startInLoadingState={true}
+            renderLoading={() => (
+              <View style={styles.viewerLoading}>
+                <ActivityIndicator size="large" color={PRIMARY} />
+                <Text style={styles.viewerLoadingText}>Cargando PDF...</Text>
+              </View>
+            )}
+            onError={(syntheticEvent) => {
+              const { nativeEvent } = syntheticEvent;
+              console.error('WebView error:', nativeEvent);
+              Alert.alert('Error', 'No se pudo cargar el PDF');
+            }}
+          />
+        </View>
+      </Modal>
+    );
+  };
+
+  // Componente del visor de imágenes
+  const ImageViewer = () => {
+    if (!currentFileUrl) return null;
+
+    return (
+      <Modal
+        visible={imageViewerVisible}
+        animationType="slide"
+        onRequestClose={() => setImageViewerVisible(false)}
+        statusBarTranslucent={true}
+      >
+        <View style={styles.viewerContainer}>
+          <View style={styles.viewerHeader}>
+            <TouchableOpacity 
+              onPress={() => setImageViewerVisible(false)}
+              style={styles.closeButton}
+            >
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            <Text style={styles.viewerTitle} numberOfLines={1}>
+              {currentFileName}
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <View style={styles.imageViewerContent}>
+            <Image
+              source={{ uri: currentFileUrl }}
+              style={styles.fullSizeImage}
+              resizeMode="contain"
+              onLoadStart={() => console.log('Cargando imagen...')}
+              onLoadEnd={() => console.log('Imagen cargada')}
+              onError={(error) => {
+                console.error('Error cargando imagen:', error);
+                Alert.alert('Error', 'No se pudo cargar la imagen');
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+    );
   };
 
   if (!taskId) return <SafeAreaView><Text>ID de tarea no proporcionado</Text></SafeAreaView>;
@@ -268,14 +429,18 @@ export default function DetailTask() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.card}>
           {loading ? (
-            <ActivityIndicator />
+            <ActivityIndicator size="large" color={PRIMARY} />
           ) : error ? (
             <Text style={{ color: 'red' }}>{error}</Text>
           ) : task ? (
             <>
               <View style={styles.headerRow}>
                 {editing ? (
-                  <TextInput style={{ fontSize: 18, fontWeight: '800' }} value={editState.title} onChangeText={(t) => setEditState((s:any)=>({ ...s, title: t }))} />
+                  <TextInput 
+                    style={{ fontSize: 18, fontWeight: '800', flex: 1 }} 
+                    value={editState.title} 
+                    onChangeText={(t) => setEditState((s:any)=>({ ...s, title: t }))} 
+                  />
                 ) : (
                   <Text style={styles.title}>{task.title}</Text>
                 )}
@@ -287,7 +452,12 @@ export default function DetailTask() {
 
               <Text style={styles.sectionLabel}>Descripción</Text>
               {editing ? (
-                <TextInput multiline value={editState.description} onChangeText={(t)=>setEditState((s:any)=>({...s, description: t}))} style={{ minHeight: 80, borderColor: '#eee', borderWidth: 1, padding: 8 }} />
+                <TextInput 
+                  multiline 
+                  value={editState.description} 
+                  onChangeText={(t)=>setEditState((s:any)=>({...s, description: t}))} 
+                  style={{ minHeight: 80, borderColor: '#eee', borderWidth: 1, padding: 8, borderRadius: 8 }} 
+                />
               ) : (
                 <Text style={styles.description}>{task.description}</Text>
               )}
@@ -296,7 +466,11 @@ export default function DetailTask() {
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Fecha límite</Text>
                   {editing ? (
-                    <TextInput value={editState.dueDate} onChangeText={(t)=>setEditState((s:any)=>({...s, dueDate: t}))} />
+                    <TextInput 
+                      value={editState.dueDate} 
+                      onChangeText={(t)=>setEditState((s:any)=>({...s, dueDate: t}))} 
+                      style={{ borderColor: '#eee', borderWidth: 1, padding: 4, borderRadius: 4 }}
+                    />
                   ) : (
                     <Text style={styles.fieldValue}>{task.dueDate}</Text>
                   )}
@@ -318,7 +492,7 @@ export default function DetailTask() {
                 )}
               </View>
 
-              {/* Sección de Adjuntos Mejorada */}
+              {/* Sección de Adjuntos */}
               <View style={styles.attachmentsHeader}>
                 <Text style={styles.sectionLabel}>Adjuntos</Text>
                 <TouchableOpacity 
@@ -331,28 +505,44 @@ export default function DetailTask() {
               </View>
 
               {(task.attachments && task.attachments.length > 0) ? (
-                task.attachments.map((a: any) => (
-                  <View key={a.id} style={styles.attachmentItem}>
-                    <TouchableOpacity 
-                      style={styles.attachRow}
-                      onPress={() => downloadAttachment(a.id, a.originalName)}
-                    >
-                      <Ionicons name="document-attach-outline" size={18} color="#3b3b3b" />
-                      <View style={styles.attachmentInfo}>
-                        <Text style={styles.attachText}>{a.originalName}</Text>
-                        <Text style={styles.attachmentSize}>
-                          {(a.size / 1024).toFixed(1)} KB
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                      onPress={() => deleteAttachment(a.id)}
-                      style={styles.deleteAttachmentButton}
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#ff4444" />
-                    </TouchableOpacity>
-                  </View>
-                ))
+                task.attachments.map((a: any) => {
+                  const fileType = getFileType(a.originalName);
+                  const iconName = fileType === 'pdf' ? "document-text-outline" : 
+                                 fileType === 'image' ? "image-outline" : 
+                                 "document-attach-outline";
+                  
+                  const fileTypeText = fileType === 'pdf' ? 'PDF' : 
+                                     fileType === 'image' ? 'Imagen' : 
+                                     'Archivo';
+
+                  return (
+                    <View key={a.id} style={styles.attachmentItem}>
+                      <TouchableOpacity 
+                        style={styles.attachRow}
+                        onPress={() => handleAttachmentPress(a)}
+                      >
+                        <Ionicons 
+                          name={iconName} 
+                          size={18} 
+                          color="#3b3b3b" 
+                        />
+                        <View style={styles.attachmentInfo}>
+                          <Text style={styles.attachText}>{a.originalName}</Text>
+                          <Text style={styles.attachmentSize}>
+                            {(a.size / 1024).toFixed(1)} KB • {fileTypeText}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        onPress={() => deleteAttachment(a.id)}
+                        style={styles.deleteAttachmentButton}
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#ff4444" />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })
               ) : (
                 <Text style={styles.emptyText}>No hay archivos adjuntos</Text>
               )}
@@ -434,7 +624,12 @@ export default function DetailTask() {
               ))}
 
               <View style={{ marginTop: 8 }}>
-                <TextInput placeholder="Añadir comentario..." value={newComment} onChangeText={setNewComment} style={{ borderWidth:1, borderColor:'#eee', padding:8, borderRadius:8 }} />
+                <TextInput 
+                  placeholder="Añadir comentario..." 
+                  value={newComment} 
+                  onChangeText={setNewComment} 
+                  style={{ borderWidth:1, borderColor:'#eee', padding:8, borderRadius:8 }} 
+                />
                 <TouchableOpacity onPress={postComment} style={{ marginTop:8, backgroundColor: PRIMARY, padding:8, borderRadius:8 }}>
                   <Text style={{ color:'#fff' }}>Comentar</Text>
                 </TouchableOpacity>
@@ -454,6 +649,12 @@ export default function DetailTask() {
           )}
         </View>
       </ScrollView>
+
+      {/* Visor de PDF con Google Docs Viewer */}
+      <PdfViewer />
+      
+      {/* Visor de Imágenes */}
+      <ImageViewer />
     </SafeAreaView>
   );
 }
@@ -461,25 +662,25 @@ export default function DetailTask() {
 const styles = StyleSheet.create({
   container: { padding: 16 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, elevation: 2 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   title: { fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
   metaRight: { alignItems: 'flex-end' },
-  meta: { fontSize: 12, color: '#444' },
-  sectionLabel: { marginTop: 12, fontSize: 13, fontWeight: '700' },
-  description: { marginTop: 6, color: '#333', lineHeight: 20 },
+  meta: { fontSize: 12, color: '#444', marginBottom: 2 },
+  sectionLabel: { marginTop: 16, fontSize: 13, fontWeight: '700', marginBottom: 8 },
+  description: { color: '#333', lineHeight: 20 },
   row: { flexDirection: 'row', marginTop: 12 },
   field: { flex: 1 },
-  fieldLabel: { fontSize: 12, color: '#666' },
+  fieldLabel: { fontSize: 12, color: '#666', marginBottom: 4 },
   fieldValue: { fontSize: 14, fontWeight: '700' },
   attachRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, flex: 1 },
-  attachText: { marginLeft: 8, color: '#2a2a2a' },
+  attachText: { marginLeft: 8, color: '#2a2a2a', fontSize: 14 },
   commentRow: { flexDirection: 'row', marginTop: 10, alignItems: 'flex-start' },
   avatarPlaceholder: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#3B34FF', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  commentUser: { fontWeight: '700' },
+  commentUser: { fontWeight: '700', fontSize: 14 },
   commentDate: { fontWeight: '400', color: '#666', fontSize: 12 },
-  commentText: { color: '#333' },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-  historyText: { color: '#444' },
+  commentText: { color: '#333', marginTop: 4 },
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  historyText: { color: '#444', flex: 1 },
   historyDate: { color: '#777', fontSize: 12 },
   emptyText: {
     color: '#999',
@@ -487,8 +688,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
   },
-
-  // Estilos para adjuntos
   attachmentsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -529,8 +728,6 @@ const styles = StyleSheet.create({
     padding: 6,
     marginLeft: 8,
   },
-
-  // Estilos del modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -624,5 +821,54 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+  // Estilos para los visores
+  viewerContainer: {
+    flex: 1,
+    backgroundColor: '#1a1a1a',
+  },
+  viewerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#2d2d2d',
+    borderBottomWidth: 1,
+    borderBottomColor: '#444',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  viewerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 8,
+  },
+  viewerLoading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a1a',
+  },
+  viewerLoadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#fff',
+  },
+  webview: {
+    flex: 1,
+  },
+  imageViewerContent: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullSizeImage: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height - 100, // Restar altura del header
   },
 });
