@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   View,
@@ -40,6 +39,38 @@ type Member = {
   role: string;
 };
 
+type TaskMetrics = {
+  totalTasks: number;
+  tasksByStatus: {
+    created: number;
+    in_progress: number;
+    completed: number;
+  };
+  tasksByMember: Array<{
+    memberId: number;
+    memberName: string;
+    taskCount: number;
+  }>;
+};
+
+type Task = {
+  id: number;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  assignee?: {
+    id: number;
+    name: string;
+  };
+  assigneeId?: number;
+  assigneeld?: number;
+  _status?: string;
+  projectId?: number;
+  tile?: string;
+};
+
 export default function DetailProject() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const projectId = id ? Number(id) : null;
@@ -51,6 +82,8 @@ export default function DetailProject() {
   const [project, setProject] = React.useState<ProjectDetail | null>(null);
   const [owner, setOwner] = React.useState<Owner | null>(null);
   const [members, setMembers] = React.useState<Member[]>([]);
+  const [taskMetrics, setTaskMetrics] = React.useState<TaskMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = React.useState(false);
 
   // ---------- utils ----------
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -59,6 +92,139 @@ export default function DetailProject() {
     const d = new Date(iso);
     if (isNaN(d.getTime())) return "—";
     return `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()}`;
+  };
+
+  // MISMA LÓGICA QUE TASKSCREEN - Función para determinar el estado basado en fechas
+  const getTaskStatus = (task: any) => {
+    const now = new Date();
+    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+    
+    // Siempre es "creada"
+    const created = true;
+    
+    // "En progreso" si no ha pasado la fecha límite o no tiene fecha
+    const inProgress = !dueDate || dueDate > now;
+    
+    // "Completada" si ya pasó la fecha límite
+    const completed = dueDate && dueDate <= now;
+    
+    return { created, inProgress, completed };
+  };
+
+  // FUNCIÓN QUE USA TASKSCREEN PARA OBTENER TAREAS
+  const fetchProjectTasks = async (projectId: number) => {
+    try {
+      console.log("🔍 Buscando tareas para proyecto:", projectId);
+      
+      // ESTE ES EL ENDPOINT QUE USA TASKSCREEN - según los logs
+      const tasksRes = await apiFetch(`/tasks/projects/${projectId}/tasks`);
+      
+      if (tasksRes.ok) {
+        const tasksData = await tasksRes.json();
+        console.log("✅ Tareas obtenidas del endpoint de TaskScreen:", tasksData);
+        
+        let tasks: Task[] = [];
+        
+        if (Array.isArray(tasksData)) {
+          tasks = tasksData;
+        } else if (tasksData && typeof tasksData === 'object') {
+          tasks = [tasksData];
+        }
+        
+        console.log(`✅ ${tasks.length} tareas procesadas para proyecto ${projectId}`);
+        return tasks;
+      } else {
+        console.warn("❌ No se pudieron cargar las tareas del endpoint principal");
+        return [];
+      }
+    } catch (error) {
+      console.error("❌ Error cargando tareas:", error);
+      return [];
+    }
+  };
+
+  // Función para cargar las métricas de tareas - USANDO LA MISMA LÓGICA QUE TASKSCREEN
+  const fetchTaskMetrics = async (projectId: number) => {
+    if (!projectId) return;
+    
+    setMetricsLoading(true);
+    try {
+      console.log("📊 Cargando métricas para proyecto:", projectId);
+      
+      // Obtener tareas usando el MISMO endpoint que TaskScreen
+      const projectTasks = await fetchProjectTasks(projectId);
+      
+      console.log("📋 Tareas obtenidas para métricas:", projectTasks.length);
+
+      // Calcular métricas
+      const metrics: TaskMetrics = {
+        totalTasks: projectTasks.length,
+        tasksByStatus: {
+          created: 0,
+          in_progress: 0,
+          completed: 0
+        },
+        tasksByMember: []
+      };
+      
+      // Contar por estado usando la MISMA lógica de fechas que TaskScreen
+      projectTasks.forEach((task: Task) => {
+        const status = getTaskStatus(task);
+        
+        // Siempre contar como creada
+        metrics.tasksByStatus.created++;
+        
+        // Contar en progreso y completadas según fechas
+        if (status.inProgress) {
+          metrics.tasksByStatus.in_progress++;
+        }
+        if (status.completed) {
+          metrics.tasksByStatus.completed++;
+        }
+      });
+      
+      // Contar por miembro
+      const memberTaskCounts: { [key: number]: { count: number, name: string } } = {};
+      
+      projectTasks.forEach((task: Task) => {
+        const assigneeId = task.assigneeId || task.assigneeld || (task.assignee ? task.assignee.id : null);
+        const assigneeName = task.assignee?.name || 'Sin asignar';
+        const effectiveAssigneeId = assigneeId || 0; // 0 para "Sin asignar"
+        
+        if (!memberTaskCounts[effectiveAssigneeId]) {
+          memberTaskCounts[effectiveAssigneeId] = {
+            count: 0,
+            name: assigneeName
+          };
+        }
+        memberTaskCounts[effectiveAssigneeId].count++;
+      });
+      
+      // Convertir a array
+      metrics.tasksByMember = Object.entries(memberTaskCounts).map(([memberId, data]) => ({
+        memberId: Number(memberId),
+        memberName: data.name,
+        taskCount: data.count
+      }));
+      
+      console.log("📈 Métricas calculadas:", metrics);
+      setTaskMetrics(metrics);
+      
+    } catch (error) {
+      console.error("❌ Error cargando métricas:", error);
+      // En caso de error, mostrar métricas vacías
+      setTaskMetrics({
+        totalTasks: 0,
+        tasksByStatus: {
+          created: 0,
+          in_progress: 0,
+          completed: 0
+        },
+        tasksByMember: []
+      });
+    } finally {
+      setMetricsLoading(false);
+    }
   };
 
   const fetchData = React.useCallback(async () => {
@@ -75,11 +241,6 @@ export default function DetailProject() {
     try {
       const token = await getAccessToken();
       console.log("✅ Token obtenido:", token ? "Sí" : "No");
-      
-      const headers: HeadersInit = token ? { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      } : {};
 
       // 1) Detalle del proyecto
       console.log("🌐 Llamando a:", `/projects/${projectId}`);
@@ -90,72 +251,7 @@ export default function DetailProject() {
       console.log("📊 Respuesta HTTP:", projRes.status, projRes.statusText);
       
       if (projRes.status === 500) {
-        // Error del servidor - usar el endpoint de proyectos del usuario como fallback
-        console.log("⚠️ Error 500 del servidor, usando proyectos del usuario...");
-        
-        const currentUserIdStr = await SecureStore.getItemAsync("userId");
-        const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : NaN;
-        
-        if (Number.isFinite(currentUserId)) {
-          const userProjectsRes = await apiFetch(`/projects/user/${currentUserId}`);
-          if (userProjectsRes.ok) {
-            const userProjects = await userProjectsRes.json();
-            console.log("📋 Proyectos del usuario:", userProjects);
-            
-            // Buscar este proyecto en la lista
-            const foundProject = Array.isArray(userProjects) 
-              ? userProjects.find((up: any) => up.project?.id === projectId || up.projectId === projectId)
-              : null;
-              
-            if (foundProject && foundProject.project) {
-              console.log("✅ Proyecto encontrado en lista de usuario:", foundProject.project);
-              console.log("👤 Información del usuario:", foundProject.user);
-              console.log("🎭 Rol del usuario:", foundProject.role);
-              
-              const projectDetail: ProjectDetail = {
-                id: foundProject.project.id,
-                name: foundProject.project.name,
-                description: foundProject.project.description,
-                status: foundProject.project.status,
-                startDate: foundProject.project.startDate,
-                endDate: foundProject.project.endDate,
-                createdAt: foundProject.project.createdAt
-              };
-              setProject(projectDetail);
-              
-              // USAR LA INFORMACIÓN REAL DEL USUARIO DESDE LA RESPUESTA
-              if (foundProject.user) {
-                // Establecer como owner (creador)
-                const ownerInfo: Owner = {
-                  id: foundProject.user.id,
-                  name: foundProject.user.name,
-                  email: foundProject.user.email,
-                  role: foundProject.role
-                };
-                setOwner(ownerInfo);
-                
-                // Establecer como miembro también
-                const memberInfo: Member = {
-                  id: foundProject.user.id,
-                  name: foundProject.user.name,
-                  email: foundProject.user.email,
-                  role: foundProject.role === 'admin' ? 'Administrador' : foundProject.role
-                };
-                setMembers([memberInfo]);
-                
-                console.log("✅ Usuario establecido como owner y miembro con datos reales:", ownerInfo);
-              } else {
-                // Fallback si no viene user en la respuesta
-                await setupCurrentUserAsOwnerAndMember(currentUserId);
-              }
-              
-              return; // Salir temprano - éxito con fallback
-            }
-          }
-        }
-        
-        // Si llegamos aquí, todos los fallbacks fallaron
-        throw new Error("El servidor tiene problemas internos. Intenta más tarde.");
+        throw new Error("Error del servidor 500");
       }
       
       if (!projRes.ok) {
@@ -195,6 +291,9 @@ export default function DetailProject() {
       if (Number.isFinite(currentUserId)) {
         await setupCurrentUserAsOwnerAndMember(currentUserId);
       }
+
+      // 3) Cargar métricas de tareas usando el MISMO endpoint que TaskScreen
+      await fetchTaskMetrics(projectId);
 
     } catch (e: any) {
       console.error("💥 Error general:", e);
@@ -249,49 +348,28 @@ export default function DetailProject() {
     setRefreshing(false);
   }, [fetchData]);
 
-  const ownerLabel = owner?.name || owner?.email || (owner ? `Usuario #${owner.id}` : "—");
+  // Función para obtener el nombre del estado
+  const getStatusName = (status: string) => {
+    switch (status) {
+      case 'created': return 'Creadas';
+      case 'in_progress': return 'En Progreso';
+      case 'completed': return 'Completadas';
+      default: return status;
+    }
+  };
 
-  // Función para crear un proyecto de ejemplo (solo para testing)
-  const createExampleProject = () => {
-    const exampleProject: ProjectDetail = {
-      id: projectId || 0,
-      name: "Proyecto de Ejemplo",
-      description: "Este es un proyecto de ejemplo porque el servidor no está respondiendo correctamente.",
-      status: "active",
-      startDate: new Date().toISOString(),
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      createdAt: new Date().toISOString()
-    };
-    setProject(exampleProject);
-    setError(null);
-    
-    // Establecer usuario actual como owner y miembro
-    const currentUserIdStr = SecureStore.getItem("userId");
-    const currentUserId = currentUserIdStr ? Number(currentUserIdStr) : 1;
-    const userName = SecureStore.getItem("userName");
-    const userEmail = SecureStore.getItem("userEmail");
-    
-    const ownerInfo: Owner = {
-      id: currentUserId,
-      name: userName || "Leo",
-      email: userEmail || "leo@test.com",
-      role: "admin"
-    };
-    setOwner(ownerInfo);
-    
-    const memberInfo: Member = {
-      id: currentUserId,
-      name: userName || "Leo",
-      email: userEmail || "leo@test.com",
-      role: "Administrador"
-    };
-    setMembers([memberInfo]);
+  // Función para obtener el color del estado
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'created': return '#666666';
+      case 'in_progress': return '#FFA500';
+      case 'completed': return '#1a8f2e';
+      default: return '#666666';
+    }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
-
-
       {/* Contenido */}
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
@@ -312,43 +390,11 @@ export default function DetailProject() {
               borderColor: "#e6e6e6",
             }}
           >
-            <Text style={{ fontSize: 16, fontWeight: "700", color: "#d00" }}>Error del Servidor</Text>
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#d00" }}>Error</Text>
             <Text style={{ marginTop: 8, color: "#444" }}>{error}</Text>
             <Text style={{ marginTop: 8, fontSize: 12, color: "#666" }}>
               ID del proyecto: {projectId}
             </Text>
-            
-            <Text style={{ marginTop: 16, fontSize: 14, color: "#666" }}>
-              El servidor está experimentando problemas internos.
-            </Text>
-
-            <View style={{ flexDirection: "row", gap: 12, marginTop: 16 }}>
-              <TouchableOpacity
-                onPress={onRefresh}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  backgroundColor: "#3f3df8",
-                  borderRadius: 8,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: "white", fontWeight: "600" }}>Reintentar</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                onPress={createExampleProject}
-                style={{
-                  flex: 1,
-                  padding: 12,
-                  backgroundColor: "#666",
-                  borderRadius: 8,
-                  alignItems: "center",
-                }}
-              >
-                <Text style={{ color: "white", fontWeight: "600" }}>Ver Ejemplo</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
       ) : !project ? (
@@ -427,6 +473,153 @@ export default function DetailProject() {
                 {project.description?.trim() || "Sin descripción"}
               </Text>
             </View>
+          </View>
+
+          {/* Card de Métricas de Tareas */}
+          <View
+            style={{
+              backgroundColor: "white",
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 12,
+              borderWidth: 1,
+              borderColor: "#e6e6e6",
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 16 }}>
+              Métricas de Tareas
+            </Text>
+
+            {metricsLoading ? (
+              <View style={{ alignItems: "center", padding: 20 }}>
+                <ActivityIndicator size="small" />
+                <Text style={{ marginTop: 8, color: "#666", fontSize: 12 }}>
+                  Cargando métricas...
+                </Text>
+              </View>
+            ) : taskMetrics ? (
+              <View>
+                {/* Total de tareas */}
+                <View style={{ 
+                  backgroundColor: "#f8f9fa", 
+                  padding: 12, 
+                  borderRadius: 8, 
+                  marginBottom: 16,
+                  borderLeftWidth: 4,
+                  borderLeftColor: "#3f3df8"
+                }}>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: "#333" }}>
+                    Total de Tareas: {taskMetrics.totalTasks}
+                  </Text>
+                  {taskMetrics.totalTasks === 0 && (
+                    <Text style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+                      No hay tareas en este proyecto
+                    </Text>
+                  )}
+                </View>
+
+                {taskMetrics.totalTasks > 0 && (
+                  <>
+                    {/* Tareas por Estado */}
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#666", marginBottom: 12 }}>
+                      Distribución por Estado:
+                    </Text>
+                    <View style={{ marginBottom: 20 }}>
+                      {Object.entries(taskMetrics.tasksByStatus).map(([status, count]) => (
+                        <View
+                          key={status}
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            paddingVertical: 10,
+                            borderBottomWidth: 1,
+                            borderBottomColor: "#f0f0f0",
+                          }}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
+                            <View
+                              style={{
+                                width: 12,
+                                height: 12,
+                                borderRadius: 6,
+                                backgroundColor: getStatusColor(status),
+                                marginRight: 12,
+                              }}
+                            />
+                            <Text style={{ fontSize: 14, color: "#333", flex: 1 }}>
+                              {getStatusName(status)}
+                            </Text>
+                          </View>
+                          <View style={{
+                            backgroundColor: "#f8f9fa",
+                            paddingHorizontal: 12,
+                            paddingVertical: 4,
+                            borderRadius: 12,
+                            minWidth: 40,
+                            alignItems: "center"
+                          }}>
+                            <Text style={{ fontSize: 14, fontWeight: "700", color: "#333" }}>
+                              {count}
+                            </Text>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Tareas por Miembro */}
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#666", marginBottom: 12 }}>
+                      Tareas por Miembro:
+                    </Text>
+                    {taskMetrics.tasksByMember.length > 0 ? (
+                      <View>
+                        {taskMetrics.tasksByMember.map((member, index) => (
+                          <View
+                            key={member.memberId}
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              paddingVertical: 10,
+                              borderBottomWidth: index === taskMetrics.tasksByMember.length - 1 ? 0 : 1,
+                              borderBottomColor: "#f0f0f0",
+                            }}
+                          >
+                            <Text style={{ fontSize: 14, color: "#333" }} numberOfLines={1}>
+                              {member.memberName}
+                            </Text>
+                            <View style={{
+                              backgroundColor: member.memberName === 'Sin asignar' ? '#ffebee' : '#e8f5e8',
+                              paddingHorizontal: 12,
+                              paddingVertical: 4,
+                              borderRadius: 12,
+                              minWidth: 60,
+                              alignItems: 'center'
+                            }}>
+                              <Text style={{ 
+                                fontSize: 14, 
+                                fontWeight: "600", 
+                                color: member.memberName === 'Sin asignar' ? '#d32f2f' : '#1a8f2e' 
+                              }}>
+                                {member.taskCount} {member.taskCount === 1 ? 'tarea' : 'tareas'}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    ) : (
+                      <Text style={{ color: "#666", fontStyle: "italic", fontSize: 14, textAlign: "center", padding: 20 }}>
+                        No hay tareas asignadas a miembros
+                      </Text>
+                    )}
+                  </>
+                )}
+              </View>
+            ) : (
+              <Text style={{ color: "#666", fontStyle: "italic", textAlign: "center", padding: 20 }}>
+                No se pudieron cargar las métricas
+              </Text>
+            )}
           </View>
 
           {/* Card Miembros */}

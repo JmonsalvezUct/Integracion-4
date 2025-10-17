@@ -1,10 +1,10 @@
     import { prisma } from "../../app/loaders/prisma.js";
-
+    import { ActionType } from "@prisma/client";
     export const changeHistoryRepository = {
     createChange: (data: {
         userId: number;
         description: string;
-        actionId: number;
+        action: ActionType;
         taskId?: number | null;
         projectId?: number | null;
     }) => {
@@ -16,7 +16,6 @@
         where: { taskId },
         include: {
             user: { select: { id: true, name: true, email: true } },
-            action: true,
         },
         orderBy: { createdAt: "desc" },
         });
@@ -25,7 +24,7 @@
         getByProject: (projectId: number) =>
         prisma.changeHistory.findMany({
         where: { projectId },
-        include: { user: true, action: true },
+        include: { user: true},
         orderBy: { createdAt: "desc" },
         }),
     };

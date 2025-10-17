@@ -1,11 +1,11 @@
     import { changeHistoryRepository } from "./changeHistory.repository.js";
-
+    import { ActionType } from "@prisma/client"; 
     export const changeHistoryService = {
 
     async logChange(params: {
         userId: number;
         description: string;
-        actionId: number;
+        action: ActionType;
         taskId?: number | null;
         projectId?: number | null;
     }) {
