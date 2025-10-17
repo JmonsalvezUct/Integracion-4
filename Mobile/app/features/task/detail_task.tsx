@@ -440,13 +440,25 @@ export default function DetailTask() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.sectionLabel}>Historial</Text>
-              {(task.history || []).map((h: any) => (
-                <View key={h.id} style={styles.historyRow}>
-                  <Text style={styles.historyText}>{h.text}</Text>
-                  <Text style={styles.historyDate}>{h.date}</Text>
-                </View>
-              ))}
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/features/task/components/taskhistory",
+                    params: { projectId: task.projectId, taskId },
+                  })
+                }
+                style={{
+                  backgroundColor: PRIMARY,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                  alignItems: "center",
+                  marginTop: 20,
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "600" }}>Ver historial</Text>
+              </TouchableOpacity>
+
+
 
             </>
           ) : (

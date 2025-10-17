@@ -8,22 +8,27 @@
     id: number;
     date: string;
     description: string;
-    action: {
-        id: number;
-        action: string;
-    };
+    action: string; // 👈 ahora es string plano
     user: {
         id: number;
         name: string;
         email: string;
     };
-}
-    export function useTaskHistory(taskId?: string | number) {
+    }
+
+
+    export function useTaskHistory(projectId?: string | number, taskId?: string | number) {
+
     const [history, setHistory] = useState<TaskHistoryEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchHistory = useCallback(async () => {
+        if (!projectId || !taskId) {
+        console.warn("⚠️ No se proporcionaron projectId o taskId en useTaskHistory()");
+        return;
+        }
+
         if (!taskId) {
         console.warn("⚠️ No se proporcionó taskId en useTaskHistory()");
         return;
@@ -34,9 +39,11 @@
 
         try {
         const token = await getAccessToken();
-        const data = await apiFetch(`/history/task/${taskId}`, {
+        const res = await apiFetch(`/history/projects/${projectId}/tasks/${taskId}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+        const data = await res.json();
+        
 
 
         if (!Array.isArray(data) || data.length === 0) {
@@ -51,7 +58,8 @@
         } finally {
         setLoading(false);
         }
-    }, [taskId]);
+    }, [projectId, taskId]);
+
 
     useEffect(() => {
         fetchHistory();
