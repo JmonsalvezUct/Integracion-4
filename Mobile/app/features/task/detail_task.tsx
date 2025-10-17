@@ -1,5 +1,16 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Modal,
+  Alert,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +18,9 @@ import * as DocumentPicker from 'expo-document-picker';
 const PRIMARY = '#3B34FF';
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from "@/lib/api-fetch";
+
+// Se mantiene la constante por si luego se usan eventos, pero ahora NO se usa.
+const TASK_UPDATED = 'TASK_UPDATED';
 
 export default function DetailTask() {
   const params = useLocalSearchParams();
@@ -18,50 +32,69 @@ export default function DetailTask() {
   const [task, setTask] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // modo edición “local”: se edita en UI pero NO se persiste
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState<any>({});
   const [newComment, setNewComment] = useState("");
+
+  //Refs para enfocar inputs al tocar el texto
+  const titleRef = useRef<TextInput>(null);
+  const descRef = useRef<TextInput>(null);
+
+  //Modales para pickers
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
   
-  // Estados para el modal de adjuntos
+  // Estados para el modal de adjuntos (esto sí queda funcional)
   const [attachModalVisible, setAttachModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
 
-  // Función para subir archivos con FormData (usa apiFetch internamente)
+  // Traducciones y helpers
+  const statusMap: Record<string, string> = {
+    created: 'Creada',
+    in_progress: 'En progreso',
+    completed: 'Completada',
+    archived: 'Archivada',
+  };
+  const priorityMap: Record<string, string> = {
+    high: 'Alta',
+    medium: 'Media',
+    low: 'Baja',
+  };
+  const normalize = (v: any) => String(v ?? '').toLowerCase().trim().replace(/\s+/g, '_');
+  const t = (map: Record<string,string>, v: any) => map[normalize(v)] ?? (v ?? '—');
+
+  // Opciones para pickers
+  const STATUS_OPTIONS = ['created', 'in_progress', 'completed', 'archived'];
+  const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
+
+  // === Subir archivos con FormData (usa apiFetch) ===
   const apiFetchWithFormData = async (url: string, options: any = {}) => {
     const token = await getAccessToken();
-    
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     };
-
-    // Si es FormData, no establecer Content-Type (se establece automáticamente con boundary)
-    if (options.body instanceof FormData) {
-      delete headers['Content-Type'];
-    }
-
-    // Usar apiFetch en lugar de fetch directo
-    return apiFetch(url, {
-      ...options,
-      headers,
-    });
+    if (options.body instanceof FormData) delete (headers as any)['Content-Type'];
+    return apiFetch(url, { ...options, headers });
   };
 
+  // === Cargar datos iniciales ===
   useEffect(() => {
     if (taskDataParam) {
       setLoading(true);
       try {
         const parsedTask = JSON.parse(taskDataParam);
-        
         const correctedTask = {
           ...parsedTask,
           title: parsedTask.tile || parsedTask.title,
           status: parsedTask._status || parsedTask.status,
           assigneeId: parsedTask.assigneeld || parsedTask.assigneeId,
         };
-        
         setTask(correctedTask);
+        // El estado de edición copia los valores iniciales, pero NO se persiste nada
         setEditState({
           title: correctedTask.title,
           description: correctedTask.description,
@@ -70,8 +103,6 @@ export default function DetailTask() {
           dueDate: correctedTask.dueDate,
           assigneeId: correctedTask.assigneeId,
         });
-
-        // Cargar adjuntos después de cargar la tarea
         loadAttachments();
       } catch (e: any) {
         console.error('detail fetch error', e);
@@ -95,21 +126,29 @@ export default function DetailTask() {
     }
   };
 
+  // ================== SIN PERSISTENCIA ==================
+  //  funciones “stub” para futuro guardado, pero ahora NO llaman API ni emiten eventos
+  function persistTaskPatch(_id: string | number, _patch: Partial<any>) {
+    // Intencionalmente vacío: aquí se implementará el guardado más adelante.
+  }
+
   const saveEdits = async () => {
-    if (!taskId) return;
-    try {
-      const updatedTask = {
-        ...task,
-        ...editState
-      };
-      
-      setTask(updatedTask);
-      setEditing(false);
-    } catch (e) {
-      console.error('save error', e);
-      setError('Error guardando cambios');
+    // Ahora no guarda. Solo cierra el modo edición y vuelve a mostrar los valores originales.
+    Alert.alert('Guardado deshabilitado', 'El guardado se implementará más adelante.');
+    setEditing(false);
+    // Se revertirán cualquier cambio “local” para que quede claro que no se guardó
+    if (task) {
+      setEditState({
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        assigneeId: task.assigneeId,
+      });
     }
   };
+  // ======================================================
 
   const postComment = async () => {
     if (!taskId || !newComment.trim()) return;
@@ -120,8 +159,8 @@ export default function DetailTask() {
         user: 'Usuario Actual',
         date: new Date().toISOString(),
       };
-      
-      setTask((t: any) => ({ ...t, comments: [...(t.comments || []), comment] }));
+      // Comentarios locales (no se envían a servidor)
+      setTask((t: any) => ({ ...t, comments: [...(t?.comments || []), comment] }));
       setNewComment('');
     } catch (e) {
       console.error('comment error', e);
@@ -129,16 +168,14 @@ export default function DetailTask() {
     }
   };
 
-  // Funciones para adjuntos
+  // Adjuntos (se mantienen funcionando)
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
       });
-
       if (result.canceled) return;
-
       const file = result.assets[0];
       setSelectedFile({
         name: file.name,
@@ -154,10 +191,8 @@ export default function DetailTask() {
 
   const uploadFile = async () => {
     if (!selectedFile || !taskId) return;
-
     setUploading(true);
     try {
-      // Crear FormData
       const formData = new FormData();
       formData.append('file', {
         uri: selectedFile.uri,
@@ -165,31 +200,17 @@ export default function DetailTask() {
         name: selectedFile.name,
       } as any);
 
-      console.log('📤 Subiendo archivo:', {
-        taskId,
-        fileName: selectedFile.name,
-        fileSize: selectedFile.size,
-        fileType: selectedFile.type,
-      });
-
-      // Usar la nueva función apiFetchWithFormData
       const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
         method: 'POST',
         body: formData,
       });
-
-      console.log('📡 Response status:', res.status);
       
       if (!res.ok) {
         const errorText = await res.text();
-        console.error('❌ Upload failed:', res.status, errorText);
         throw new Error(`Error ${res.status}: ${errorText}`);
       }
 
       const result = await res.json();
-      console.log('✅ Upload success:', result);
-      
-      // Actualizar la lista de adjuntos
       setTask((prev: any) => ({
         ...prev,
         attachments: [...(prev.attachments || []), result.attachment]
@@ -198,8 +219,6 @@ export default function DetailTask() {
       Alert.alert('Éxito', 'Archivo subido correctamente');
       setAttachModalVisible(false);
       setSelectedFile(null);
-      
-      // Recargar adjuntos
       loadAttachments();
     } catch (error: any) {
       console.error('❌ Upload error:', error);
@@ -223,13 +242,10 @@ export default function DetailTask() {
               const token = await getAccessToken();
               const res = await apiFetch(`/attachments/${attachmentId}`, {
                 method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`,
-                },
+                headers: { 'Authorization': `Bearer ${token}` },
               });
 
               if (res.ok) {
-                // Remover el archivo de la lista
                 setTask((prev: any) => ({
                   ...prev,
                   attachments: prev.attachments.filter((a: any) => a.id !== attachmentId)
@@ -248,19 +264,52 @@ export default function DetailTask() {
     }
   };
 
-  const downloadAttachment = async (attachmentId: number, fileName: string) => {
+  const downloadAttachment = async (_attachmentId: number, fileName: string) => {
     try {
-      // Para descargar en React Native necesitarías una librería adicional
-      // Por ahora solo mostramos un mensaje
       Alert.alert('Descargar', `Funcionalidad de descarga en desarrollo para: ${fileName}`);
-      console.log('📥 Descargando archivo:', attachmentId, fileName);
     } catch (error) {
       console.error('Download error:', error);
       Alert.alert('Error', 'No se pudo descargar el archivo');
     }
   };
 
+  // Helpers para activar edición al tocar campos de texto
+  const startEditTitle = () => {
+    setEditing(true);
+    setTimeout(() => titleRef.current?.focus(), 0);
+  };
+  const startEditDescription = () => {
+    setEditing(true);
+    setTimeout(() => descRef.current?.focus(), 0);
+  };
+
+  // === SIN guardado al salir: solo se edita localmente ===
+  const onTitleEndEditing = () => {
+    // no-op: no se guarda
+  };
+  const onDescriptionEndEditing = () => {
+    // no-op: no se guarda
+  };
+
+  // Pickers: editar localmente, sin persistir
+  const onPickStatus = (value: string) => {
+    setShowStatusPicker(false);
+    setEditing(true);
+    setEditState((s:any) => ({ ...s, status: value }));
+    // no persist
+  };
+  const onPickPriority = (value: string) => {
+    setShowPriorityPicker(false);
+    setEditing(true);
+    setEditState((s:any) => ({ ...s, priority: value }));
+    // no persist
+  };
+
   if (!taskId) return <SafeAreaView><Text>ID de tarea no proporcionado</Text></SafeAreaView>;
+
+  // Mostrar valores “en edición” si existen, sino los del task original (pero NO se guarda)
+  const statusValue = editState?.status ?? task?.status;
+  const priorityValue = editState?.priority ?? task?.priority;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f4f6fb' }}>
@@ -274,32 +323,63 @@ export default function DetailTask() {
           ) : task ? (
             <>
               <View style={styles.headerRow}>
+                {/* Título editable (local) */}
                 {editing ? (
-                  <TextInput style={{ fontSize: 18, fontWeight: '800' }} value={editState.title} onChangeText={(t) => setEditState((s:any)=>({ ...s, title: t }))} />
+                  <TextInput
+                    ref={titleRef}
+                    style={{ fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 }}
+                    value={editState.title}
+                    onChangeText={(t) => setEditState((s:any)=>({ ...s, title: t }))}
+                    onEndEditing={onTitleEndEditing}   // no-op
+                    placeholder="Título"
+                    returnKeyType="done"
+                  />
                 ) : (
-                  <Text style={styles.title}>{task.title}</Text>
+                  <TouchableOpacity onPress={startEditTitle} style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.title}>{task.title}</Text>
+                  </TouchableOpacity>
                 )}
+
+                {/* Estado y Prioridad (local, sin persistir) */}
                 <View style={styles.metaRight}>
-                  <Text style={styles.meta}>{task.status}</Text>
-                  <Text style={styles.meta}>{task.priority}</Text>
+                  <TouchableOpacity style={styles.metaGroup} onPress={()=> setShowStatusPicker(true)}>
+                    <Text style={styles.metaLabel}>Estado</Text>
+                    <Text style={styles.metaValue}>{t(statusMap, statusValue)}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.metaGroup, { marginLeft: 50 }]} onPress={()=> setShowPriorityPicker(true)}>
+                    <Text style={styles.metaLabel}>Prioridad</Text>
+                    <Text style={styles.metaValue}>{t(priorityMap, priorityValue)}</Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
               <Text style={styles.sectionLabel}>Descripción</Text>
+              {/* Descripción editable (local) */}
               {editing ? (
-                <TextInput multiline value={editState.description} onChangeText={(t)=>setEditState((s:any)=>({...s, description: t}))} style={{ minHeight: 80, borderColor: '#eee', borderWidth: 1, padding: 8 }} />
+                <TextInput
+                  ref={descRef}
+                  multiline
+                  value={editState.description}
+                  onChangeText={(t)=>setEditState((s:any)=>({...s, description: t}))}
+                  onEndEditing={onDescriptionEndEditing}   // no-op
+                  style={{ minHeight: 80, borderColor: '#eee', borderWidth: 1, padding: 8, borderRadius: 8 }}
+                  placeholder="Descripción"
+                  returnKeyType="done"
+                />
               ) : (
-                <Text style={styles.description}>{task.description}</Text>
+                <TouchableOpacity onPress={startEditDescription}>
+                  <Text style={styles.description}>{task.description}</Text>
+                </TouchableOpacity>
               )}
 
               <View style={styles.row}>
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Fecha límite</Text>
-                  {editing ? (
-                    <TextInput value={editState.dueDate} onChangeText={(t)=>setEditState((s:any)=>({...s, dueDate: t}))} />
-                  ) : (
-                    <Text style={styles.fieldValue}>{task.dueDate}</Text>
-                  )}
+                  <Text style={styles.fieldLabel}>Fecha de creación</Text>
+                  <Text style={styles.fieldValue}>
+                    {task.dueDate
+                      ? new Date(task.dueDate).toISOString().slice(0, 10).replace(/-/g, "/")
+                      : "—"}
+                  </Text>
                 </View>
                 <View style={styles.field}>
                   <Text style={styles.fieldLabel}>Responsable</Text>
@@ -307,18 +387,19 @@ export default function DetailTask() {
                 </View>
               </View>
 
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                <TouchableOpacity onPress={()=> setEditing(!editing)} style={{ padding: 8, backgroundColor: '#ddd', borderRadius: 8 }}>
-                  <Text>{editing ? 'Cancelar' : 'Editar'}</Text>
-                </TouchableOpacity>
-                {editing && (
-                  <TouchableOpacity onPress={saveEdits} style={{ padding: 8, backgroundColor: PRIMARY, borderRadius: 8 }}>
-                    <Text style={{ color: '#fff' }}>Guardar</Text>
+              {/* Botón Guardar ahora NO guarda */}
+              {editing && (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TouchableOpacity
+                    onPress={saveEdits}
+                    style={{ padding: 10, backgroundColor: PRIMARY, borderRadius: 8, alignItems:'center' }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight:'700' }}>Guardar</Text>
                   </TouchableOpacity>
-                )}
-              </View>
+                </View>
+              )}
 
-              {/* Sección de Adjuntos Mejorada */}
+              {/* Adjuntos */}
               <View style={styles.attachmentsHeader}>
                 <Text style={styles.sectionLabel}>Adjuntos</Text>
                 <TouchableOpacity 
@@ -422,6 +503,7 @@ export default function DetailTask() {
                 </View>
               </Modal>
 
+              {/* Comentarios / Historial (locales) */}
               <Text style={styles.sectionLabel}>Comentarios</Text>
               {(task.comments || []).map((c: any) => (
                 <View key={c.id} style={styles.commentRow}>
@@ -454,6 +536,43 @@ export default function DetailTask() {
           )}
         </View>
       </ScrollView>
+
+      {/* Picker de Estado (solo local) */}
+      <Modal visible={showStatusPicker} transparent animationType="fade" onRequestClose={()=>setShowStatusPicker(false)}>
+        <View style={styles.sheetOverlay}>
+          <View style={styles.sheetCard}>
+            <Text style={styles.sheetTitle}>Selecciona estado</Text>
+            {STATUS_OPTIONS.map(opt => (
+              <TouchableOpacity key={opt} style={styles.sheetItem} onPress={()=>onPickStatus(opt)}>
+                <Text style={styles.sheetText}>{t(statusMap, opt)}</Text>
+                {normalize(statusValue) === normalize(opt) && <Ionicons name="checkmark" size={18} color={PRIMARY} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.sheetCancel} onPress={()=>setShowStatusPicker(false)}>
+              <Text>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Picker de Prioridad (solo local) */}
+      <Modal visible={showPriorityPicker} transparent animationType="fade" onRequestClose={()=>setShowPriorityPicker(false)}>
+        <View style={styles.sheetOverlay}>
+          <View style={styles.sheetCard}>
+            <Text style={styles.sheetTitle}>Selecciona prioridad</Text>
+            {PRIORITY_OPTIONS.map(opt => (
+              <TouchableOpacity key={opt} style={styles.sheetItem} onPress={()=>onPickPriority(opt)}>
+                <Text style={styles.sheetText}>{t(priorityMap, opt)}</Text>
+                {normalize(priorityValue) === normalize(opt) && <Ionicons name="checkmark" size={18} color={PRIMARY} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.sheetCancel} onPress={()=>setShowPriorityPicker(false)}>
+              <Text>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -463,7 +582,28 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, elevation: 2 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
-  metaRight: { alignItems: 'flex-end' },
+
+  // Estado/Prioridad con etiqueta arriba
+  metaRight: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+  },
+  metaGroup: {
+    alignItems: 'flex-end',
+  },
+  metaLabel: {
+    fontSize: 11,
+    color: '#000000ff',
+    marginBottom: 2,
+    fontWeight: '600',
+  },
+  metaValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#333',
+  },
+
   meta: { fontSize: 12, color: '#444' },
   sectionLabel: { marginTop: 12, fontSize: 13, fontWeight: '700' },
   description: { marginTop: 6, color: '#333', lineHeight: 20 },
@@ -488,7 +628,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Estilos para adjuntos
+  // Adjuntos
   attachmentsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -530,7 +670,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
 
-  // Estilos del modal
+  // Modal adjuntos
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -624,5 +764,38 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     color: '#fff',
     fontWeight: '600',
+  },
+
+  // Bottom-sheet simple para pickers de estado/prioridad
+  sheetOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'flex-end',
+  },
+  sheetCard: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 16,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  sheetItem: {
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomColor: '#f0f0f0',
+    borderBottomWidth: 1,
+  },
+  sheetText: {
+    fontSize: 15,
+  },
+  sheetCancel: {
+    paddingVertical: 14,
+    alignItems: 'center',
   },
 });

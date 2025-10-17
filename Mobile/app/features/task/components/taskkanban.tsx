@@ -1,114 +1,220 @@
-    import React from "react";
-    import { View, Text, ScrollView, StyleSheet } from "react-native";
-    import type { Task } from "../types";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Dimensions,
+} from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { apiFetch } from "@/lib/api-fetch";
+import type { Task } from "../types";
 
-    interface Props {
-    tasks: Task[];
+// Estado conocido en el Kanban (los valores manejados internamente)
+type Status = "created" | "in_progress" | "completed" | "archived";
+
+type ColumnsState = Record<Status, Task[]>;
+
+const STATUS_ORDER: Status[] = ["created", "in_progress", "completed", "archived"];
+const STATUS_LABEL: Record<Status, string> = {
+  created: "created",
+  in_progress: "in_progress",
+  completed: "completed",
+  archived: "archived",
+};
+const STATUS_COLOR: Record<Status, string> = {
+  created: "#3B34FF",
+  in_progress: "#2E86DE",
+  completed: "#27AE60",
+  archived: "#7F8C8D",
+};
+
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+
+export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
+  const params = useLocalSearchParams();
+  // si pasa projectId por la ruta, se usa; de lo contrario se asume 1
+  const projectId = useMemo(() => Number(params?.projectId ?? 1), [params]);
+
+  const [columns, setColumns] = useState<ColumnsState>({
+    created: [],
+    in_progress: [],
+    completed: [],
+    archived: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+
+     
+      const res = await apiFetch(`/tasks/project/${projectId}`);
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+      const data: Task[] = text ? JSON.parse(text) : [];
+
+      const next: ColumnsState = {
+        created: [],
+        in_progress: [],
+        completed: [],
+        archived: [],
+      };
+      for (const t of data) {
+        
+        
+        const raw = (t as any).status as string | undefined;
+        const normalized = STATUS_ORDER.includes(raw as Status) ? (raw as Status) : "created";
+        next[normalized].push({ ...(t as any), status: normalized } as Task);
+      }
+      setColumns(next);
+    } catch (err: any) {
+      console.error("Kanban.fetchTasks error:", err?.message ?? err);
+      setErrorMsg("No se pudieron cargar las tareas.");
+      // Si se dejan columnas vacías aparece “Sin tareas”
+      setColumns({
+        created: [],
+        in_progress: [],
+        completed: [],
+        archived: [],
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    
+    if (externalTasks) {
+      
+      const next: ColumnsState = {
+        created: [],
+        in_progress: [],
+        completed: [],
+        archived: [],
+      };
+      for (const t of externalTasks) {
+        const raw = (t as any).status as string | undefined;
+        const normalized = STATUS_ORDER.includes(raw as Status) ? (raw as Status) : "created";
+        next[normalized].push({ ...(t as any), status: normalized } as Task);
+      }
+      setColumns(next);
+      setLoading(false);
+      return;
     }
 
-    export function TaskKanban({ tasks }: Props) {
-    const columns = [
-        { key: "pending", title: "Pendientes", color: "#E0E0E0" },
-        { key: "in_progress", title: "En progreso", color: "#FFF3CD" },
-        { key: "completed", title: "Completadas", color: "#D4EDDA" },
-    ];
+    fetchTasks();
+  }, [fetchTasks]);
 
-    const getTasksByStatus = (statusKey: string) =>
-        tasks.filter((t) => t.status === statusKey);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchTasks();
+    setRefreshing(false);
+  }, [fetchTasks]);
 
+  if (loading) {
     return (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.kanbanContainer}>
-            {columns.map((col) => {
-            const colTasks = getTasksByStatus(col.key);
-            return (
-                <View key={col.key} style={styles.column}>
-                <Text style={[styles.columnTitle, { color: "#3B34FF" }]}>
-                    {col.title}
-                </Text>
-
-                <ScrollView style={styles.taskList}>
-                    {colTasks.length === 0 ? (
-                    <Text style={styles.emptyText}>Sin tareas</Text>
-                    ) : (
-                    colTasks.map((task) => (
-                        <View key={task.id} style={[styles.card, { backgroundColor: col.color }]}>
-                        <Text style={styles.cardTitle}>{task.title}</Text>
-                        {task.description && (
-                            <Text style={styles.cardDesc} numberOfLines={2}>
-                            {task.description}
-                            </Text>
-                        )}
-                        <Text style={styles.cardMeta}>
-                            {task.assignee?.name || "Sin asignar"}
-                        </Text>
-                        </View>
-                    ))
-                    )}
-                </ScrollView>
-                </View>
-            );
-            })}
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.center}>
+          <ActivityIndicator />
+          <Text style={{ marginTop: 8 }}>Cargando tareas…</Text>
         </View>
-        </ScrollView>
+      </SafeAreaView>
     );
-    }
+  }
 
-    const styles = StyleSheet.create({
-    kanbanContainer: {
-        flexDirection: "row",
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-    },
-    column: {
-        width: 260,
-        marginRight: 12,
-        backgroundColor: "#F8F9FB",
-        borderRadius: 12,
-        padding: 10,
-        borderWidth: 1,
-        borderColor: "#E0E0E0",
-    },
-    columnTitle: {
-        fontSize: 16,
-        fontWeight: "700",
-        marginBottom: 8,
-        textAlign: "center",
-    },
-    taskList: {
-        maxHeight: 600,
-    },
-    card: {
-        padding: 10,
-        borderRadius: 10,
-        marginBottom: 10,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
-    },
-    cardTitle: {
-        fontWeight: "700",
-        fontSize: 14,
-        color: "#333",
-        marginBottom: 4,
-    },
-    cardDesc: {
-        fontSize: 12,
-        color: "#555",
-        marginBottom: 6,
-    },
-    cardMeta: {
-        fontSize: 11,
-        color: "#3B34FF",
-        fontWeight: "500",
-    },
-    emptyText: {
-        fontSize: 12,
-        color: "#999",
-        textAlign: "center",
-        fontStyle: "italic",
-        marginTop: 8,
-    },
-    });
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 12 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
+        {STATUS_ORDER.map((status) => (
+          <View key={status} style={[styles.column, { width: SCREEN_WIDTH * 0.85 }]}>
+            <View style={styles.columnHeader}>
+              <View style={[styles.dot, { backgroundColor: STATUS_COLOR[status] }]} />
+              <Text style={styles.columnTitle}>{STATUS_LABEL[status]}</Text>
+            </View>
+
+            {errorMsg ? (
+              <View style={styles.empty}>
+                <Text style={[styles.emptyText, { color: "#d9534f" }]}>{errorMsg}</Text>
+              </View>
+            ) : columns[status].length === 0 ? (
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>Sin tareas</Text>
+              </View>
+            ) : (
+              // Cada columna puede necesitar scroll vertical si tiene muchas tarjetas.
+              
+              <ScrollView
+                nestedScrollEnabled
+                showsVerticalScrollIndicator
+                style={{ maxHeight: SCREEN_HEIGHT - 180 }}
+                contentContainerStyle={{ paddingBottom: 12 }}
+              >
+                {columns[status].map((task) => (
+                  <View key={task.id} style={styles.card}>
+                    <Text numberOfLines={2} style={styles.cardTitle}>
+                      {task.title}
+                    </Text>
+                    <Text style={styles.cardMeta}>#{task.id} • {task.status}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: "#fff" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+
+  column: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    padding: 12,
+    marginRight: 12,
+  },
+  columnHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 8 },
+  columnTitle: { fontWeight: "800", fontSize: 16 },
+
+  empty: {
+    height: 80,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#f5f5f5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyText: { color: "#9aa1a9", fontStyle: "italic" },
+
+  card: {
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ececec",
+    backgroundColor: "#fafafa",
+    padding: 10,
+    marginBottom: 8,
+    justifyContent: "center",
+    minHeight: 70,
+  },
+  cardTitle: { fontWeight: "700" },
+  cardMeta: { marginTop: 4, fontSize: 12, color: "#7e8590" },
+});
