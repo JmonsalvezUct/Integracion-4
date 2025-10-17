@@ -1,11 +1,10 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { login, refreshTokens } from "@/services/auth";
-import { clearAuth, getRefreshToken } from "@/lib/secure-store";
 import { Alert } from "react-native";
 import { API_URL } from "@/constants/api";
-
+import { login, refreshTokens} from "@/services/auth";
+import { clearAuth, getRefreshToken } from "@/lib/secure-store";
 
 
 import {
@@ -98,7 +97,7 @@ const onSubmit = async () => {
             <Image source={require("@/assets/images/fastplanner-logo.png")} style={styles.logo} />
           </View>
 
-          <Text style={styles.title}>{checking ? "Comprobando sesión..." : "Inicia sesión"}</Text>
+          <Text style={styles.title}>Inicia sesión</Text>
 
           {/* Input correo */}
           <View style={styles.inputWrap}>

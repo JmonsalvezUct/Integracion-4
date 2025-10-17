@@ -1,7 +1,8 @@
     import React, { useState } from "react";
     import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from "react-native";
     import { useRouter } from "expo-router";
-    import { getAccessToken } from "@/lib/secure-store";
+    import { getAccessToken, getUserId } from "@/lib/secure-store";
+
     import { apiFetch } from "@/lib/api-fetch";
 
     export default function CreateProject() {
@@ -20,28 +21,34 @@
         }
 
         const token = await getAccessToken();
+        const userId = await getUserId(); 
+
         if (!token) {
         Alert.alert("Error", "No se encontró token de autenticación.");
         return;
         }
-
+        if (!userId) {
+            Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
+            return;
+        }
         const projectPayload = {
         name,
         description: description || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : undefined,
         endDate: endDate ? new Date(endDate).toISOString() : undefined,
         status: status || undefined,
-        userId: 1,
+        userId: Number(userId),
         };
 
         setLoading(true);
         try {
         const res = await apiFetch(`/projects`, {
-            method: "POST",
-            headers: {
+        method: "POST",
+        headers: {
             "Content-Type": "application/json",
-            },
-            body: JSON.stringify(projectPayload),
+            Authorization: `Bearer ${token}`, 
+        },
+        body: JSON.stringify(projectPayload),
         });
 
         if (res.ok) {
