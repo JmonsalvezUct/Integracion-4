@@ -52,19 +52,27 @@ export const tasksService = {
     const updatedTask = await tasksRepository.updateTask(taskId, taskData); // --> se actualiza la tarea con los nuevos valores
 
 
-    for (const field of Object.keys(taskData) as (keyof UpdateTaskDTO)[]) {
-      const oldValue = oldTask[field];
-      const newValue = taskData[field];
-      if (oldValue !== newValue) {
-        await changeHistoryService.logChange({
-          userId,
-          taskId: taskId,
-          projectId: oldTask.projectId,
-          action: ActionType.UPDATED,
-          description: `Campo "${String(field)}" cambiado de "${oldValue}" a "${newValue}"`,
-        });
-      }
+  for (const field of Object.keys(taskData) as (keyof UpdateTaskDTO)[]) {
+    const oldValue = oldTask[field];
+    const newValue = taskData[field];
+
+    const oldValStr = oldValue instanceof Date ? oldValue.toISOString() : String(oldValue ?? '');
+    const newValStr = newValue instanceof Date ? newValue.toISOString() : String(newValue ?? '');
+
+
+    if (oldValStr !== newValStr) {
+  
+
+      await changeHistoryService.logChange({
+        userId,
+        taskId: taskId,
+        projectId: oldTask.projectId,
+        action: ActionType.UPDATED,
+        description: `Campo "${String(field)}" cambiado de "${oldValStr}" a "${newValStr}"`,
+      });
     }
+  }
+
 
     return updatedTask;
   },

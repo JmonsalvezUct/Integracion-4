@@ -26,7 +26,15 @@ export const tasksRepository = {
     }),
 
   updateTask: (taskId: number, data: UpdateTaskDTO) =>
-    prisma.task.update({ where: { id: taskId }, data }),
+  prisma.task.update({
+    where: { id: taskId },
+    data,
+    include: {
+      project: true,
+      assignee: true,
+      creator: true
+    }
+  }),
 
   deleteTask: (taskId: number) =>
     prisma.task.delete({ where: { id: taskId } }),
