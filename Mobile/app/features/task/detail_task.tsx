@@ -137,6 +137,25 @@ export default function DetailTask() {
     }
   }, [taskDataParam]);
 
+  // 🔔 Si Kanban cambió el estado de ESTA misma tarea, sincroniza la vista de detalle
+useEffect(() => {
+  const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
+    if (!updated) return;
+
+    // Compara contra el id de la tarea abierta en esta pantalla
+    const idActual = Number(taskId);
+    if (Number(updated.id) === idActual) {
+      // Actualiza el objeto task mostrado
+      setTask((prev: any) => (prev ? { ...prev, status: updated.status } : prev));
+      // Si tienes estado de edición activo/controlado, sincronízalo también
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: updated.status }));
+    }
+  });
+
+  return () => sub.remove();
+}, [taskId]);
+
+
   const loadAttachments = async (id?: string | number) => {
     const targetId = id ?? taskId;
     if (!targetId) return;
@@ -155,6 +174,42 @@ export default function DetailTask() {
   function emitTaskUpdated(updated: any) {
     DeviceEventEmitter.emit(TASK_UPDATED, { task: updated });
   }
+
+  //-----------------------------------------------------------------------------
+  // ✅ Cambiar SOLO el estado usando el endpoint especializado /status
+async function updateTaskStatusOnly(id: string | number, newStatus: string) {
+  try {
+    const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
+    if (!projectId) throw new Error("Falta projectId en la tarea.");
+
+    setTask((prev: any) => (prev ? { ...prev, status: newStatus } : prev));
+    setEditState((prev: any) => ({ ...(prev ?? {}), status: newStatus }));
+
+    // use short status endpoint so Kanban and Detail share the same route
+    const res = await apiFetch(`/tasks/${projectId}/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+
+    const serverTask = text ? JSON.parse(text) : { ...(task ?? {}), status: newStatus };
+
+    setTask(serverTask);
+    setEditState((prev: any) => ({ ...(prev ?? {}), status: serverTask.status }));
+    emitTaskUpdated({ ...(task ?? {}), id, status: serverTask.status, projectId });
+  } catch (err) {
+    setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
+    setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
+    Alert.alert("No se pudo actualizar el estado", (err as any)?.message ?? "Intenta nuevamente.");
+    throw err;
+  }
+}
+
+//-----------------------------------------------------------------------
+
+
 
   // Persistencia con PUT /tasks/:projectId/:id
   async function persistTaskPatch(id: string | number, patch: Partial<any>) {
@@ -237,7 +292,27 @@ export default function DetailTask() {
       setEditing(false);
       return;
     }
-    await persistTaskPatch(taskId, patch);
+
+    // If status changed, send it via the dedicated endpoint first, then remove it from the general patch
+    if (patch.status !== undefined) {
+      try {
+        await updateTaskStatusOnly(taskId, patch.status);
+      } catch (e: any) {
+        // rollback local status to server value and notify user, but continue to persist other fields
+        setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
+        setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
+        Alert.alert('No se pudo actualizar el estado', e?.message ?? 'Intenta nuevamente.');
+        // remove status so it won't be sent in PUT
+        delete patch.status;
+      }
+      // if updateTaskStatusOnly succeeded, remove status from patch to avoid sending it again
+      if (patch.status !== undefined) delete patch.status;
+    }
+
+    // Persist remaining fields (if any) via the existing PUT endpoint
+    if (Object.keys(patch).length > 0) {
+      await persistTaskPatch(taskId, patch);
+    }
     setEditing(false);
   };
 
@@ -382,18 +457,29 @@ export default function DetailTask() {
   };
 
   // Pickers: editar y guardar al instante
-  const onPickStatus = (value: string) => {
-    setShowStatusPicker(false);
-    setEditing(true);
-    setEditState((s: any) => ({ ...s, status: value }));
-    if (taskId) persistTaskPatch(taskId, { status: value });
-  };
-  const onPickPriority = (value: string) => {
-    setShowPriorityPicker(false);
-    setEditing(true);
-    setEditState((s: any) => ({ ...s, priority: value }));
-    if (taskId) persistTaskPatch(taskId, { priority: value });
-  };
+const onPickStatus = (value: string) => {
+  setShowStatusPicker(false);
+  setEditing(true);
+  setEditState((s: any) => ({ ...s, status: value }));
+
+  // ✅ Usa el endpoint especializado /tasks/{projectId}/{taskId}/status
+  if (taskId) {
+    updateTaskStatusOnly(taskId, value).catch(() => {
+      // el helper ya maneja rollback y alert; no hacemos nada aquí
+    });
+  }
+};
+
+const onPickPriority = (value: string) => {
+  setShowPriorityPicker(false);
+  setEditing(true);
+  setEditState((s: any) => ({ ...s, priority: value }));
+
+  // ✅ Para el resto de campos (como prioridad) seguimos usando el PUT general
+  if (taskId) {
+    persistTaskPatch(taskId, { priority: value });
+  }
+};
 
   if (!taskId) return <SafeAreaView><Text>ID de tarea no proporcionado</Text></SafeAreaView>;
 

@@ -2,6 +2,11 @@
     import { getAccessToken } from "@/lib/secure-store";
     import type { Task, User } from "../types";
     import { apiFetch } from "@/lib/api-fetch";
+
+    // 🔔 Sincronización global de estado de tareas (Kanban / Detalle / Lista)
+import { DeviceEventEmitter } from "react-native";
+const TASK_UPDATED = "TASK_UPDATED";
+
     
 
     export interface TaskHistoryEntry {
@@ -224,6 +229,20 @@ export function useTasks(projectId?: string | number) {
         fetchTasks();
         fetchUsers();
     }, [projectId]);
+
+    // 🔔 Escucha cambios globales de estado (desde Kanban o Detalle)
+    useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
+        if (!updated) return;
+
+        setTasks((prev) =>
+        prev.map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
+        );
+    });
+
+    return () => sub.remove();
+    }, []);
+
 
     return {
         tasks: visibleTasks,
