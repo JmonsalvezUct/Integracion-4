@@ -10,7 +10,6 @@
     import { apiFetch } from "@/lib/api-fetch";
 
     const PRIMARY = "#3B34FF";
-    const API_BASE = "https://integracion-4.onrender.com";
 
     export default function ProjectOverview() {
     const router = useRouter();

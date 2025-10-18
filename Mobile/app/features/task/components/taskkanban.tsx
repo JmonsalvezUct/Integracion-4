@@ -37,8 +37,12 @@ const SCREEN_HEIGHT = Dimensions.get("window").height;
 
 export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
   const params = useLocalSearchParams();
-  // si pasa projectId por la ruta, se usa; de lo contrario se asume 1
-  const projectId = useMemo(() => Number(params?.projectId ?? 1), [params]);
+  // toma projectId desde params
+const projectId = useMemo<number | null>(() => {
+  const raw = Array.isArray(params?.projectId) ? params.projectId[0] : params?.projectId;
+  const n = raw != null ? Number(raw) : NaN;
+  return Number.isFinite(n) ? n : null;
+}, [params]);
 
   const [columns, setColumns] = useState<ColumnsState>({
     created: [],
