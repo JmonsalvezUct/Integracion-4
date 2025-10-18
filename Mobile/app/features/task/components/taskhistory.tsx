@@ -1,4 +1,4 @@
-    // project/task/screens/task_history.tsx
+
     import React from "react";
     import {
     View,
@@ -29,38 +29,47 @@
         style={{ flex: 1, backgroundColor: "#f8f9ff" }}
         contentContainerStyle={{ padding: 16 }}
         >
-        {/* 🔹 Header */}
+
         <View
-            style={{
+        style={{
             flexDirection: "row",
             alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 20,
-            }}
+            justifyContent: "flex-start",
+            marginBottom: 28,
+            gap: 10,
+        }}
         >
-            <Text style={{ fontSize: 20, fontWeight: "700", color: "#1a1a1a" }}>
-            Historial de cambios
-            </Text>
-
-            <TouchableOpacity
+        <TouchableOpacity
             onPress={() => router.back()}
+            style={{ flexDirection: "row", alignItems: "center" }}
+        >
+            <Ionicons name="arrow-back" size={20} color={PRIMARY} />
+            <Text
             style={{
-                flexDirection: "row",
-                alignItems: "center",
-                backgroundColor: PRIMARY,
-                borderRadius: 8,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
+                color: PRIMARY,
+                fontWeight: "700",
+                fontSize: 16,
+                marginLeft: 6,
             }}
             >
-            <Ionicons name="arrow-back" size={16} color="#fff" />
-            <Text style={{ color: "#fff", fontWeight: "600", marginLeft: 6 }}>
-                Volver
+            Volver
             </Text>
-            </TouchableOpacity>
+        </TouchableOpacity>
+
+        <Text
+            style={{
+            fontSize: 20,
+            fontWeight: "700",
+            color: "#1a1a1a",
+            marginLeft: 10,
+            }}
+        >
+            Historial de cambios
+        </Text>
         </View>
 
-        {/* 🔹 Loading / Error states */}
+
+
         {loading && (
             <View style={{ flex: 1, alignItems: "center", marginTop: 40 }}>
             <ActivityIndicator size="large" color={PRIMARY} />
@@ -88,7 +97,7 @@
 
         {!loading &&
         history.map((entry, index) => {
-            // ✅ Normalizar action (puede ser string u objeto)
+
             const getActionType = (a: unknown): string => {
             if (typeof a === "string") return a;
             if (a && typeof a === "object" && "action" in (a as any)) {
@@ -100,7 +109,7 @@
 
             const actionType = getActionType((entry as any).action).toUpperCase();
 
-            // --- 🎨 Icono, color y label según acción ---
+
             let icon: any = "create-outline";
             let color = "#3B34FF";
             let actionLabel = "Cambio";
@@ -119,7 +128,7 @@
 
             }
 
-            // --- 🗣️ Traducciones de campos ---
+
             const fieldTranslations: Record<string, string> = {
             priority: "Prioridad",
             status: "Estado",
@@ -129,7 +138,6 @@
             title: "Título",
             };
 
-            // --- Traducción de valores comunes ---
             const valueTranslations: Record<string, string> = {
             high: "Alta",
             medium: "Media",
