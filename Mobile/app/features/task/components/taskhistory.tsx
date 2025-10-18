@@ -148,7 +148,7 @@
             null: "—",
             };
 
-            // --- 🧠 Reemplazar campos y valores dentro de la descripción ---
+    
             let translatedDescription = (entry as any).description ?? "";
 
             Object.entries(fieldTranslations).forEach(([key, value]) => {
@@ -160,6 +160,11 @@
             const regex = new RegExp(`\\b${key}\\b`, "gi");
             translatedDescription = translatedDescription.replace(regex, `"${value}"`);
             });
+
+            if ((entry as any).description?.toLowerCase().includes("assigneeid")) {
+            const newAssigneeName = (entry as any).userAssigned?.name || "nuevo responsable";
+            translatedDescription = `Campo "Responsable" cambiado a ${newAssigneeName}`;
+            }
 
             return (
             <View

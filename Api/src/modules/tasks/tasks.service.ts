@@ -51,19 +51,45 @@ createTask: async (data: CreateTaskDTO & { userId: number }) => { //--> toma un 
 
   const { userId, ...taskData } = data;  // se separa el userid de los demas datos de la tarea
   const updatedTask = await tasksRepository.updateTask(id, taskData); // --> se actualiza la tarea con los nuevos valores
-
+    const formatDate = (value: any) => {
+    if (!(value instanceof Date) && isNaN(Date.parse(value))) return String(value ?? "");
+    const d = new Date(value);
+    const day = d.getDate().toString().padStart(2, "0");
+    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
 
   for (const field of Object.keys(taskData) as (keyof UpdateTaskDTO)[]) {
     const oldValue = oldTask[field];
     const newValue = taskData[field];
 
-    const oldValStr = oldValue instanceof Date ? oldValue.toISOString() : String(oldValue ?? '');
-    const newValStr = newValue instanceof Date ? newValue.toISOString() : String(newValue ?? '');
+    const oldValStr = formatDate(oldValue);
+    const newValStr = formatDate(newValue);
 
 
     if (oldValStr !== newValStr) {
   
+      if (field === 'assigneeId') {
+        const newAssignee = newValue
+          ? await prisma.user.findUnique({
+              where: { id: Number(newValue) },
+              select: { name: true },
+            })
+          : null;
 
+                  await changeHistoryService.logChange({
+          userId,
+          taskId: id,
+          projectId: oldTask.projectId,
+          action: ActionType.UPDATED,
+          description: newAssignee
+            ? `Campo "Responsable" cambiado a ${newAssignee.name}`
+            : `Campo "Responsable" eliminado o sin asignar`,
+        });
+
+        continue; 
+      }
       await changeHistoryService.logChange({
         userId,
         taskId: id,
