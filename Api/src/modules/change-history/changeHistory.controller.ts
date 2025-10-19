@@ -25,7 +25,7 @@
         }
     },
     
-    // 🟣 Obtener historial de cambios por proyecto
+
     async getHistoryByProject(req: Request, res: Response) {
         try {
         const projectId = Number(req.params.projectId);
@@ -57,7 +57,7 @@
             return res.status(400).json({ message: "IDs inválidos" });
             }
 
-            // Verificar que la tarea realmente pertenece al proyecto
+    
             const task = await prisma.task.findUnique({
             where: { id: taskId },
             select: { projectId: true },
