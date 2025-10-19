@@ -1,98 +1,184 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import React from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+} from "react-native";
+
+import { MaterialIcons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+
+import { getAccessToken, getUserId } from "@/lib/secure-store";
+import { apiFetch } from "@/lib/api-fetch";
+import { useFocusEffect } from "@react-navigation/native";
+
+type Project = { id: number; name: string; activitiesCount?: number };
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [q, setQ] = React.useState("");
+  const router = useRouter();
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const userId = await getUserId();
+      const token = await getAccessToken();
+
+      if (!userId || !token) {
+        setProjects([]);
+      } else {
+        const res = await apiFetch(`/projects/user/${userId}`);
+
+        const data = res.ok ? await res.json() : [];
+        // backend devuelve userProject[] 
+        const mapped = Array.isArray(data)
+          ? data.map((up: any) => up.project).filter(Boolean)
+          : [];
+        setProjects(mapped);
+      }
+    } catch {
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+useFocusEffect(
+  React.useCallback(() => {
+  
+    load();
+  }, [load])
+);
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
+
+  const filtered = q
+    ? projects.filter((p) =>
+        p.name?.toLowerCase().includes(q.trim().toLowerCase())
+      )
+    : projects;
+
+  // Función para navegar al detalle del proyecto - RUTA CORREGIDA
+  const navigateToProjectDetail = (project: Project) => {
+    router.push({
+      pathname: "/features/project/ProjectOverview",
+      params: { 
+        id: project.id.toString()
+      }
+    });
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#f2f4f7" }}>
+      {/* Header menú, buscador y perfil */}
+      <View
+        style={{
+          backgroundColor: "#3f3df8",
+          paddingTop: 28,
+          paddingBottom: 16,
+          paddingHorizontal: 16,
+        }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          {/* Menú */}
+          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="menu" size={26} color="#ffffff" />
+          </TouchableOpacity>
+
+          {/* Buscador */}
+          <View
+            style={{
+              height: 44,
+              borderRadius: 24,
+              backgroundColor: "white",
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 12,
+              flex: 1,
+              marginHorizontal: 12,
+            }}
+          >
+            <MaterialIcons name="search" size={22} color="#9b9b9b" />
+            <TextInput
+              placeholder="buscar …"
+              value={q}
+              onChangeText={setQ}
+              style={{ flex: 1, marginLeft: 8, fontSize: 16 }}
+              placeholderTextColor="#9b9b9b"
+            />
+          </View>
+          
+          <TouchableOpacity
+            onPress={() => router.push("/features/project/CreateProject")}
+            style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
+          </TouchableOpacity>
+          
+          {/* Perfil */}
+          <TouchableOpacity onPress={() => {}} style={{ padding: 6 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <MaterialIcons name="account-circle" size={26} color="#ffffff" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Contenido */}
+      {loading ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator />
+          <Text style={{ marginTop: 8 }}>Cargando proyectos…</Text>
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={{ padding: 16, flexGrow: 1 }}
+          data={filtered}
+          keyExtractor={(p) => String(p.id)}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListHeaderComponent={
+            <Text style={{ fontSize: 22, fontWeight: "700", marginBottom: 16 }}>
+              Proyectos
+            </Text>
+          }
+          ListEmptyComponent={<View />} 
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => navigateToProjectDetail(item)}
+              style={{
+                backgroundColor: "white",
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: "#e6e6e6",
+              }}
+            >
+              <Text style={{ fontSize: 16, fontWeight: "700" }}>{item.name}</Text>
+              {typeof item.activitiesCount === "number" ? (
+                <Text style={{ marginTop: 6, color: "#666" }}>
+                  {item.activitiesCount} Actividades
+                </Text>
+              ) : null}
+            </TouchableOpacity>
+          )}
+        />
+      )}
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});

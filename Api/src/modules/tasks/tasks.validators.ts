@@ -2,14 +2,14 @@ import { z } from 'zod';
 import { StatusType, PriorityType } from "@prisma/client";
 
 export const CreateTaskSchema = z.object({
-  title: z.string().min(2).max(100),
+  title: z.string().min(2, "El título es obligatorio").max(100),
   description: z.string().max(255).optional(),
   dueDate: z.coerce.date().optional(),
-  projectId: z.number(),
+  projectId: z.number(), // viene del parámetro de ruta
   assigneeId: z.number().optional(),
   status: z.nativeEnum(StatusType).optional(),
   priority: z.nativeEnum(PriorityType).optional(),
-  creatorId: z.number(), 
+
 });
 
 export const UpdateTaskSchema = z.object({
