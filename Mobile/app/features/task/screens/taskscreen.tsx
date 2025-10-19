@@ -25,7 +25,7 @@ const PRIMARY = "#3B34FF";
 
 export function TaskScreen({ projectId }: { projectId?: string }) {
   const router = useRouter();
-  console.log("📦 projectId recibido en TaskScreen:", projectId);
+
 
   if (!projectId) {
     return (

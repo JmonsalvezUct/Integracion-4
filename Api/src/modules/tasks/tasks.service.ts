@@ -115,13 +115,17 @@ updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => 
       throw new Error(`No se encontró la tarea con id ${taskId}`);
     }
     
+      const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
 
     await changeHistoryService.logChange({ // se registra un cambio en el historial, taskid se pone en null porque ya no va a existir y se conserva projectid para que se sepa aque proyecto pertenecia
       userId,
       taskId: null, 
       projectId: task.projectId ?? null,
       action: ActionType.DELETED,
-      description: `Tarea "${task.title}" (ID ${task.id}) eliminada por el usuario ${userId}`,
+      description: `Tarea "${task.title}" (ID ${task.id}) eliminada por ${user?.name || "un usuario desconocido"}`,
     });
 
 
