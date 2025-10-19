@@ -656,6 +656,6 @@ router.delete('/member', authMiddleware, rbacMiddleware(['admin']), removeUserFr
  *       - rbacMiddleware
  */
 
-router.get('/:projectId/members', authMiddleware, rbacMiddleware(['admin']), getProjectMembers);
+router.get('/:projectId/members', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getProjectMembers);
 
 export default router;
