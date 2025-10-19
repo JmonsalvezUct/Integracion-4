@@ -1,6 +1,6 @@
     import type { Request, Response } from "express";
-
     import { tagsService } from "./tags.service.js";
+
 
     export const createTag = async (req: Request, res: Response) => {
     try {
@@ -24,6 +24,7 @@
     }
     };
 
+
     export const assignTagToTask = async (req: Request, res: Response) => {
     try {
         const { taskId, tagId } = req.body;
@@ -35,16 +36,19 @@
     }
     };
 
+
     export const removeTagFromTask = async (req: Request, res: Response) => {
     try {
-        const { taskId, tagId } = req.body;
+        const taskId = Number(req.params.taskId);
+        const tagId = Number(req.params.tagId);
         const result = await tagsService.removeTagFromTask(taskId, tagId);
-        res.json(result);
+        res.json({ message: "Etiqueta eliminada correctamente", result });
     } catch (error: any) {
         console.error("Error al eliminar etiqueta:", error);
         res.status(500).json({ message: "Error al eliminar etiqueta", error: error.message });
     }
     };
+
 
     export const getTagsByTask = async (req: Request, res: Response) => {
     try {
