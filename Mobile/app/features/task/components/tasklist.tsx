@@ -56,6 +56,44 @@ export function TaskList({
                     }}>
                       {t.title}
                     </Text>
+
+      
+                  {t.tags && t.tags.length > 0 && (
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        marginTop: 4,
+                        gap: 4,
+                      }}
+                    >
+                      {t.tags.map(({ tag }) => (
+                        <View
+                          key={tag.id}
+                          style={{
+                            backgroundColor: tag.color || "#EAE8FF",
+                            borderRadius: 12,
+                            paddingHorizontal: 8,
+                            paddingVertical: 3,
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#FFF",
+                              fontSize: 11,
+                              fontWeight: "500",
+                            }}
+                          >
+                            {tag.name}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  //etiquetas
+                  )}
+
                   </TouchableOpacity>
                 </DataTable.Cell>
 

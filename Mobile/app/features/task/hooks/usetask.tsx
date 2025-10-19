@@ -13,22 +13,27 @@ const TASK_UPDATED = "TASK_UPDATED";
     id: number;
     date: string;
     description: string;
-    action: {
-        id: number;
-        action: string;
-    };
+    action: string; 
     user: {
         id: number;
         name: string;
         email: string;
     };
-}
-    export function useTaskHistory(taskId?: string | number) {
+    }
+
+
+    export function useTaskHistory(projectId?: string | number, taskId?: string | number) {
+
     const [history, setHistory] = useState<TaskHistoryEntry[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const fetchHistory = useCallback(async () => {
+        if (!projectId || !taskId) {
+        console.warn("⚠️ No se proporcionaron projectId o taskId en useTaskHistory()");
+        return;
+        }
+
         if (!taskId) {
         console.warn("⚠️ No se proporcionó taskId en useTaskHistory()");
         return;
@@ -39,9 +44,11 @@ const TASK_UPDATED = "TASK_UPDATED";
 
         try {
         const token = await getAccessToken();
-        const data = await apiFetch(`/history/task/${taskId}`, {
+        const res = await apiFetch(`/history/projects/${projectId}/tasks/${taskId}`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+        const data = await res.json();
+        
 
 
         if (!Array.isArray(data) || data.length === 0) {
@@ -56,7 +63,8 @@ const TASK_UPDATED = "TASK_UPDATED";
         } finally {
         setLoading(false);
         }
-    }, [taskId]);
+    }, [projectId, taskId]);
+
 
     useEffect(() => {
         fetchHistory();
@@ -70,7 +78,7 @@ const TASK_UPDATED = "TASK_UPDATED";
 export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projectName, setProjectName] = useState("");
-    const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "" });
+    const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "", search: "",tag: "",});
     const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentStartDate, setCurrentStartDate] = useState(new Date());

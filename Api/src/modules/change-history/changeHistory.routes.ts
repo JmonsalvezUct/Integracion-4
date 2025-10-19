@@ -33,6 +33,11 @@
     
     router.get("/project/:projectId", authMiddleware, changeHistoryController.getHistoryByProject); 
 
-
+    router.get(
+    "/projects/:projectId/tasks/:taskId",
+    authMiddleware,
+    rbacMiddleware(["admin", "developer", "guest"]),
+    changeHistoryController.getByTaskInProject
+    );
 
     export default router;
