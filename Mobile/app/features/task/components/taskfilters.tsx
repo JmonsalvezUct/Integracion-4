@@ -1,12 +1,12 @@
     import React from "react";
-    import { View, Text, Switch, TextInput, StyleSheet, TouchableOpacity } from "react-native";
-    import type { Task } from "../types";
-
+    import { View, Text, Switch, TextInput, StyleSheet } from "react-native";
 
     interface Filters {
     status: string;
     assignee: string;
     dueDate: string;
+    search: string;
+    tag: string;
     }
 
     interface Columns {
@@ -37,23 +37,45 @@
     columns,
     toggleCol,
     showFilters,
-    setShowFilters,
     }: TaskFiltersProps) {
     return (
         <View style={styles.wrapper}>
-
-
         {showFilters && (
             <View style={styles.container}>
-            <ColSwitch label="Estado" value={columns.status} onChange={() => toggleCol("status")} />
-            <ColSwitch label="Responsable" value={columns.assignee} onChange={() => toggleCol("assignee")} />
-            <ColSwitch label="Fecha límite" value={columns.dueDate} onChange={() => toggleCol("dueDate")} />
-            <ColSwitch label="Prioridad" value={columns.priority} onChange={() => toggleCol("priority")} />
+            {/* 🔹 Interruptores de columnas en formato de matriz */}
+            <View style={styles.switchMatrix}>
+                <View style={styles.switchRow}>
+                <ColSwitch
+                    label="Estado"
+                    value={columns.status}
+                    onChange={() => toggleCol("status")}
+                />
+                <ColSwitch
+                    label="Responsable"
+                    value={columns.assignee}
+                    onChange={() => toggleCol("assignee")}
+                />
+                </View>
 
-            <View style={{ gap: 8, width: "100%", marginTop: 10 }}>
-                <Text style={{ fontWeight: "600" }}>Filtros:</Text>
+                <View style={styles.switchRow}>
+                <ColSwitch
+                    label="Fecha límite"
+                    value={columns.dueDate}
+                    onChange={() => toggleCol("dueDate")}
+                />
+                <ColSwitch
+                    label="Prioridad"
+                    value={columns.priority}
+                    onChange={() => toggleCol("priority")}
+                />
+                </View>
+            </View>
 
-                <Text>Estado:</Text>
+            {/* 🔹 Campos de filtro */}
+            <View style={styles.filtersSection}>
+                <Text style={styles.sectionTitle}>Filtros:</Text>
+
+                <Text style={styles.label}>Estado:</Text>
                 <TextInput
                 style={styles.input}
                 placeholder="Ej. Pendiente"
@@ -61,7 +83,15 @@
                 onChangeText={(t) => setFilters({ ...filters, status: t })}
                 />
 
-                <Text>Responsable:</Text>
+                <Text style={styles.label}>Buscar por etiqueta:</Text>
+                <TextInput
+                style={styles.input}
+                placeholder="Ej. 'Urgente', 'Backend', etc."
+                value={filters.tag}
+                onChangeText={(t) => setFilters({ ...filters, tag: t })}
+                />
+
+                <Text style={styles.label}>Responsable:</Text>
                 <TextInput
                 style={styles.input}
                 placeholder="Ej. Juan"
@@ -69,7 +99,7 @@
                 onChangeText={(t) => setFilters({ ...filters, assignee: t })}
                 />
 
-                <Text>Fecha (YYYY-MM-DD):</Text>
+                <Text style={styles.label}>Fecha (YYYY-MM-DD):</Text>
                 <TextInput
                 style={styles.input}
                 placeholder="Ej. 2025-10-01"
@@ -83,10 +113,9 @@
     );
     }
 
-
     function ColSwitch({ label, value, onChange }: ColSwitchProps) {
     return (
-        <View style={styles.switchRow}>
+        <View style={styles.colSwitch}>
         <Text style={styles.switchLabel}>{label}</Text>
         <Switch value={value} onValueChange={onChange} />
         </View>
@@ -94,31 +123,75 @@
     }
 
     const styles = StyleSheet.create({
-        wrapper: {
+    wrapper: {
         backgroundColor: "#fff",
-        marginBottom: 0,
-        paddingHorizontal: 0,
-        paddingVertical: 0,
+        marginBottom: 12,
     },
 
-    
-    container: { flexDirection: "row", flexWrap: "wrap", gap: 10, backgroundColor: "#EFEFFF" },
+    container: {
+        backgroundColor: "#EFF2F7", 
+        borderRadius: 16, 
+        borderWidth: 0.4,
+        borderColor: "#000",
+        padding: 16,
+        marginTop: 8,
+    },
+
+    switchMatrix: {
+        width: "100%",
+        marginBottom: 12,
+    },
+
     switchRow: {
         flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 10,
+    },
+
+    colSwitch: {
+        flexDirection: "row",
         alignItems: "center",
-        gap: 8,
-        backgroundColor: "#F7F7FF",
+        backgroundColor: "#F8F9FC",
+        borderRadius: 10,
+
         paddingHorizontal: 10,
         paddingVertical: 6,
-        borderRadius: 10,
+        flex: 1,
+        marginHorizontal: 4,
     },
-    switchLabel: { fontSize: 12, color: "#333" },
+
+    switchLabel: {
+        fontSize: 13,
+        color: "#000",
+        flex: 1,
+        fontWeight: "500",
+    },
+
+    filtersSection: {
+        marginTop: 10,
+    },
+
+    sectionTitle: {
+        fontWeight: "700",
+        fontSize: 15,
+        color: "#000",
+        marginBottom: 6,
+    },
+
+    label: {
+        fontSize: 13,
+        fontWeight: "500",
+        color: "#333",
+        marginBottom: 4,
+    },
+
     input: {
         backgroundColor: "#fff",
-        padding: 8,
-        borderRadius: 8,
-        borderColor: "#ccc",
-        borderWidth: 1,
+        padding: 10,
+        borderRadius: 10,
+
+
         marginBottom: 10,
     },
     });
+

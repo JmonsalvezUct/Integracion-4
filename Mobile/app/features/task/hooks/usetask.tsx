@@ -8,7 +8,7 @@
     id: number;
     date: string;
     description: string;
-    action: string; // 👈 ahora es string plano
+    action: string; 
     user: {
         id: number;
         name: string;
@@ -73,7 +73,7 @@
 export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projectName, setProjectName] = useState("");
-    const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "" });
+    const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "", search: "",tag: "",});
     const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentStartDate, setCurrentStartDate] = useState(new Date());

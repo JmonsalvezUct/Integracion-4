@@ -5,7 +5,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,Alert
+  ScrollView,Alert,TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -110,6 +110,38 @@ useFocusEffect(
   const displayTasks =
     viewMode === "calendar" && selectedDate ? tasksForSelectedDate : tasks;
 
+
+  const filteredTasks = React.useMemo(() => {
+    if (!displayTasks || displayTasks.length === 0) return [];
+
+    return displayTasks.filter((t) => {
+      const title = (t.title ?? "").toLowerCase();
+      const status = (t.status ?? "").toLowerCase();
+      const assignee = (t.assignee?.name ?? "").toLowerCase();
+      const dueDate = (t.dueDate ?? "").slice(0, 10);
+      const tags = (t.tags ?? [])
+        .map((tt) => tt.tag?.name?.toLowerCase?.() ?? "")
+        .join(" ");
+
+      const f = {
+        status: filters.status.toLowerCase(),
+        assignee: filters.assignee.toLowerCase(),
+        dueDate: filters.dueDate,
+        search: filters.search?.toLowerCase?.() ?? "",
+      };
+
+      const matchStatus = f.status ? status.includes(f.status) : true;
+      const matchAssignee = f.assignee ? assignee.includes(f.assignee) : true;
+      const matchDate = f.dueDate ? dueDate.startsWith(f.dueDate) : true;
+      const matchSearch = f.search
+        ? title.includes(f.search) || tags.includes(f.search)
+        : true;
+
+      return matchStatus && matchAssignee && matchDate && matchSearch;
+    });
+  }, [displayTasks, filters]);
+
+
   const nextView = () => {
     if (viewMode === "list") return setViewMode("kanban");
     if (viewMode === "kanban") return setViewMode("calendar");
@@ -124,8 +156,28 @@ useFocusEffect(
         type={toastType}
         onHide={() => setToastVisible(false)}
       />
+              {/* 🔍 Barra de búsqueda global */}
+        <View style={styles.searchContainer}>
+          <Ionicons name="search-outline" size={18} color="#666" style={{ marginRight: 6 }} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar tarea por título..."
+            placeholderTextColor="#999"
+            value={filters.search}
+            onChangeText={(t: string) => setFilters({ ...filters, search: t })}
+
+          />
+          {filters.search.length > 0 && (
+            <TouchableOpacity onPress={() => setFilters({ ...filters, search: "" })}>
+              <Ionicons name="close-circle" size={18} color="#999" />
+            </TouchableOpacity>
+          )}
+        </View>
 
       <View style={styles.topBar}>
+
+
+
         {viewMode === "list" && (
           <TouchableOpacity
             style={styles.filterBtn}
@@ -173,7 +225,7 @@ useFocusEffect(
               setShowFilters={setShowFilters}
             />
 
-            {displayTasks.length === 0 ? (
+            {filteredTasks.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyStateText}>
                   No hay tareas en este proyecto.
@@ -184,7 +236,7 @@ useFocusEffect(
               </View>
             ) : (
               <TaskList
-                tasks={displayTasks}
+                tasks={filteredTasks}
                 sortBy={sortBy}
                 sortDirection={sortDirection}
                 onSort={handleSort}
@@ -192,7 +244,7 @@ useFocusEffect(
                   setSelectedTaskId(id);
                   setAssignModalVisible(true);
                 }}
-                onTaskPress={handleTaskPress} // ✅ Pasamos la función corregida
+                onTaskPress={handleTaskPress} 
               />
             )}
           </>
@@ -368,4 +420,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#666",
   },
+  searchContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#fff",
+  marginHorizontal: 16,
+  marginTop: 10,
+  marginBottom: 6,
+  borderRadius: 12,
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderWidth: 1,
+  borderColor: "#E0E0E0",
+  shadowColor: "#000",
+  shadowOpacity: 0.05,
+  shadowRadius: 2,
+  elevation: 1,
+},
+searchInput: {
+  flex: 1,
+  fontSize: 14,
+  color: "#333",
+  paddingVertical: 4,
+},
+
 });
