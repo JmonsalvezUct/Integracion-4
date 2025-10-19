@@ -1,24 +1,26 @@
 import { Router } from 'express';
 import { attachmentController } from './attachments.controller.js';
 import { upload } from '../../config/multer.js';
+import { authMiddleware } from '../middlewares/auth.middleware.js';
+import { rbacMiddleware } from '../middlewares/rbac.middleware.js';
 
 const router = Router();
 
 // TDI-60: Subir archivo a una tarea
 /**
  * @swagger
- * /attachments/{taskId}:
+ * /attachments/{projectId}:
  *   post:
  *     summary: Subir archivo a una tarea
  *     description: Sube un archivo y lo asocia a una tarea específica
  *     tags: [Attachments]
  *     parameters:
  *       - in: path
- *         name: taskId
+ *         name: projectId
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID de la tarea
+ *         description: ID del proyecto
  *     requestBody:
  *       required: true
  *       content:
@@ -62,7 +64,7 @@ const router = Router();
  *                       type: string
  *                       format: date-time
  *       400:
- *         description: ID de tarea inválido o archivo no proporcionado
+ *         description: ID de proyecto inválido o archivo no proporcionado
  *         content:
  *           application/json:
  *             schema:
@@ -82,23 +84,29 @@ const router = Router();
  *                 message:
  *                   type: string
  */
-router.post('/:taskId', upload.single('file'), attachmentController.uploadAttachment);
+router.post(
+  '/:projectId',
+  authMiddleware,
+  rbacMiddleware(['admin', 'developer']),
+  upload.single('file'),
+  attachmentController.uploadAttachment
+);
 
 // TDI-64: Obtener archivos de una tarea
 /**
  * @swagger
- * /attachments/{taskId}:
+ * /attachments/{projectId}:
  *   get:
  *     summary: Obtener archivos de una tarea
  *     description: Retorna todos los archivos adjuntos de una tarea específica
  *     tags: [Attachments]
  *     parameters:
  *       - in: path
- *         name: taskId
+ *         name: projectId
  *         required: true
  *         schema:
  *           type: integer
- *         description: ID de la tarea
+ *         description: ID del proyecto
  *     responses:
  *       200:
  *         description: Lista de archivos adjuntos
@@ -130,7 +138,7 @@ router.post('/:taskId', upload.single('file'), attachmentController.uploadAttach
  *                     type: string
  *                     format: date-time
  *       400:
- *         description: ID de tarea inválido
+ *         description: ID de proyecto inválido
  *         content:
  *           application/json:
  *             schema:
@@ -148,17 +156,28 @@ router.post('/:taskId', upload.single('file'), attachmentController.uploadAttach
  *                 error:
  *                   type: string
  */
-router.get('/:taskId', attachmentController.getTaskAttachments);
+router.get(
+  '/:projectId',
+  authMiddleware, 
+  rbacMiddleware(['admin', 'developer', 'viewer']),
+  attachmentController.getTaskAttachments
+);
 
 // TDI-64: Descargar archivo
 /**
  * @swagger
- * /attachments/{id}/download:
+ * /attachments/{projectId}/{id}/download:
  *   get:
  *     summary: Descargar archivo
  *     description: Descarga un archivo específico por su ID
  *     tags: [Attachments]
  *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del proyecto
  *       - in: path
  *         name: id
  *         required: true
@@ -201,17 +220,28 @@ router.get('/:taskId', attachmentController.getTaskAttachments);
  *                 error:
  *                   type: string
  */
-router.get('/:id/download', attachmentController.downloadAttachment);
+router.get(
+  '/:projectId/:id/download',
+  authMiddleware,
+  rbacMiddleware(['admin', 'developer', 'viewer']),
+  attachmentController.downloadAttachment
+);
 
 // TDI-65: Eliminar archivo
 /**
  * @swagger
- * /attachments/{id}:
+ * /attachments/{projectId}/{id}:
  *   delete:
  *     summary: Eliminar archivo
  *     description: Elimina un archivo específico por su ID (tanto el registro como el archivo físico)
  *     tags: [Attachments]
  *     parameters:
+ *       - in: path
+ *         name: projectId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del proyecto
  *       - in: path
  *         name: id
  *         required: true
@@ -249,6 +279,11 @@ router.get('/:id/download', attachmentController.downloadAttachment);
  *                 error:
  *                   type: string
  */
-router.delete('/:id', attachmentController.deleteAttachment);
+router.delete(
+  '/:projectId/:id',
+  authMiddleware,
+  rbacMiddleware(['admin']),
+  attachmentController.deleteAttachment
+);
 
 export default router;
