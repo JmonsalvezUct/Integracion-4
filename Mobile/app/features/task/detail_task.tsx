@@ -88,9 +88,10 @@ export default function DetailTask() {
   }, [taskDataParam]);
 
   const loadAttachments = async () => {
-    if (!taskId) return;
+    if (!taskId || !task?.projectId) return;
     try {
-      const res = await apiFetch(`/attachments/${taskId}`);
+      // ✅ RUTA CORREGIDA: usar projectId + taskId
+      const res = await apiFetch(`/attachments/projects/${task.projectId}/tasks/${taskId}`);
       if (res.ok) {
         const attachments = await res.json();
         setTask((prev: any) => ({ ...prev, attachments }));
@@ -158,7 +159,7 @@ export default function DetailTask() {
   };
 
   const uploadFile = async () => {
-    if (!selectedFile || !taskId) return;
+    if (!selectedFile || !taskId || !task?.projectId) return;
 
     setUploading(true);
     try {
@@ -169,7 +170,8 @@ export default function DetailTask() {
         name: selectedFile.name,
       } as any);
 
-      const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
+      // ✅ RUTA CORREGIDA: usar projectId + taskId
+      const res = await apiFetchWithFormData(`/attachments/projects/${task.projectId}/tasks/${taskId}`, {
         method: 'POST',
         body: formData,
       });
@@ -200,6 +202,8 @@ export default function DetailTask() {
   };
 
   const deleteAttachment = async (attachmentId: number) => {
+    if (!task?.projectId) return;
+    
     try {
       Alert.alert(
         'Eliminar archivo',
@@ -210,7 +214,8 @@ export default function DetailTask() {
             text: 'Eliminar',
             style: 'destructive' as const,
             onPress: async () => {
-              const res = await apiFetch(`/attachments/${attachmentId}`, {
+              // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+              const res = await apiFetch(`/attachments/projects/${task.projectId}/attachments/${attachmentId}`, {
                 method: 'DELETE',
               });
 
@@ -235,8 +240,11 @@ export default function DetailTask() {
 
   // Función para descargar archivo
   const downloadAttachment = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
     try {
-      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       
       // Abrir en el navegador para descarga
       await WebBrowser.openBrowserAsync(downloadUrl);
@@ -249,8 +257,11 @@ export default function DetailTask() {
 
   // Función para previsualizar PDF usando Google Docs Viewer
   const previewPdf = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
     try {
-      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       
       // Usar Google Docs Viewer para mostrar el PDF
       const googleDocsViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`;
@@ -267,8 +278,11 @@ export default function DetailTask() {
 
   // Función para previsualizar imágenes
   const previewImage = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
     try {
-      const imageUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const imageUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       
       setCurrentFileUrl(imageUrl);
       setCurrentFileName(attachment.originalName);
