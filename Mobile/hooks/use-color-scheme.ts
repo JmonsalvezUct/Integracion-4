@@ -7,7 +7,7 @@ import { useThemeMode } from "@/app/theme-context";
  * - Si no hay contexto disponible, usa el tema del sistema (React Native)
  */
 function useColorScheme(): "light" | "dark" {
-  //Intentar leer el valor del contexto (switch del perfil)
+  // 1️⃣ Intentar leer el valor del contexto (switch del perfil)
   try {
     const { theme } = useThemeMode();
     if (theme) return theme;
@@ -15,10 +15,11 @@ function useColorScheme(): "light" | "dark" {
     // Si el ThemeProvider aún no está montado, se ignora
   }
 
-  //Si no hay contexto, usar el tema del sistema
+  // 2️⃣ Si no hay contexto, usar el tema del sistema
   const system = useRNColorScheme();
   return (system ?? "light") as "light" | "dark";
 }
 
+// 👇 Export doble para evitar errores de compatibilidad con imports anteriores
 export { useColorScheme };   // export nombrado (mantiene compatibilidad con Expo)
 export default useColorScheme; // export default (por si se importa directamente)

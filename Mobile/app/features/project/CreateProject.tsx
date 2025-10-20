@@ -1,194 +1,244 @@
-    import React, { useState } from "react";
-    import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from "react-native";
-    import { useRouter } from "expo-router";
-    import { getAccessToken, getUserId } from "@/lib/secure-store";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+  ScrollView,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { getAccessToken, getUserId } from "@/lib/secure-store";
+import { apiFetch } from "@/lib/api-fetch";
 
-    import { apiFetch } from "@/lib/api-fetch";
+// 🎨 Hook de colores centralizado
+import { useThemedColors } from "@/hooks/use-theme-color";
 
-    export default function CreateProject() {
-    const [name, setName] = useState("");
-    const [description, setDescription] = useState("");
-    const [startDate, setStartDate] = useState("");
-    const [endDate, setEndDate] = useState("");
-    const [status, setStatus] = useState("");
-    const [loading, setLoading] = useState(false);
-    const router = useRouter();
+export default function CreateProject() {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [status, setStatus] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-    const handleCreate = async () => {
-        if (name.trim().length < 2) {
-        Alert.alert("Nombre inválido", "Debe tener al menos 2 caracteres.");
-        return;
-        }
+  // Tokens de tema
+  const {
+    BG,
+    TEXT,
+    SUBTEXT,
+    BRAND,
+    INPUT_BG,
+    INPUT_BORDER,
+    PLACEHOLDER,
+    CARD_BG,
+    CARD_BORDER,
+  } = useThemedColors();
 
-        const token = await getAccessToken();
-        const userId = await getUserId(); 
+  const handleCreate = async () => {
+    if (name.trim().length < 2) {
+      Alert.alert("Nombre inválido", "Debe tener al menos 2 caracteres.");
+      return;
+    }
 
-        if (!token) {
-        Alert.alert("Error", "No se encontró token de autenticación.");
-        return;
-        }
-        if (!userId) {
-            Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
-            return;
-        }
-        const projectPayload = {
-        name,
-        description: description || undefined,
-        startDate: startDate ? new Date(startDate).toISOString() : undefined,
-        endDate: endDate ? new Date(endDate).toISOString() : undefined,
-        status: status || undefined,
-        userId: Number(userId),
-        };
+    const token = await getAccessToken();
+    const userId = await getUserId();
 
-        setLoading(true);
-        try {
-        const res = await apiFetch(`/projects`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`, 
-        },
-        body: JSON.stringify(projectPayload),
-        });
+    if (!token) {
+      Alert.alert("Error", "No se encontró token de autenticación.");
+      return;
+    }
+    if (!userId) {
+      Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
+      return;
+    }
 
-        if (res.ok) {
-            Alert.alert("Proyecto creado exitosamente");
-            router.back()
-        } else {
-            const error = await res.text();
-            Alert.alert("Error al crear proyecto", error || "Error desconocido");
-        }
-        } catch (error) {
-        Alert.alert("Error", "No se pudo conectar con el servidor.");
-        console.error("Error creando proyecto:", error);
-        } finally {
-        setLoading(false);
-        }
+    const projectPayload = {
+      name,
+      description: description || undefined,
+      startDate: startDate ? new Date(startDate).toISOString() : undefined,
+      endDate: endDate ? new Date(endDate).toISOString() : undefined,
+      status: status || undefined,
+      userId: Number(userId),
     };
 
-    return (
-        <ScrollView contentContainerStyle={styles.container}>
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/projects`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(projectPayload),
+      });
 
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backArrow}>←</Text>
-            <Text style={styles.backText}>Volver</Text>
-        </TouchableOpacity>
+      if (res.ok) {
+        Alert.alert("Proyecto creado exitosamente");
+        router.back();
+      } else {
+        const error = await res.text();
+        Alert.alert("Error al crear proyecto", error || "Error desconocido");
+      }
+    } catch (error) {
+      Alert.alert("Error", "No se pudo conectar con el servidor.");
+      console.error("Error creando proyecto:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        <Text style={styles.title}>Crear Proyecto</Text>
-        <Text style={styles.subtitle}>Completa la información para continuar</Text>
+  return (
+    <ScrollView
+      contentContainerStyle={[
+        styles.container,
+        { backgroundColor: BG },
+      ]}
+    >
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Text style={[styles.backArrow, { color: BRAND }]}>←</Text>
+        <Text style={[styles.backText, { color: BRAND }]}>Volver</Text>
+      </TouchableOpacity>
+
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+        ]}
+      >
+        <Text style={[styles.title, { color: TEXT }]}>Crear Proyecto</Text>
+        <Text style={[styles.subtitle, { color: SUBTEXT }]}>
+          Completa la información para continuar
+        </Text>
 
         <TextInput
-            placeholder="Nombre del proyecto *"
-            value={name}
-            onChangeText={setName}
-            style={styles.input}
-            placeholderTextColor="#999"
+          placeholder="Nombre del proyecto *"
+          value={name}
+          onChangeText={setName}
+          style={[
+            styles.input,
+            { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+          ]}
+          placeholderTextColor={PLACEHOLDER}
         />
 
         <TextInput
-            placeholder="Descripción (opcional)"
-            value={description}
-            onChangeText={setDescription}
-            style={[styles.input, styles.multilineInput]}
-            placeholderTextColor="#999"
-            multiline
+          placeholder="Descripción (opcional)"
+          value={description}
+          onChangeText={setDescription}
+          style={[
+            styles.input,
+            styles.multilineInput,
+            { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+          ]}
+          placeholderTextColor={PLACEHOLDER}
+          multiline
         />
 
         <TextInput
-            placeholder="Fecha de inicio (YYYY-MM-DD)"
-            value={startDate}
-            onChangeText={setStartDate}
-            style={styles.input}
-            placeholderTextColor="#999"
+          placeholder="Fecha de inicio (YYYY-MM-DD)"
+          value={startDate}
+          onChangeText={setStartDate}
+          style={[
+            styles.input,
+            { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+          ]}
+          placeholderTextColor={PLACEHOLDER}
         />
 
         <TextInput
-            placeholder="Fecha de fin (YYYY-MM-DD)"
-            value={endDate}
-            onChangeText={setEndDate}
-            style={styles.input}
-            placeholderTextColor="#999"
+          placeholder="Fecha de fin (YYYY-MM-DD)"
+          value={endDate}
+          onChangeText={setEndDate}
+          style={[
+            styles.input,
+            { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+          ]}
+          placeholderTextColor={PLACEHOLDER}
         />
 
         <TextInput
-            placeholder="Estado (opcional)"
-            value={status}
-            onChangeText={setStatus}
-            style={styles.input}
-            placeholderTextColor="#999"
+          placeholder="Estado (opcional)"
+          value={status}
+          onChangeText={setStatus}
+          style={[
+            styles.input,
+            { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+          ]}
+          placeholderTextColor={PLACEHOLDER}
         />
 
         <TouchableOpacity
-            style={[styles.button, loading && { opacity: 0.7 }]}
-            onPress={handleCreate}
-            disabled={loading}
+          style={[styles.button, { backgroundColor: BRAND }, loading && { opacity: 0.7 }]}
+          onPress={handleCreate}
+          disabled={loading}
         >
-            <Text style={styles.buttonText}>
+          <Text style={styles.buttonText}>
             {loading ? "Creando..." : "GUARDAR CAMBIOS"}
-            </Text>
+          </Text>
         </TouchableOpacity>
-        </ScrollView>
-    );
-    }
+      </View>
+    </ScrollView>
+  );
+}
 
-    const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,
-        backgroundColor: "#fff",
-        padding: 24,
-        paddingTop: 50, 
-    },
-    backButton: {
-        flexDirection: "row",
-        alignItems: "center",
-        marginBottom: 20,
-    },
-    backArrow: {
-        fontSize: 22,
-        color: "#3f3df8",
-        marginRight: 4,
-    },
-    backText: {
-        color: "#3f3df8",
-        fontSize: 16,
-        fontWeight: "500",
-    },
-    title: {
-        fontSize: 22,
-        fontWeight: "bold",
-        textAlign: "center",
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: "#999",
-        textAlign: "center",
-        marginBottom: 24,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: "#e0e0e0",
-        borderRadius: 10,
-        padding: 12,
-        fontSize: 15,
-        marginBottom: 12,
-        backgroundColor: "#f9f9f9",
-    },
-    multilineInput: {
-        minHeight: 70,
-        textAlignVertical: "top",
-    },
-    button: {
-        backgroundColor: "#3f3df8",
-        paddingVertical: 14,
-        borderRadius: 10,
-        alignItems: "center",
-        marginTop: 8,
-    },
-    buttonText: {
-        color: "#fff",
-        fontWeight: "bold",
-        fontSize: 15,
-        textTransform: "uppercase",
-    },
-    });
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    padding: 24,
+    paddingTop: 50,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  backArrow: {
+    fontSize: 22,
+    marginRight: 4,
+  },
+  backText: {
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  card: {
+    borderRadius: 16,
+    padding: 16,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    marginBottom: 12,
+  },
+  multilineInput: {
+    minHeight: 70,
+    textAlignVertical: "top",
+  },
+  button: {
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 15,
+    textTransform: "uppercase",
+  },
+});

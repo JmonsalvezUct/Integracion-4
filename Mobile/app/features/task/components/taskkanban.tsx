@@ -8,6 +8,7 @@ import {
   Text,
   View,
   Dimensions,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { apiFetch } from "@/lib/api-fetch";
@@ -15,7 +16,9 @@ import type { Task } from "../types";
 import { DeviceEventEmitter } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
-import { Alert } from "react-native";
+
+// 🎨 Hook de colores centralizado
+import { useThemedColors } from "@/hooks/use-theme-color";
 
 const TASK_UPDATED = "TASK_UPDATED";
 
@@ -56,10 +59,12 @@ async function updateTaskStatus(projectId: number, taskId: number, status: Statu
   }
 }
 
-
 /* ========= Kanban ========= */
 export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
   const params = useLocalSearchParams();
+
+  // 🎨 tokens del tema
+  const { BG, TEXT, SUBTEXT, CARD_BG, CARD_BORDER, MUTED_BG, isDark } = useThemedColors();
 
   // projectId robusto: params (varios nombres) o deducido desde tareas
   const projectId = useMemo<number | null>(() => {
@@ -193,40 +198,39 @@ export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
 
   /* -------- Mover entre columnas (optimista + backend) -------- */
   const handleDrop = useCallback(
-  async (task: Task, to: Status) => {
-    if ((task.status as any) === to) return;
-    const snapshot = columns;
+    async (task: Task, to: Status) => {
+      if ((task.status as any) === to) return;
+      const snapshot = columns;
 
-    // UI optimista
-    setColumns((prev) => {
-      const from: Status = (task.status ?? "created") as Status;
-      const src = prev[from].filter((t) => t.id !== task.id);
-      const dst = [{ ...task, status: to }, ...prev[to]];
-      return { ...prev, [from]: src, [to]: dst };
-    });
-
-    try {
-      const pid =
-        Number((task as any)?.projectId ?? (task as any)?.project?.id) ??
-        Number(projectId);
-      if (!Number.isFinite(pid)) throw new Error("Falta projectId");
-
-      // ✅ persistir en backend usando /status
-      await updateTaskStatus(pid as number, task.id, to);
-
-      // 🔔 notificar lista y detalle
-      DeviceEventEmitter.emit(TASK_UPDATED, {
-        task: { ...task, status: to, projectId: pid },
+      // UI optimista
+      setColumns((prev) => {
+        const from: Status = (task.status ?? "created") as Status;
+        const src = prev[from].filter((t) => t.id !== task.id);
+        const dst = [{ ...task, status: to }, ...prev[to]];
+        return { ...prev, [from]: src, [to]: dst };
       });
-    } catch (e: any) {
-      // rollback si falla
-      setColumns(snapshot);
-      Alert.alert("No se pudo actualizar el estado", e?.message ?? "Intenta nuevamente.");
-    }
-  },
-  [columns, projectId]
-);
 
+      try {
+        const pid =
+          Number((task as any)?.projectId ?? (task as any)?.project?.id) ??
+          Number(projectId);
+        if (!Number.isFinite(pid)) throw new Error("Falta projectId");
+
+        // ✅ persistir en backend usando /status
+        await updateTaskStatus(pid as number, task.id, to);
+
+        // 🔔 notificar lista y detalle
+        DeviceEventEmitter.emit(TASK_UPDATED, {
+          task: { ...task, status: to, projectId: pid },
+        });
+      } catch (e: any) {
+        // rollback si falla
+        setColumns(snapshot);
+        Alert.alert("No se pudo actualizar el estado", e?.message ?? "Intenta nuevamente.");
+      }
+    },
+    [columns, projectId]
+  );
 
   /* -------- Al soltar: decidir columna destino (con fallback por proximidad) -------- */
   const finishDrop = useCallback(() => {
@@ -257,17 +261,17 @@ export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>
         <View style={styles.center}>
           <ActivityIndicator />
-          <Text style={{ marginTop: 8 }}>Cargando tareas…</Text>
+          <Text style={{ marginTop: 8, color: TEXT }}>Cargando tareas…</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -284,17 +288,24 @@ export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
             title={STATUS_LABEL[status]}
             color={STATUS_COLOR[status]}
             width={COLUMN_WIDTH}
+            // 🎨 tokens para pintar columna según tema
+            cardBg={CARD_BG}
+            cardBorder={CARD_BORDER}
+            textColor={TEXT}
+            emptyBg={isDark ? "#161616" : "#fff"}
+            emptyBorder={isDark ? "#262626" : "#f5f5f5"}
+            emptyText={SUBTEXT}
             onMeasure={(rect) => {
               columnsLayout.current[status] = rect;
             }}
           >
             {errorMsg ? (
-              <View style={styles.empty}>
+              <View style={[styles.empty, { backgroundColor: MUTED_BG, borderColor: CARD_BORDER }]}>
                 <Text style={[styles.emptyText, { color: "#d9534f" }]}>{errorMsg}</Text>
               </View>
             ) : columns[status].length === 0 ? (
-              <View style={styles.empty}>
-                <Text style={styles.emptyText}>Soltar aquí</Text>
+              <View style={[styles.empty, { backgroundColor: MUTED_BG, borderColor: CARD_BORDER }]}>
+                <Text style={[styles.emptyText, { color: SUBTEXT }]}>Soltar aquí</Text>
               </View>
             ) : (
               <ScrollView
@@ -314,11 +325,14 @@ export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
                       setDragging(null);
                       finishDrop();
                     }}
+                    // 🎨 estilos de tarjeta según tema
+                    cardBg={isDark ? "#202020" : "#fafafa"}
+                    cardBorder={CARD_BORDER}
                   >
-                    <Text numberOfLines={2} style={styles.cardTitle}>
+                    <Text numberOfLines={2} style={[styles.cardTitle, { color: TEXT }]}>
                       {task.title}
                     </Text>
-                    <Text style={styles.cardMeta}>
+                    <Text style={[styles.cardMeta, { color: SUBTEXT }]}>
                       #{task.id} • {task.status ?? "—"}
                     </Text>
                   </DraggableCard>
@@ -340,7 +354,17 @@ const Column = React.forwardRef<View, {
   color: string;
   onMeasure: (rect: { x: number; y: number; width: number; height: number }) => void;
   children: React.ReactNode;
-}>(function ColumnImpl({ status, width, title, color, onMeasure, children }, ref) {
+  // 🎨 nuevos props para pintar con tema
+  cardBg: string;
+  cardBorder: string;
+  textColor: string;
+  emptyBg: string;
+  emptyBorder: string;
+  emptyText: string;
+}>(function ColumnImpl(
+  { status, width, title, color, onMeasure, children, cardBg, cardBorder, textColor, emptyBg, emptyBorder, emptyText },
+  ref
+) {
 
   const doMeasure = useCallback(() => {
     requestAnimationFrame(() => {
@@ -351,10 +375,18 @@ const Column = React.forwardRef<View, {
   }, [onMeasure, ref]);
 
   return (
-    <View ref={ref} onLayout={doMeasure} style={[styles.column, { width }]} collapsable={false}>
+    <View
+      ref={ref}
+      onLayout={doMeasure}
+      style={[
+        styles.column,
+        { width, backgroundColor: cardBg, borderColor: cardBorder },
+      ]}
+      collapsable={false}
+    >
       <View style={styles.columnHeader}>
         <View style={[styles.dot, { backgroundColor: color }]} />
-        <Text style={styles.columnTitle}>{title}</Text>
+        <Text style={[styles.columnTitle, { color: textColor }]}>{title}</Text>
       </View>
       <View style={{ flex: 1 }}>{children}</View>
     </View>
@@ -369,6 +401,9 @@ function DraggableCard({
   onMove,
   onRelease,
   children,
+  // 🎨 estilo según tema
+  cardBg,
+  cardBorder,
 }: {
   task: Task;
   isActive: boolean;
@@ -376,6 +411,8 @@ function DraggableCard({
   onMove: (p: { absoluteX: number; absoluteY: number }) => void;
   onRelease: () => void;
   children: React.ReactNode;
+  cardBg: string;
+  cardBorder: string;
 }) {
   const tx = useSharedValue(0);
   const ty = useSharedValue(0);
@@ -410,7 +447,14 @@ function DraggableCard({
 
   return (
     <GestureDetector gesture={composed}>
-      <Animated.View style={[styles.card, styleA]} collapsable={false}>
+      <Animated.View
+        style={[
+          styles.card,
+          styleA,
+          { backgroundColor: cardBg, borderColor: cardBorder },
+        ]}
+        collapsable={false}
+      >
         {children}
       </Animated.View>
     </GestureDetector>
@@ -419,14 +463,12 @@ function DraggableCard({
 
 /* ========= Styles ========= */
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#fff" },
+  safeArea: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   column: {
-    backgroundColor: "#fff",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#f0f0f0",
     padding: 12,
     marginRight: 12,
   },
@@ -438,23 +480,19 @@ const styles = StyleSheet.create({
     height: 80,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#f5f5f5",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#fff",
   },
-  emptyText: { color: "#9aa1a9", fontStyle: "italic" },
+  emptyText: { fontStyle: "italic" },
 
   card: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#ececec",
-    backgroundColor: "#fafafa",
     padding: 10,
     marginBottom: 8,
     justifyContent: "center",
     minHeight: 70,
   },
   cardTitle: { fontWeight: "700" },
-  cardMeta: { marginTop: 4, fontSize: 12, color: "#7e8590" },
+  cardMeta: { marginTop: 4, fontSize: 12 },
 });

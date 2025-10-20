@@ -21,7 +21,9 @@ import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from '@/lib/api-fetch';
 import { AssignModal } from './components/assignmodal';
 
-const PRIMARY = '#3B34FF';
+// 🎨 Hook de colores centralizado
+import { useThemedColors } from '@/hooks/use-theme-color';
+
 const TASK_UPDATED = 'TASK_UPDATED';
 
 export default function DetailTask() {
@@ -55,8 +57,22 @@ export default function DetailTask() {
   // Assign modal / members
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [projectMembers, setProjectMembers] = useState<Array<{ id: number; name: string }>>([]);
-    // Mantiene el mismo formato mostrado mientras se edita la fecha
-    const [dueDateEditingValue, setDueDateEditingValue] = useState<string | null>(null);
+  // Mantiene el mismo formato mostrado mientras se edita la fecha
+  const [dueDateEditingValue, setDueDateEditingValue] = useState<string | null>(null);
+
+  // 🎨 tokens del tema
+  const {
+    isDark,
+    BG,
+    TEXT,
+    SUBTEXT,
+    BRAND,
+    CARD_BG,
+    CARD_BORDER,
+    INPUT_BG,
+    INPUT_BORDER,
+    MUTED_BG,
+  } = useThemedColors();
 
   // Traducciones y helpers
   const statusMap: Record<string, string> = {
@@ -70,8 +86,9 @@ export default function DetailTask() {
     medium: 'Media',
     low: 'Baja',
   };
-  // Date helpers: formato YYYY/MM/DD 
-  const displayDateFromISO = (iso?: string | null) => (iso ? String(iso).slice(0,10).replace(/-/g, '/') : '');
+  // Date helpers: formato YYYY/MM/DD
+  const displayDateFromISO = (iso?: string | null) =>
+    iso ? String(iso).slice(0, 10).replace(/-/g, '/') : '';
   const parseDisplayDateToISO = (input: string) => {
     const raw = String(input || '').trim();
     if (!raw) return null;
@@ -138,23 +155,22 @@ export default function DetailTask() {
   }, [taskDataParam]);
 
   // 🔔 Si Kanban cambió el estado de ESTA misma tarea, sincroniza la vista de detalle
-useEffect(() => {
-  const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
-    if (!updated) return;
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
+      if (!updated) return;
 
-    // Compara contra el id de la tarea abierta en esta pantalla
-    const idActual = Number(taskId);
-    if (Number(updated.id) === idActual) {
-      // Actualiza el objeto task mostrado
-      setTask((prev: any) => (prev ? { ...prev, status: updated.status } : prev));
-      // Si tienes estado de edición activo/controlado, sincronízalo también
-      setEditState((prev: any) => ({ ...(prev ?? {}), status: updated.status }));
-    }
-  });
+      // Compara contra el id de la tarea abierta en esta pantalla
+      const idActual = Number(taskId);
+      if (Number(updated.id) === idActual) {
+        // Actualiza el objeto task mostrado
+        setTask((prev: any) => (prev ? { ...prev, status: updated.status } : prev));
+        // Si tienes estado de edición activo/controlado, sincronízalo también
+        setEditState((prev: any) => ({ ...(prev ?? {}), status: updated.status }));
+      }
+    });
 
-  return () => sub.remove();
-}, [taskId]);
-
+    return () => sub.remove();
+  }, [taskId]);
 
   const loadAttachments = async (id?: string | number) => {
     const targetId = id ?? taskId;
@@ -177,39 +193,34 @@ useEffect(() => {
 
   //-----------------------------------------------------------------------------
   // ✅ Cambiar SOLO el estado usando el endpoint especializado /status
-async function updateTaskStatusOnly(id: string | number, newStatus: string) {
-  try {
-    const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
-    if (!projectId) throw new Error("Falta projectId en la tarea.");
+  async function updateTaskStatusOnly(id: string | number, newStatus: string) {
+    try {
+      const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
+      if (!projectId) throw new Error('Falta projectId en la tarea.');
 
-    setTask((prev: any) => (prev ? { ...prev, status: newStatus } : prev));
-    setEditState((prev: any) => ({ ...(prev ?? {}), status: newStatus }));
+      setTask((prev: any) => (prev ? { ...prev, status: newStatus } : prev));
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: newStatus }));
 
-    // use short status endpoint so Kanban and Detail share the same route
-    const res = await apiFetch(`/tasks/${projectId}/${id}/status`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
-    const text = await res.text();
-    if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+      const res = await apiFetch(`/tasks/${projectId}/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
 
-    const serverTask = text ? JSON.parse(text) : { ...(task ?? {}), status: newStatus };
+      const serverTask = text ? JSON.parse(text) : { ...(task ?? {}), status: newStatus };
 
-    setTask(serverTask);
-    setEditState((prev: any) => ({ ...(prev ?? {}), status: serverTask.status }));
-    emitTaskUpdated({ ...(task ?? {}), id, status: serverTask.status, projectId });
-  } catch (err) {
-    setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
-    setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
-    Alert.alert("No se pudo actualizar el estado", (err as any)?.message ?? "Intenta nuevamente.");
-    throw err;
+      setTask(serverTask);
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: serverTask.status }));
+      emitTaskUpdated({ ...(task ?? {}), id, status: serverTask.status, projectId });
+    } catch (err) {
+      setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
+      Alert.alert('No se pudo actualizar el estado', (err as any)?.message ?? 'Intenta nuevamente.');
+      throw err;
+    }
   }
-}
-
-//-----------------------------------------------------------------------
-
-
 
   // Persistencia con PUT /tasks/:projectId/:id
   async function persistTaskPatch(id: string | number, patch: Partial<any>) {
@@ -227,18 +238,15 @@ async function updateTaskStatusOnly(id: string | number, newStatus: string) {
       const payload: any = {};
       for (const k of allowed) {
         let v = base[k];
-        // Omitir valores nulos/indefinidos
         if (v === null || v === undefined) continue;
-        // Normalizar assigneeId: si viene como '' o null, no lo envíes; si viene como string numérico conviértelo
         if (k === 'assigneeId') {
-          if (v === '' ) continue;
+          if (v === '') continue;
           if (typeof v === 'string') {
             const n = Number(v);
             if (!Number.isFinite(n)) continue;
             v = n;
           }
         }
-        // Evitar enviar strings vacíos
         if (typeof v === 'string' && v.trim() === '') continue;
         payload[k] = v;
       }
@@ -251,7 +259,6 @@ async function updateTaskStatusOnly(id: string | number, newStatus: string) {
 
       const text = await res.text();
       if (!res.ok) {
-        // Pista: si responde HTML es host equivocado (front en vez de API)
         if (text && /^\s*<!DOCTYPE html>/i.test(text)) {
           throw new Error('La URL de API devolvió HTML (host incorrecto)');
         }
@@ -282,7 +289,6 @@ async function updateTaskStatusOnly(id: string | number, newStatus: string) {
     ['title', 'description', 'status', 'priority', 'assigneeId'].forEach((k) => {
       if (editState[k] !== (task as any)[k]) patch[k] = editState[k];
     });
-    // comparar valores ISO normalizados
     const editDue = normalizeDateForCompare(editState.dueDate);
     const taskDue = normalizeDateForCompare((task as any).dueDate);
     if (editDue !== taskDue) {
@@ -293,23 +299,18 @@ async function updateTaskStatusOnly(id: string | number, newStatus: string) {
       return;
     }
 
-    // If status changed, send it via the dedicated endpoint first, then remove it from the general patch
     if (patch.status !== undefined) {
       try {
         await updateTaskStatusOnly(taskId, patch.status);
       } catch (e: any) {
-        // rollback local status to server value and notify user, but continue to persist other fields
         setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
         setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
         Alert.alert('No se pudo actualizar el estado', e?.message ?? 'Intenta nuevamente.');
-        // remove status so it won't be sent in PUT
         delete patch.status;
       }
-      // if updateTaskStatusOnly succeeded, remove status from patch to avoid sending it again
       if (patch.status !== undefined) delete patch.status;
     }
 
-    // Persist remaining fields (if any) via the existing PUT endpoint
     if (Object.keys(patch).length > 0) {
       await persistTaskPatch(taskId, patch);
     }
@@ -457,45 +458,45 @@ async function updateTaskStatusOnly(id: string | number, newStatus: string) {
   };
 
   // Pickers: editar y guardar al instante
-const onPickStatus = (value: string) => {
-  setShowStatusPicker(false);
-  setEditing(true);
-  setEditState((s: any) => ({ ...s, status: value }));
+  const onPickStatus = (value: string) => {
+    setShowStatusPicker(false);
+    setEditing(true);
+    setEditState((s: any) => ({ ...s, status: value }));
+    if (taskId) updateTaskStatusOnly(taskId, value).catch(() => {});
+  };
 
-  // ✅ Usa el endpoint especializado /tasks/{projectId}/{taskId}/status
-  if (taskId) {
-    updateTaskStatusOnly(taskId, value).catch(() => {
-      // el helper ya maneja rollback y alert; no hacemos nada aquí
-    });
-  }
-};
+  const onPickPriority = (value: string) => {
+    setShowPriorityPicker(false);
+    setEditing(true);
+    setEditState((s: any) => ({ ...s, priority: value }));
+    if (taskId) persistTaskPatch(taskId, { priority: value });
+  };
 
-const onPickPriority = (value: string) => {
-  setShowPriorityPicker(false);
-  setEditing(true);
-  setEditState((s: any) => ({ ...s, priority: value }));
-
-  // ✅ Para el resto de campos (como prioridad) seguimos usando el PUT general
-  if (taskId) {
-    persistTaskPatch(taskId, { priority: value });
-  }
-};
-
-  if (!taskId) return <SafeAreaView><Text>ID de tarea no proporcionado</Text></SafeAreaView>;
+  if (!taskId)
+    return (
+      <SafeAreaView>
+        <Text>ID de tarea no proporcionado</Text>
+      </SafeAreaView>
+    );
 
   // Mostrar valores en edición si existen; si no, los del task original
   const statusValue = editState?.status ?? task?.status;
   const priorityValue = editState?.priority ?? task?.priority;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f4f6fb' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
       <Header title={`Tarea #${taskId}`} />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.card}>
+      <ScrollView contentContainerStyle={[styles.container]}>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+          ]}
+        >
           {loading ? (
             <ActivityIndicator />
           ) : error ? (
-            <Text style={{ color: 'red' }}>{error}</Text>
+            <Text style={{ color: '#E74C3C' }}>{error}</Text>
           ) : task ? (
             <>
               <View style={styles.headerRow}>
@@ -503,16 +504,22 @@ const onPickPriority = (value: string) => {
                 {editing ? (
                   <TextInput
                     ref={titleRef}
-                    style={{ fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 }}
+                    style={[
+                      styles.titleInput,
+                      { color: TEXT, backgroundColor: INPUT_BG, borderColor: INPUT_BORDER },
+                    ]}
                     value={editState.title}
                     onChangeText={(t) => setEditState((s: any) => ({ ...s, title: t }))}
                     onEndEditing={onTitleEndEditing}
                     placeholder="Título"
+                    placeholderTextColor={SUBTEXT}
                     returnKeyType="done"
                   />
                 ) : (
                   <TouchableOpacity onPress={startEditTitle} style={{ flex: 1, marginRight: 8 }}>
-                    <Text style={styles.title}>{task.title}</Text>
+                    <Text style={[styles.title, { color: TEXT }]} numberOfLines={2}>
+                      {task.title}
+                    </Text>
                   </TouchableOpacity>
                 )}
 
@@ -522,20 +529,24 @@ const onPickPriority = (value: string) => {
                     style={styles.metaGroup}
                     onPress={() => setShowStatusPicker(true)}
                   >
-                    <Text style={styles.metaLabel}>Estado</Text>
-                    <Text style={styles.metaValue}>{t(statusMap, statusValue)}</Text>
+                    <Text style={[styles.metaLabel, { color: SUBTEXT }]}>Estado</Text>
+                    <Text style={[styles.metaValue, { color: TEXT }]}>
+                      {t(statusMap, statusValue)}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.metaGroup, { marginLeft: 50 }]}
                     onPress={() => setShowPriorityPicker(true)}
                   >
-                    <Text style={styles.metaLabel}>Prioridad</Text>
-                    <Text style={styles.metaValue}>{t(priorityMap, priorityValue)}</Text>
+                    <Text style={[styles.metaLabel, { color: SUBTEXT }]}>Prioridad</Text>
+                    <Text style={[styles.metaValue, { color: TEXT }]}>
+                      {t(priorityMap, priorityValue)}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <Text style={styles.sectionLabel}>Descripción</Text>
+              <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Descripción</Text>
               {/* Descripción editable: guarda al salir */}
               {editing ? (
                 <TextInput
@@ -544,101 +555,120 @@ const onPickPriority = (value: string) => {
                   value={editState.description}
                   onChangeText={(t) => setEditState((s: any) => ({ ...s, description: t }))}
                   onEndEditing={onDescriptionEndEditing}
-                  style={{ minHeight: 80, borderColor: '#eee', borderWidth: 1, padding: 8, borderRadius: 8 }}
+                  style={[
+                    styles.descInput,
+                    { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+                  ]}
                   placeholder="Descripción"
+                  placeholderTextColor={SUBTEXT}
                   returnKeyType="done"
                 />
               ) : (
                 <TouchableOpacity onPress={startEditDescription}>
-                  <Text style={styles.description}>{task.description}</Text>
+                  <Text style={[styles.description, { color: TEXT }]}>
+                    {task.description || '—'}
+                  </Text>
                 </TouchableOpacity>
               )}
 
               <View style={styles.row}>
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Fecha</Text>
+                  <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Fecha</Text>
                   {editing ? (
                     <TextInput
                       value={
-                        dueDateEditingValue ?? (
-                          editState.dueDate ? displayDateFromISO(editState.dueDate) : displayDateFromISO(task.dueDate)
-                        )
+                        dueDateEditingValue ??
+                        (editState.dueDate
+                          ? displayDateFromISO(editState.dueDate)
+                          : displayDateFromISO(task.dueDate))
                       }
                       placeholder="YYYY/MM/DD"
+                      placeholderTextColor={SUBTEXT}
                       onChangeText={(t) => setDueDateEditingValue(t)}
                       onEndEditing={() => {
-                        // when finished editing inline, write back normalized ISO into editState so saveEdits will persist
-                        const raw = dueDateEditingValue ?? (editState.dueDate ?? task.dueDate ?? '');
+                        const raw =
+                          dueDateEditingValue ?? (editState.dueDate ?? task.dueDate ?? '');
                         const iso = parseDisplayDateToISO(String(raw));
-                        setEditState((s:any) => ({ ...s, dueDate: iso }));
+                        setEditState((s: any) => ({ ...s, dueDate: iso }));
                         setDueDateEditingValue(null);
                       }}
-                      style={{ borderColor: '#eee', borderWidth: 1, padding: 6, borderRadius: 6 }}
+                      style={[
+                        styles.dateInput,
+                        { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+                      ]}
                     />
                   ) : (
-                    <TouchableOpacity onPress={() => {
-                      // enable editing and seed dueDateEditingValue with the displayed format
-                      setEditing(true);
-                      const display = task.dueDate ? displayDateFromISO(task.dueDate) : '';
-                      setEditState((s:any) => ({
-                        ...s,
-                        title: s.title ?? task.title,
-                        description: s.description ?? task.description,
-                        status: s.status ?? task.status,
-                        priority: s.priority ?? task.priority,
-                        dueDate: s.dueDate ?? task.dueDate,
-                        assigneeId: s.assigneeId ?? task.assignee?.id ?? task.assigneeId,
-                      }));
-                      setDueDateEditingValue(display);
-                    }}>
-                      <Text style={styles.fieldValue}>{task.dueDate ? displayDateFromISO(task.dueDate) : '—'}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditing(true);
+                        const display = task.dueDate ? displayDateFromISO(task.dueDate) : '';
+                        setEditState((s: any) => ({
+                          ...s,
+                          title: s.title ?? task.title,
+                          description: s.description ?? task.description,
+                          status: s.status ?? task.status,
+                          priority: s.priority ?? task.priority,
+                          dueDate: s.dueDate ?? task.dueDate,
+                          assigneeId: s.assigneeId ?? task.assignee?.id ?? task.assigneeId,
+                        }));
+                        setDueDateEditingValue(display);
+                      }}
+                    >
+                      <Text style={[styles.fieldValue, { color: TEXT }]}>
+                        {task.dueDate ? displayDateFromISO(task.dueDate) : '—'}
+                      </Text>
                     </TouchableOpacity>
                   )}
                 </View>
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Responsable</Text>
-                  <TouchableOpacity onPress={async () => {
-                    try {
-                      // If not already editing, enable editing and seed editState
-                      if (!editing) {
-                        setEditing(true);
-                        if (!editState || Object.keys(editState).length === 0) {
-                          setEditState({
-                            title: task.title,
-                            description: task.description,
-                            status: task.status,
-                            priority: task.priority,
-                            dueDate: task.dueDate,
-                            assigneeId: task.assignee?.id ?? task.assigneeId,
-                          });
+                  <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Responsable</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        if (!editing) {
+                          setEditing(true);
+                          if (!editState || Object.keys(editState).length === 0) {
+                            setEditState({
+                              title: task.title,
+                              description: task.description,
+                              status: task.status,
+                              priority: task.priority,
+                              dueDate: task.dueDate,
+                              assigneeId: task.assignee?.id ?? task.assigneeId,
+                            });
+                          }
+                          await new Promise((r) => setTimeout(r, 0));
                         }
-                        // allow a tiny delay so state applies before opening modal (optional)
-                        await new Promise((r) => setTimeout(r, 0));
+                        const projectId =
+                          (task as any)?.projectId ?? (task as any)?.project?.id;
+                        if (!projectId) throw new Error('Falta projectId');
+                        if (projectMembers.length === 0) {
+                          const res = await apiFetch(`/projects/${projectId}/members`);
+                          const txt = await res.text();
+                          if (!res.ok) throw new Error(txt || `HTTP ${res.status}`);
+                          const data = txt ? JSON.parse(txt) : [];
+                          const list = (data.members ?? data) as any[];
+                          const users = list.map((m: any) => ({
+                            id: m.userId ?? m.id ?? m.user?.id,
+                            name:
+                              m.name ?? m.user?.name ?? m.email ?? String(m.userId ?? m.id),
+                          }));
+                          setProjectMembers(users.filter((u) => u.id));
+                        }
+                        setAssignModalVisible(true);
+                      } catch (e: any) {
+                        console.error('Error cargando miembros:', e);
                       }
-                      const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
-                      if (!projectId) throw new Error('Falta projectId');
-                      if (projectMembers.length === 0) {
-                        const res = await apiFetch(`/projects/${projectId}/members`);
-                        const txt = await res.text();
-                        if (!res.ok) throw new Error(txt || `HTTP ${res.status}`);
-                        const data = txt ? JSON.parse(txt) : [];
-                        const list = (data.members ?? data) as any[];
-                        const users = list.map((m:any) => ({ id: m.userId ?? m.id ?? m.user?.id, name: m.name ?? m.user?.name ?? m.email ?? String(m.userId ?? m.id) }));
-                        setProjectMembers(users.filter(u => u.id));
-                      }
-                      setAssignModalVisible(true);
-                    } catch (e:any) {
-                      console.error('Error cargando miembros:', e);
-                    }
-                  }}>
-                    <Text style={[styles.fieldValue, { color: PRIMARY }]}> {
-                      
-                      (() => {
-                        const selId = editState.assigneeId ?? task.assignee?.id ?? task.assigneeId;
-                        const found = projectMembers.find(p => p.id === selId);
-                        return found ? found.name : (task.assignee?.name ?? '—');
-                      })()
-                    }</Text>
+                    }}
+                  >
+                    <Text style={[styles.fieldValue, { color: BRAND }]}>
+                      {(() => {
+                        const selId =
+                          editState.assigneeId ?? task.assignee?.id ?? task.assigneeId;
+                        const found = projectMembers.find((p) => p.id === selId);
+                        return found ? found.name : task.assignee?.name ?? '—';
+                      })()}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -648,7 +678,12 @@ const onPickPriority = (value: string) => {
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                   <TouchableOpacity
                     onPress={saveEdits}
-                    style={{ padding: 10, backgroundColor: PRIMARY, borderRadius: 8, alignItems: 'center' }}
+                    style={{
+                      padding: 10,
+                      backgroundColor: BRAND,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                    }}
                   >
                     <Text style={{ color: '#fff', fontWeight: '700' }}>Guardar</Text>
                   </TouchableOpacity>
@@ -657,27 +692,39 @@ const onPickPriority = (value: string) => {
 
               {/* Adjuntos */}
               <View style={styles.attachmentsHeader}>
-                <Text style={styles.sectionLabel}>Adjuntos</Text>
+                <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Adjuntos</Text>
                 <TouchableOpacity
                   onPress={() => setAttachModalVisible(true)}
-                  style={styles.addAttachmentButton}
+                  style={[styles.addAttachmentButton, { backgroundColor: BRAND }]}
                 >
                   <Ionicons name="add" size={16} color="#fff" />
                   <Text style={styles.addAttachmentText}>Agregar</Text>
                 </TouchableOpacity>
               </View>
 
-              {(task.attachments && task.attachments.length > 0) ? (
+              {task.attachments && task.attachments.length > 0 ? (
                 task.attachments.map((a: any) => (
-                  <View key={a.id} style={styles.attachmentItem}>
+                  <View
+                    key={a.id}
+                    style={[
+                      styles.attachmentItem,
+                      { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
+                    ]}
+                  >
                     <TouchableOpacity
                       style={styles.attachRow}
                       onPress={() => downloadAttachment(a.id, a.originalName)}
                     >
-                      <Ionicons name="document-attach-outline" size={18} color="#3b3b3b" />
+                      <Ionicons
+                        name="document-attach-outline"
+                        size={18}
+                        color={SUBTEXT}
+                      />
                       <View style={styles.attachmentInfo}>
-                        <Text style={styles.attachText}>{a.originalName}</Text>
-                        <Text style={styles.attachmentSize}>
+                        <Text style={[styles.attachText, { color: TEXT }]}>
+                          {a.originalName}
+                        </Text>
+                        <Text style={[styles.attachmentSize, { color: SUBTEXT }]}>
                           {(a.size / 1024).toFixed(1)} KB
                         </Text>
                       </View>
@@ -686,43 +733,67 @@ const onPickPriority = (value: string) => {
                       onPress={() => deleteAttachment(a.id)}
                       style={styles.deleteAttachmentButton}
                     >
-                      <Ionicons name="trash-outline" size={16} color="#ff4444" />
+                      <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
                     </TouchableOpacity>
                   </View>
                 ))
               ) : (
-                <Text style={styles.emptyText}>No hay archivos adjuntos</Text>
+                <Text style={[styles.emptyText, { color: SUBTEXT }]}>
+                  No hay archivos adjuntos
+                </Text>
               )}
 
               {/* Modal para Adjuntar Archivos */}
               <Modal
                 visible={attachModalVisible}
                 animationType="slide"
-                transparent={true}
+                transparent
                 onRequestClose={() => setAttachModalVisible(false)}
               >
                 <View style={styles.modalOverlay}>
-                  <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Adjuntar Archivo</Text>
+                  <View
+                    style={[
+                      styles.modalContent,
+                      { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+                    ]}
+                  >
+                    <Text style={[styles.modalTitle, { color: TEXT }]}>
+                      Adjuntar Archivo
+                    </Text>
 
                     {selectedFile ? (
-                      <View style={styles.selectedFile}>
-                        <Ionicons name="document-outline" size={24} color={PRIMARY} />
-                        <View style={styles.fileInfo}>
-                          <Text style={styles.fileName}>{selectedFile.name}</Text>
-                          <Text style={styles.fileSize}>
+                      <View
+                        style={[
+                          styles.selectedFile,
+                          { backgroundColor: MUTED_BG, borderColor: CARD_BORDER },
+                        ]}
+                      >
+                        <Ionicons name="document-outline" size={24} color={BRAND} />
+                        <View className="fileInfo" style={styles.fileInfo}>
+                          <Text style={[styles.fileName, { color: TEXT }]}>
+                            {selectedFile.name}
+                          </Text>
+                          <Text style={[styles.fileSize, { color: SUBTEXT }]}>
                             {(selectedFile.size / 1024).toFixed(1)} KB
                           </Text>
                         </View>
                         <TouchableOpacity onPress={() => setSelectedFile(null)}>
-                          <Ionicons name="close" size={20} color="#666" />
+                          <Ionicons name="close" size={20} color={SUBTEXT} />
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <TouchableOpacity style={styles.pickFileButton} onPress={pickDocument}>
-                        <Ionicons name="cloud-upload-outline" size={32} color={PRIMARY} />
-                        <Text style={styles.pickFileText}>Seleccionar Archivo</Text>
-                        <Text style={styles.pickFileSubtext}>
+                      <TouchableOpacity
+                        style={[
+                          styles.pickFileButton,
+                          { borderColor: CARD_BORDER, backgroundColor: isDark ? '#1f1f1f' : undefined },
+                        ]}
+                        onPress={pickDocument}
+                      >
+                        <Ionicons name="cloud-upload-outline" size={32} color={BRAND} />
+                        <Text style={[styles.pickFileText, { color: TEXT }]}>
+                          Seleccionar Archivo
+                        </Text>
+                        <Text style={[styles.pickFileSubtext, { color: SUBTEXT }]}>
                           Tamaño máximo: 10MB • Formatos: Todos
                         </Text>
                       </TouchableOpacity>
@@ -730,19 +801,26 @@ const onPickPriority = (value: string) => {
 
                     <View style={styles.modalButtons}>
                       <TouchableOpacity
-                        style={[styles.modalButton, styles.cancelButton]}
+                        style={[
+                          styles.modalButton,
+                          styles.cancelButton,
+                          { backgroundColor: MUTED_BG, borderColor: CARD_BORDER },
+                        ]}
                         onPress={() => {
                           setAttachModalVisible(false);
                           setSelectedFile(null);
                         }}
                       >
-                        <Text style={styles.cancelButtonText}>Cancelar</Text>
+                        <Text style={[styles.cancelButtonText, { color: TEXT }]}>
+                          Cancelar
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
                         style={[
                           styles.modalButton,
                           styles.uploadButton,
+                          { backgroundColor: BRAND },
                           (!selectedFile || uploading) && styles.disabledButton,
                         ]}
                         onPress={uploadFile}
@@ -760,17 +838,20 @@ const onPickPriority = (value: string) => {
               </Modal>
 
               {/* Comentarios / Historial (locales) */}
-              <Text style={styles.sectionLabel}>Comentarios</Text>
+              <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Comentarios</Text>
               {(task.comments || []).map((c: any) => (
                 <View key={c.id} style={styles.commentRow}>
-                  <View style={styles.avatarPlaceholder}>
+                  <View style={[styles.avatarPlaceholder, { backgroundColor: BRAND }]}>
                     <Text style={{ color: '#fff' }}>{c.user?.[0] ?? 'U'}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.commentUser}>
-                      {c.user} · <Text style={styles.commentDate}>{c.date}</Text>
+                    <Text style={[styles.commentUser, { color: TEXT }]}>
+                      {c.user}{' '}
+                      <Text style={[styles.commentDate, { color: SUBTEXT }]}>
+                        · {c.date}
+                      </Text>
                     </Text>
-                    <Text style={styles.commentText}>{c.text}</Text>
+                    <Text style={[styles.commentText, { color: TEXT }]}>{c.text}</Text>
                   </View>
                 </View>
               ))}
@@ -778,13 +859,17 @@ const onPickPriority = (value: string) => {
               <View style={{ marginTop: 8 }}>
                 <TextInput
                   placeholder="Añadir comentario..."
+                  placeholderTextColor={SUBTEXT}
                   value={newComment}
                   onChangeText={setNewComment}
-                  style={{ borderWidth: 1, borderColor: '#eee', padding: 8, borderRadius: 8 }}
+                  style={[
+                    styles.commentInput,
+                    { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+                  ]}
                 />
                 <TouchableOpacity
                   onPress={postComment}
-                  style={{ marginTop: 8, backgroundColor: PRIMARY, padding: 8, borderRadius: 8 }}
+                  style={{ marginTop: 8, backgroundColor: BRAND, padding: 8, borderRadius: 8 }}
                 >
                   <Text style={{ color: '#fff' }}>Comentar</Text>
                 </TouchableOpacity>
@@ -793,26 +878,23 @@ const onPickPriority = (value: string) => {
               <TouchableOpacity
                 onPress={() =>
                   router.push({
-                    pathname: "/features/task/components/taskhistory",
+                    pathname: '/features/task/components/taskhistory',
                     params: { projectId: task.projectId, taskId },
                   })
                 }
                 style={{
-                  backgroundColor: PRIMARY,
+                  backgroundColor: BRAND,
                   paddingVertical: 10,
                   borderRadius: 8,
-                  alignItems: "center",
+                  alignItems: 'center',
                   marginTop: 20,
                 }}
               >
-                <Text style={{ color: "#fff", fontWeight: "600" }}>Ver historial</Text>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Ver historial</Text>
               </TouchableOpacity>
-
-
-
             </>
           ) : (
-            <Text>No se encontró la tarea.</Text>
+            <Text style={{ color: TEXT }}>No se encontró la tarea.</Text>
           )}
         </View>
       </ScrollView>
@@ -825,18 +907,32 @@ const onPickPriority = (value: string) => {
         onRequestClose={() => setShowStatusPicker(false)}
       >
         <View style={styles.sheetOverlay}>
-          <View style={styles.sheetCard}>
-            <Text style={styles.sheetTitle}>Selecciona estado</Text>
+          <View
+            style={[
+              styles.sheetCard,
+              { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+            ]}
+          >
+            <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona estado</Text>
             {STATUS_OPTIONS.map((opt) => (
-              <TouchableOpacity key={opt} style={styles.sheetItem} onPress={() => onPickStatus(opt)}>
-                <Text style={styles.sheetText}>{t(statusMap, opt)}</Text>
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
+                ]}
+                onPress={() => onPickStatus(opt)}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>
+                  {t(statusMap, opt)}
+                </Text>
                 {normalize(statusValue) === normalize(opt) && (
-                  <Ionicons name="checkmark" size={18} color={PRIMARY} />
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
                 )}
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowStatusPicker(false)}>
-              <Text>Cancelar</Text>
+              <Text style={{ color: SUBTEXT }}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -850,29 +946,47 @@ const onPickPriority = (value: string) => {
         onRequestClose={() => setShowPriorityPicker(false)}
       >
         <View style={styles.sheetOverlay}>
-          <View style={styles.sheetCard}>
-            <Text style={styles.sheetTitle}>Selecciona prioridad</Text>
+          <View
+            style={[
+              styles.sheetCard,
+              { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+            ]}
+          >
+            <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona prioridad</Text>
             {PRIORITY_OPTIONS.map((opt) => (
-              <TouchableOpacity key={opt} style={styles.sheetItem} onPress={() => onPickPriority(opt)}>
-                <Text style={styles.sheetText}>{t(priorityMap, opt)}</Text>
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
+                ]}
+                onPress={() => onPickPriority(opt)}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>
+                  {t(priorityMap, opt)}
+                </Text>
                 {normalize(priorityValue) === normalize(opt) && (
-                  <Ionicons name="checkmark" size={18} color={PRIMARY} />
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
                 )}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowPriorityPicker(false)}>
-              <Text>Cancelar</Text>
+            <TouchableOpacity
+              style={styles.sheetCancel}
+              onPress={() => setShowPriorityPicker(false)}
+            >
+              <Text style={{ color: SUBTEXT }}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
       {/* Assign modal (selección de responsable) */}
       <AssignModal
         visible={assignModalVisible}
         onClose={() => setAssignModalVisible(false)}
         users={projectMembers}
         onAssign={(userId: number) => {
-          setEditState((s:any) => ({ ...s, assigneeId: Number(userId) }));
+          setEditState((s: any) => ({ ...s, assigneeId: Number(userId) }));
           setAssignModalVisible(false);
         }}
       />
@@ -883,7 +997,6 @@ const onPickPriority = (value: string) => {
 const styles = StyleSheet.create({
   container: { padding: 16 },
   card: {
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
     shadowColor: '#000',
@@ -892,6 +1005,16 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
+  titleInput: {
+    fontSize: 18,
+    fontWeight: '800',
+    flex: 1,
+    marginRight: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
 
   // Estado/Prioridad con etiqueta arriba
   metaRight: {
@@ -899,27 +1022,16 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'flex-end',
   },
-  metaGroup: {
-    alignItems: 'flex-end',
-  },
-  metaLabel: {
-    fontSize: 11,
-    color: '#000000ff',
-    marginBottom: 2,
-    fontWeight: '600',
-  },
-  metaValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#333',
-  },
+  metaGroup: { alignItems: 'flex-end' },
+  metaLabel: { fontSize: 11, marginBottom: 2, fontWeight: '600' },
+  metaValue: { fontSize: 13, fontWeight: '700' },
 
-  meta: { fontSize: 12, color: '#444' },
   sectionLabel: { marginTop: 12, fontSize: 13, fontWeight: '700' },
-  description: { marginTop: 6, color: '#333', lineHeight: 20 },
+  description: { marginTop: 6, lineHeight: 20 },
+
   row: { flexDirection: 'row', marginTop: 12 },
   field: { flex: 1 },
-  fieldLabel: { fontSize: 12, color: '#666' },
+  fieldLabel: { fontSize: 12 },
   fieldValue: { fontSize: 14, fontWeight: '700' },
 
   // Adjuntos
@@ -932,28 +1044,22 @@ const styles = StyleSheet.create({
   addAttachmentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PRIMARY,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     gap: 4,
   },
-  addAttachmentText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  addAttachmentText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
     paddingVertical: 8,
   },
   attachRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, flex: 1 },
   attachmentInfo: { flex: 1, marginLeft: 8 },
-  attachText: { marginLeft: 8, color: '#2a2a2a' },
-  attachmentSize: { fontSize: 11, color: '#666', marginTop: 2 },
+  attachText: { marginLeft: 8 },
+  attachmentSize: { fontSize: 11, marginTop: 2 },
   deleteAttachmentButton: { padding: 6, marginLeft: 8 },
 
   // Comentarios / Historial
@@ -962,18 +1068,17 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#3B34FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   commentUser: { fontWeight: '700' },
-  commentDate: { fontWeight: '400', color: '#666', fontSize: 12 },
-  commentText: { color: '#333' },
+  commentDate: { fontWeight: '400', fontSize: 12 },
+  commentText: {},
   historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-  historyText: { color: '#444' },
-  historyDate: { color: '#777', fontSize: 12 },
-  emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
+  historyText: {},
+  historyDate: { fontSize: 12 },
+  emptyText: { fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
 
   // Modal adjuntos
   modalOverlay: {
@@ -982,51 +1087,76 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: { backgroundColor: '#fff', borderRadius: 12, padding: 20, width: '90%', maxWidth: 400 },
+  modalContent: { borderRadius: 12, padding: 20, width: '90%', maxWidth: 400 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
   pickFileButton: {
     borderWidth: 2,
-    borderColor: '#e0e0e0',
     borderStyle: 'dashed',
     borderRadius: 8,
     padding: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pickFileText: { fontSize: 16, fontWeight: '600', marginTop: 8, color: '#333' },
-  pickFileSubtext: { fontSize: 12, color: '#666', marginTop: 4, textAlign: 'center' },
+  pickFileText: { fontSize: 16, fontWeight: '600', marginTop: 8 },
+  pickFileSubtext: { fontSize: 12, marginTop: 4, textAlign: 'center' },
   selectedFile: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#e9ecef',
   },
   fileInfo: { flex: 1, marginLeft: 12 },
-  fileName: { fontSize: 14, fontWeight: '600', color: '#333' },
-  fileSize: { fontSize: 12, color: '#666', marginTop: 2 },
+  fileName: { fontSize: 14, fontWeight: '600' },
+  fileSize: { fontSize: 12 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  modalButton: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  cancelButton: { backgroundColor: '#f8f9fa', borderWidth: 1, borderColor: '#dee2e6' },
-  uploadButton: { backgroundColor: PRIMARY },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {},
+  uploadButton: {},
   disabledButton: { backgroundColor: '#ccc' },
-  cancelButtonText: { color: '#333', fontWeight: '600' },
+  cancelButtonText: { fontWeight: '600' },
   uploadButtonText: { color: '#fff', fontWeight: '600' },
 
   // Bottom-sheet para pickers
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
-  sheetCard: { backgroundColor: '#fff', borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
+  sheetCard: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
   sheetTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
   sheetItem: {
     paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderBottomColor: '#f0f0f0',
     borderBottomWidth: 1,
   },
   sheetText: { fontSize: 15 },
   sheetCancel: { paddingVertical: 14, alignItems: 'center' },
+
+  // ⚙️ Estilos agregados
+  descInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  dateInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
+  commentInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+  },
 });

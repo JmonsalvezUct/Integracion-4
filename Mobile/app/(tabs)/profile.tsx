@@ -1,25 +1,35 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, Switch, ScrollView, SafeAreaView, Platform, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Switch,
+  ScrollView,
+  SafeAreaView,
+  Platform,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import performLogout from '@/app/features/profile/components/logout';
 import { Ionicons } from '@expo/vector-icons';
 import { getSavedUser, type LoginResponse } from '@/services/auth';
 
-//leer el tema global (light/dark) y la acción para alternar
+// Tema global (no tocar la lógica del switch)
 import { useThemeMode } from '@/app/theme-context';
-//paleta para aplicar colores dinámicos
 import { Colors } from '@/constants/theme';
 
-type User = LoginResponse['user']; //Se reutiliza el tipo de user ya definido en auth
+type User = LoginResponse['user'];
 
 export default function ProfileScreen() {
-  const { theme, toggleTheme } = useThemeMode(); // <- tema global
+  const { theme, toggleTheme } = useThemeMode();
   const [pushEnabled, setPushEnabled] = React.useState(true);
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
-  //Cargar el usuario al montar la pantalla
   React.useEffect(() => {
     let mounted = true;
     (async () => {
@@ -30,14 +40,25 @@ export default function ProfileScreen() {
         if (mounted) setLoading(false);
       }
     })();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Mientras carga, muestra un spinner
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}>
-        <View style={[styles.container, { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors[theme].background }]}>
+        <View
+          style={[
+            styles.container,
+            {
+              flex: 1,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: Colors[theme].background,
+            },
+          ]}
+        >
           <ActivityIndicator />
           <Text style={{ marginTop: 8, color: Colors[theme].text }}>Cargando perfil...</Text>
         </View>
@@ -45,32 +66,30 @@ export default function ProfileScreen() {
     );
   }
 
-  // Valores seguros para mostrar
-  const displayName = (user?.name?.trim() || 'Usuario');
-  const displayEmail = (user?.email || '—');
+  const displayName = user?.name?.trim() || 'Usuario';
+  const displayEmail = user?.email || '—';
 
-  // Colores dinámicos
+  // 🎨 Colores dinámicos
   const BG = Colors[theme].background;
   const TEXT = Colors[theme].text;
-  const CARD_BG = Colors[theme].background; 
-  const BORDER  = Colors[theme].icon;
+  const CARD_BG = Colors[theme].background;
+  const BORDER = Colors[theme].icon;
 
-  // Color de marca (azul) para modo claro
-  const BRAND = Colors.light.tint || "#3B34FF";
+  // 🔹 Color de marca: usa el de modo claro en ambos modos
+  // (si tu paleta define otro, lo toma; si no, usa #0a7ea4)
+  const BRAND = Colors.light.tint || '#0a7ea4';
 
-  
-  const isDark = theme === 'dark';
-  const camBg = isDark ? '#ffffff' : BRAND;
-  const camColor = isDark ? '#000000' : '#ffffff';
-  const camBorderColor = isDark ? '#121212' : '#ffffff';
-  const camBorderWidth = isDark ? 0 : 2;
+  // 🔹 Camarita: mismo color que en modo claro también en modo oscuro
+  const camBg = BRAND;         // fondo SIEMPRE del color de marca
+  const camColor = '#ffffff';  // icono siempre blanco
+  const camBorderColor = theme === 'light' ? '#ffffff' : 'transparent';
+  const camBorderWidth = theme === 'light' ? 2 : 0;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: BG }]}>
         <View style={styles.header}>
           <View style={styles.avatarWrap}>
-            {/* Foto o ícono por defecto */}
             {user?.profilePicture ? (
               <Image source={{ uri: user.profilePicture }} style={styles.avatarImg} />
             ) : (
@@ -79,7 +98,7 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            {/* 🔹 Botón de cámara con colores por tema */}
+            {/* 🔹 Botón de cámara con color persistente en ambos modos */}
             <TouchableOpacity
               style={[
                 styles.avatarBtn,
@@ -104,7 +123,9 @@ export default function ProfileScreen() {
             </View>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-              <Text style={[styles.email, { color: theme === 'dark' ? '#bbb' : '#888' }]}>{displayEmail}</Text>
+              <Text style={[styles.email, { color: theme === 'dark' ? '#bbb' : '#888' }]}>
+                {displayEmail}
+              </Text>
               <TouchableOpacity style={{ marginLeft: 8 }}>
                 <Ionicons name="pencil" size={14} color={BRAND} />
               </TouchableOpacity>
@@ -116,6 +137,7 @@ export default function ProfileScreen() {
           <Text style={[styles.cardTitle, { color: TEXT }]}>Apariencia</Text>
           <View style={styles.rowBetween}>
             <Text style={[styles.cardText, { color: TEXT }]}>Modo oscuro</Text>
+            {/* ⚠️ Switch intacto */}
             <Switch value={theme === 'dark'} onValueChange={toggleTheme} />
           </View>
         </View>
@@ -140,7 +162,10 @@ export default function ProfileScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.logoutBtn, { backgroundColor: CARD_BG, borderColor: theme === 'dark' ? '#5c2a2a' : '#ffd6d6' }]}
+          style={[
+            styles.logoutBtn,
+            { backgroundColor: CARD_BG, borderColor: theme === 'dark' ? '#5c2a2a' : '#ffd6d6' },
+          ]}
           activeOpacity={0.8}
           onPress={() => {
             Alert.alert(
@@ -174,10 +199,20 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  container: { padding: 16, paddingBottom: 40, paddingTop: Platform.OS === 'android' ? 32 : 18 },
+  container: {
+    padding: 16,
+    paddingBottom: 40,
+    paddingTop: Platform.OS === 'android' ? 32 : 18,
+  },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   avatarWrap: { position: 'relative' },
-  avatarPlaceholder: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
+  avatarPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarImg: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#e9e9ff' },
   avatarBtn: {
     position: 'absolute',
@@ -199,7 +234,12 @@ const styles = StyleSheet.create({
   cardText: { fontSize: 16 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   link: {},
-
-  logoutBtn: { marginTop: 18, borderRadius: 10, borderWidth: 1, paddingVertical: 12, alignItems: 'center' },
+  logoutBtn: {
+    marginTop: 18,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
   logoutText: { fontWeight: '700' },
 });
