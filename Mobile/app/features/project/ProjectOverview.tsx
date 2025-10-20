@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   TouchableOpacity,
@@ -16,8 +15,10 @@ import EditProject from "../project/EditProject";
 import { TaskScreen } from "../task/screens/taskscreen";
 import { apiFetch } from "@/lib/api-fetch";
 
-// 🎨 Hook de colores centralizado
+// 🎨 Tema + layout global
 import { useThemedColors } from "@/hooks/use-theme-color";
+import LayoutContainer from "@/components/layout/layout_container";
+import { CONTAINER } from "@/constants/spacing";
 
 export default function ProjectOverview() {
   const router = useRouter();
@@ -28,7 +29,6 @@ export default function ProjectOverview() {
   const [projectName, setProjectName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
-  //temas
   const { isDark, BG, TEXT, BRAND } = useThemedColors();
   const TAB_BG = isDark ? "#141414" : "#ffffff";
   const TAB_BORDER = isDark ? "#2a2a2a" : "#E5E5E5";
@@ -53,20 +53,21 @@ export default function ProjectOverview() {
         setLoading(false);
       }
     };
-
     if (projectId) loadProjectName();
   }, [projectId]);
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: BG }]}>
-        <ActivityIndicator size="large" color={BRAND} />
-      </View>
+      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND} />
+        </View>
+      </LayoutContainer>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: BG }]}>
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: BRAND }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -82,6 +83,7 @@ export default function ProjectOverview() {
         style={[
           styles.tabs,
           { backgroundColor: TAB_BG, borderBottomColor: TAB_BORDER },
+          { paddingHorizontal: CONTAINER.horizontal }, // margen global lateral
         ]}
       >
         <TouchableOpacity
@@ -122,22 +124,30 @@ export default function ProjectOverview() {
       </View>
 
       {/* Contenido */}
-      <View style={[styles.content, { backgroundColor: BG }]}>
+      <View
+        style={[
+          styles.content,
+          {
+            paddingHorizontal: CONTAINER.horizontal,
+            paddingTop: CONTAINER.top,
+            paddingBottom: CONTAINER.bottom,
+          },
+        ]}
+      >
         {activeTab === "details" && <DetailProject />}
         {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
         {activeTab === "edit" && <EditProject projectId={projectId} />}
       </View>
-    </SafeAreaView>
+    </LayoutContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: CONTAINER.horizontal,
     paddingVertical: 12,
   },
   backBtn: {
@@ -154,5 +164,5 @@ const styles = StyleSheet.create({
   },
   tabBtn: { flex: 1, alignItems: "center", paddingVertical: 12 },
   tabText: { fontSize: 15, fontWeight: "600" },
-  content: { flex: 1, padding: 10 },
+  content: { flex: 1 },
 });

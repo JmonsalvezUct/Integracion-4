@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   ScrollView,
@@ -23,6 +22,9 @@ import { AssignModal } from './components/assignmodal';
 
 // 🎨 Hook de colores centralizado
 import { useThemedColors } from '@/hooks/use-theme-color';
+// 🧱 Layout y spacing global
+import LayoutContainer from '@/components/layout/layout_container';
+import { CONTAINER } from '@/constants/spacing';
 
 const TASK_UPDATED = 'TASK_UPDATED';
 
@@ -192,7 +194,7 @@ export default function DetailTask() {
   }
 
   //-----------------------------------------------------------------------------
-  // ✅ Cambiar SOLO el estado usando el endpoint especializado /status
+  //Cambiar SOLO el estado usando el endpoint especializado /status
   async function updateTaskStatusOnly(id: string | number, newStatus: string) {
     try {
       const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
@@ -474,9 +476,9 @@ export default function DetailTask() {
 
   if (!taskId)
     return (
-      <SafeAreaView>
+      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
         <Text>ID de tarea no proporcionado</Text>
-      </SafeAreaView>
+      </LayoutContainer>
     );
 
   // Mostrar valores en edición si existen; si no, los del task original
@@ -484,9 +486,29 @@ export default function DetailTask() {
   const priorityValue = editState?.priority ?? task?.priority;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: BG }}>
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
       <Header title={`Tarea #${taskId}`} />
-      <ScrollView contentContainerStyle={[styles.container]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container, // se mantiene por compatibilidad
+          {
+            paddingHorizontal: CONTAINER.horizontal,
+            paddingTop: CONTAINER.top,
+            paddingBottom: CONTAINER.bottom,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text
+            style={{
+            color: TEXT,              // ← usa el color del tema
+            fontSize: 28,
+            fontWeight: "800",
+            marginBottom: 12,
+          }}
+        >
+          {`Tarea #${taskId}`}
+        </Text>
         <View
           style={[
             styles.card,
@@ -990,12 +1012,12 @@ export default function DetailTask() {
           setAssignModalVisible(false);
         }}
       />
-    </SafeAreaView>
+    </LayoutContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
+  container: { padding: 16 }, // se mantiene por compatibilidad; el padding real lo define CONTAINER
   card: {
     borderRadius: 12,
     padding: 16,
