@@ -67,7 +67,7 @@ export default function DetailTask() {
   const [selectedTag, setSelectedTag] = useState<any>(null);
   const [showTagPicker, setShowTagPicker] = useState(false);
 
-  // Define tu paleta de colores pastel (puedes cambiar los tonos)
+
   const TAG_COLORS = [
     "#FFD6A5", // naranja claro
     "#FDFFB6", // amarillo
@@ -79,11 +79,11 @@ export default function DetailTask() {
     "#FFFFFC", // blanco cálido
   ];
 
-  // Devuelve un color según el id (o hash)
+
   const getTagColor = (id: number) => TAG_COLORS[id % TAG_COLORS.length];
 
 
-    // Cargar etiquetas del proyecto
+
   useEffect(() => {
     const projectId = task?.projectId ?? task?.project?.id;
     if (!projectId) return;
@@ -118,7 +118,7 @@ useEffect(() => {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
 
-      // ✅ Normaliza si el backend devuelve [{ tag: { id, name } }]
+
       const normalized =
         Array.isArray(data) && data.length > 0 && data[0].tag
           ? data.map((t: any) => t.tag)
@@ -176,7 +176,7 @@ useEffect(() => {
 
       const selected = projectTags.find((t) => t.id === tagId);
 
-      // ✅ Agregar la nueva etiqueta al array existente de tags
+
       setTask((prev: any) => ({
         ...prev,
         tags: prev?.tags ? [...prev.tags, selected] : [selected],
@@ -217,7 +217,7 @@ useEffect(() => {
         onPress: async () => {
           try {
             const token = await getAccessToken();
-            // ✅ Ahora usamos la ruta con parámetros
+          
             const res = await apiFetch(`/tags/remove/${taskId}/${tagId}`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${token}` },
@@ -228,7 +228,7 @@ useEffect(() => {
               throw new Error(txt || "Error al eliminar etiqueta");
             }
 
-            // ✅ Actualiza el estado local
+          
             setTask((prev: any) => ({
               ...prev,
               tags: prev.tags.filter((t: any) => t.id !== tagId),
@@ -267,24 +267,24 @@ useEffect(() => {
   const normalize = (v: any) => String(v ?? '').toLowerCase().trim().replace(/\s+/g, '_');
   const t = (map: Record<string, string>, v: any) => map[normalize(v)] ?? (v ?? '—');
 
-  // Opciones para pickers
+
   const STATUS_OPTIONS = ['created', 'in_progress', 'completed', 'archived'];
   const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
 
-  // Subir archivos con FormData (usa apiFetch)
+
   const apiFetchWithFormData = async (url: string, options: any = {}) => {
     const token = await getAccessToken();
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     };
-    // FormData pone su propio boundary; no forzar Content-Type
+
     if (options.body instanceof FormData) delete (headers as any)['Content-Type'];
     return apiFetch(url, { ...options, headers });
-    // Nota: apiFetch ya aplica baseURL y maneja tokens refrescados
+
   };
 
-  // Cargar datos iniciales desde el parámetro
+
   useEffect(() => {
     if (!taskDataParam) return;
     setLoading(true);
