@@ -3,7 +3,7 @@
     import type { Task, User } from "../types";
     import { apiFetch } from "@/lib/api-fetch";
 
-    // 🔔 Sincronización global de estado de tareas (Kanban / Detalle / Lista)
+
 import { DeviceEventEmitter } from "react-native";
 const TASK_UPDATED = "TASK_UPDATED";
 
@@ -78,7 +78,7 @@ const TASK_UPDATED = "TASK_UPDATED";
 export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projectName, setProjectName] = useState("");
-    const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "", search: "",tag: "",});
+    const [filters, setFilters] = useState({ status: "", assignee: "", dueDate: "", search: "",tag: "",priority: "",});
     const [sortBy, setSortBy] = useState<"title" | "priority" | "dueDate" | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentStartDate, setCurrentStartDate] = useState(new Date());
@@ -137,7 +137,7 @@ export function useTasks(projectId?: string | number) {
     const tasksForSelectedDate = useMemo(() => {
         if (!selectedDate) return [];
         
-        console.log("Filtrando tareas para:", selectedDate.toLocaleDateString());
+
         
         return tasks.filter(task => {
         if (!task.dueDate) {
@@ -151,46 +151,68 @@ export function useTasks(projectId?: string | number) {
             taskDate.getMonth() === selectedDate.getMonth() &&
             taskDate.getFullYear() === selectedDate.getFullYear();
             
-            if (isSameDate) {
-            console.log("Tarea encontrada para esta fecha:", task.title);
-            }
+
             
             return isSameDate;
         } catch (error) {
-            console.log(" Error procesando fecha de tarea:", task.title, task.dueDate);
+
             return false;
         }
         });
     }, [tasks, selectedDate]);
 
     const visibleTasks = useMemo(() => {
-        let filtered = tasks.filter((t) => {
-        const matchStatus = filters.status ? t.status?.toLowerCase().includes(filters.status.toLowerCase()) : true;
+    let filtered = tasks.filter((t) => {
+        const matchStatus = filters.status
+        ? t.status?.toLowerCase().includes(filters.status.toLowerCase())
+        : true;
+
         const matchAssignee = filters.assignee
-            ? t.assignee?.name?.toLowerCase().includes(filters.assignee.toLowerCase())
-            : true;
-        const matchDate = filters.dueDate ? t.dueDate?.startsWith(filters.dueDate) : true;
-        return matchStatus && matchAssignee && matchDate;
-        });
+        ? t.assignee?.name?.toLowerCase().includes(filters.assignee.toLowerCase())
+        : true;
+
+        const matchDate = filters.dueDate
+        ? t.dueDate?.startsWith(filters.dueDate)
+        : true;
+
+        const matchTag = filters.tag
+        ? t.tags?.some((tt: any) =>
+            tt.tag?.name?.toLowerCase().includes(filters.tag.toLowerCase())
+            )
+        : true;
+
+        const matchPriority = filters.priority
+        ? t.priority?.toLowerCase().includes(filters.priority.toLowerCase())
+        : true;
+
+        return (
+        matchStatus &&
+        matchAssignee &&
+        matchDate &&
+        matchTag &&
+        matchPriority
+        );
+    });
 
     if (!sortBy) return filtered;
 
-        const sorted = [...filtered].sort((a, b) => {
+    const sorted = [...filtered].sort((a, b) => {
         let valA: any, valB: any;
         switch (sortBy) {
-            case "title":
+        case "title":
             valA = a.title?.toLowerCase() || "";
             valB = b.title?.toLowerCase() || "";
             break;
-            case "priority":
-            const order: Record<"high" | "medium" | "low", number> = { high: 3, medium: 2, low: 1 };
-            const priorityA = a.priority as "high" | "medium" | "low" | undefined;
-            const priorityB = b.priority as "high" | "medium" | "low" | undefined;
-            valA = priorityA ? order[priorityA] : 0;
-            valB = priorityB ? order[priorityB] : 0;
+        case "priority":
+            const order: Record<"high" | "medium" | "low", number> = {
+            high: 3,
+            medium: 2,
+            low: 1,
+            };
+            valA = order[a.priority as keyof typeof order] || 0;
+            valB = order[b.priority as keyof typeof order] || 0;
             break;
-
-            case "dueDate":
+        case "dueDate":
             valA = a.dueDate ? new Date(a.dueDate).getTime() : 0;
             valB = b.dueDate ? new Date(b.dueDate).getTime() : 0;
             break;
@@ -198,9 +220,11 @@ export function useTasks(projectId?: string | number) {
         if (valA < valB) return sortDirection === "asc" ? -1 : 1;
         if (valA > valB) return sortDirection === "asc" ? 1 : -1;
         return 0;
-        });
-        return sorted;
+    });
+
+    return sorted;
     }, [tasks, filters, sortBy, sortDirection]);
+
 
     const fetchUsers = async () => {
     try {
@@ -238,7 +262,7 @@ export function useTasks(projectId?: string | number) {
         fetchUsers();
     }, [projectId]);
 
-    // 🔔 Escucha cambios globales de estado (desde Kanban o Detalle)
+
     useEffect(() => {
     const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
         if (!updated) return;
@@ -270,4 +294,5 @@ export function useTasks(projectId?: string | number) {
         tasksForSelectedDate,
         fetchTasks,
     };
+
 }

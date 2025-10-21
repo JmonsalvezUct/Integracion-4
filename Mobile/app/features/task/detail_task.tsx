@@ -62,6 +62,75 @@ export default function DetailTask() {
   // Mantiene el mismo formato mostrado mientras se edita la fecha
   const [dueDateEditingValue, setDueDateEditingValue] = useState<string | null>(null);
 
+    // --- Etiquetas ---
+  const [projectTags, setProjectTags] = useState<{ id: number; name: string }[]>([]);
+  const [selectedTag, setSelectedTag] = useState<any>(null);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+
+  // Define tu paleta de colores pastel (puedes cambiar los tonos)
+  const TAG_COLORS = [
+    "#FFD6A5", // naranja claro
+    "#FDFFB6", // amarillo
+    "#CAFFBF", // verde menta
+    "#9BF6FF", // celeste
+    "#A0C4FF", // azul suave
+    "#BDB2FF", // violeta claro
+    "#FFC6FF", // rosado
+    "#FFFFFC", // blanco cálido
+  ];
+
+  // Devuelve un color según el id (o hash)
+  const getTagColor = (id: number) => TAG_COLORS[id % TAG_COLORS.length];
+
+
+    // Cargar etiquetas del proyecto
+  useEffect(() => {
+    const projectId = task?.projectId ?? task?.project?.id;
+    if (!projectId) return;
+
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await apiFetch(`/tags/project/${projectId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setProjectTags(data);
+      } catch (err) {
+        console.error("Error cargando etiquetas:", err);
+      }
+    })();
+  }, [task]);
+
+
+
+useEffect(() => {
+  if (!taskId) return;
+
+  (async () => {
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags/task/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      // ✅ Normaliza si el backend devuelve [{ tag: { id, name } }]
+      const normalized =
+        Array.isArray(data) && data.length > 0 && data[0].tag
+          ? data.map((t: any) => t.tag)
+          : data;
+
+      setTask((prev: any) => ({ ...prev, tags: normalized }));
+    } catch (err) {
+      console.error("Error cargando etiquetas de la tarea:", err);
+    }
+  })();
+}, [taskId]);
+
   // 🎨 tokens del tema
   const {
     isDark,
@@ -88,6 +157,95 @@ export default function DetailTask() {
     medium: 'Media',
     low: 'Baja',
   };
+
+  const assignTagToTask = async (tagId: number) => {
+    if (!taskId) return;
+    try {
+      const token = await getAccessToken();
+
+      const res = await apiFetch(`/tags/assign`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ taskId: Number(taskId), tagId: Number(tagId) }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const selected = projectTags.find((t) => t.id === tagId);
+
+      // ✅ Agregar la nueva etiqueta al array existente de tags
+      setTask((prev: any) => ({
+        ...prev,
+        tags: prev?.tags ? [...prev.tags, selected] : [selected],
+      }));
+
+      setSelectedTag(selected);
+      setShowTagPicker(false);
+
+      Alert.alert("Etiqueta asignada", `Se asignó "${selected?.name}"`);
+    } catch (err: any) {
+      const errorMsg = err?.message || "";
+
+      if (
+        errorMsg.includes("Unique constraint failed") ||
+        errorMsg.includes("taskId','tagId")
+      ) {
+        Alert.alert(
+          "Etiqueta ya asignada",
+          "Esta tarea ya tiene esa etiqueta asignada."
+        );
+      } else {
+        console.error("Error asignando etiqueta:", err);
+        Alert.alert("Error", "No se pudo asignar la etiqueta. Intenta nuevamente.");
+      }
+    }
+  };
+
+
+  
+  const removeTagFromTask = async (tagId?: number) => {
+    if (!taskId || !tagId) return;
+
+    Alert.alert("Quitar etiqueta", "¿Deseas eliminar esta etiqueta?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const token = await getAccessToken();
+            // ✅ Ahora usamos la ruta con parámetros
+            const res = await apiFetch(`/tags/remove/${taskId}/${tagId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+              const txt = await res.text();
+              throw new Error(txt || "Error al eliminar etiqueta");
+            }
+
+            // ✅ Actualiza el estado local
+            setTask((prev: any) => ({
+              ...prev,
+              tags: prev.tags.filter((t: any) => t.id !== tagId),
+            }));
+
+            Alert.alert("Etiqueta eliminada", "La etiqueta fue eliminada correctamente.");
+          } catch (err) {
+            console.error("Error eliminando etiqueta:", err);
+            Alert.alert("Error", "No se pudo eliminar la etiqueta.");
+          }
+        },
+      },
+    ]);
+  };
+
+
+
   // Date helpers: formato YYYY/MM/DD
   const displayDateFromISO = (iso?: string | null) =>
     iso ? String(iso).slice(0, 10).replace(/-/g, '/') : '';
@@ -566,6 +724,8 @@ export default function DetailTask() {
                     </Text>
                   </TouchableOpacity>
                 </View>
+
+                
               </View>
 
               <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Descripción</Text>
@@ -694,6 +854,46 @@ export default function DetailTask() {
                   </TouchableOpacity>
                 </View>
               </View>
+              
+              <View style={[styles.field, { marginTop: 12 }]}>
+                <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Etiquetas</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
+                    {task?.tags && task.tags.length > 0 ? (
+                      task.tags.map((tag: any) => (
+                        <View
+                          key={tag.id}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            backgroundColor: getTagColor(tag.id),
+                            borderRadius: 16,
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            marginRight: 8,
+                            marginBottom: 6,
+                          }}
+                        >
+                          <Text style={{ color: BRAND, fontWeight: "600" }}>{tag.name}</Text>
+                          <TouchableOpacity
+                            onPress={() => removeTagFromTask(tag.id)}
+                            style={{ marginLeft: 6 }}
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={{ color: SUBTEXT, fontStyle: "italic" }}>Sin etiquetas</Text>
+                    )}
+                  </View>
+                </ScrollView>
+
+                <TouchableOpacity onPress={() => setShowTagPicker(true)} style={{ marginTop: 8 }}>
+                  <Text style={{ color: BRAND, fontWeight: "600" }}>+ Agregar etiqueta</Text>
+                </TouchableOpacity>
+              </View>
+
 
               {/* Botón Guardar (opcional si prefieres guardar manualmente cambios múltiples) */}
               {editing && (
@@ -1012,6 +1212,61 @@ export default function DetailTask() {
           setAssignModalVisible(false);
         }}
       />
+
+      {/* Picker de Etiquetas */}
+    <Modal
+      visible={showTagPicker}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowTagPicker(false)}
+    >
+      <View style={styles.sheetOverlay}>
+        <View
+          style={[
+            styles.sheetCard,
+            { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+          ]}
+        >
+          <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona etiqueta</Text>
+
+          {projectTags.length === 0 ? (
+            <Text style={{ color: SUBTEXT, paddingVertical: 8 }}>
+              No hay etiquetas disponibles
+            </Text>
+          ) : (
+            projectTags.map((tag) => (
+              <TouchableOpacity
+                key={tag.id}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? "#222" : "#f0f0f0" },
+                ]}
+                onPress={() => {
+                  assignTagToTask(tag.id);
+                  setShowTagPicker(false);
+                }}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>{tag.name}</Text>
+                {selectedTag?.id === tag.id ||
+                task?.tag?.id === tag.id ? (
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
+                ) : null}
+              </TouchableOpacity>
+            ))
+          )}
+
+          <TouchableOpacity
+            style={styles.sheetCancel}
+            onPress={() => setShowTagPicker(false)}
+          >
+            <Text style={{ color: SUBTEXT }}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+
+
+      
     </LayoutContainer>
   );
 }
