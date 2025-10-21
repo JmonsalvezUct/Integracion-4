@@ -18,17 +18,12 @@ export default function TabLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-
-          //Colores de íconos y etiquetas
           tabBarActiveTintColor: isDark ? "#ffffff" : "#0a7ea4",
           tabBarInactiveTintColor: isDark ? "#b0b3b8" : "#6b7280",
-
-          // Fondo y borde de la barra inferior
           tabBarStyle: {
             backgroundColor: isDark ? "#0c0c0c" : "#ffffff",
             borderTopColor: isDark ? "#1f1f1f" : "#e5e7eb",
           },
-          // (opcional) tipografía más legible
           tabBarLabelStyle: { fontSize: 12 },
         }}
       >
@@ -41,15 +36,15 @@ export default function TabLayout() {
             ),
           }}
         />
+
+        
         <Tabs.Screen
           name="explore"
           options={{
-            title: "Explore",
-            tabBarIcon: ({ color, focused }) => (
-              <TabBarIcon name={focused ? "play" : "play-outline"} color={color} />
-            ),
+            href: null, 
           }}
         />
+
         <Tabs.Screen
           name="profile"
           options={{
