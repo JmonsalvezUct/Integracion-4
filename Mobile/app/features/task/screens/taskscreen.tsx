@@ -1,3 +1,5 @@
+// REEMPLAZA TODO EL taskscreen.tsx con ESTE CÓDIGO:
+
 import React, { useState } from "react";
 import {
   SafeAreaView,
@@ -5,7 +7,8 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,Alert
+  ScrollView,
+  Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -25,13 +28,10 @@ const PRIMARY = "#3B34FF";
 
 export function TaskScreen({ projectId }: { projectId?: string }) {
   const router = useRouter();
-  console.log("📦 projectId recibido en TaskScreen:", projectId);
-
+  
   if (!projectId) {
     return (
-      <SafeAreaView
-        style={[styles.container, { justifyContent: "center", alignItems: "center" }]}
-      >
+      <SafeAreaView style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
         <Text style={{ color: "#fff", fontSize: 16 }}>Cargando proyecto...</Text>
       </SafeAreaView>
     );
@@ -54,12 +54,14 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     setSelectedDate,
     tasksForSelectedDate,
     fetchTasks,
+    updateTaskDate,
   } = useTasks(projectId);
-useFocusEffect(
-  React.useCallback(() => {
-    fetchTasks();
-  }, [fetchTasks])
-);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
 
   const [showFilters, setShowFilters] = useState(false);
   const [columns, setColumns] = useState({
@@ -73,7 +75,6 @@ useFocusEffect(
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
-
   const [viewMode, setViewMode] = useState<"list" | "calendar" | "kanban">("list");
 
   type ColumnKey = "status" | "assignee" | "dueDate" | "priority";
@@ -95,10 +96,7 @@ useFocusEffect(
     setToastVisible(true);
   };
 
-
   const handleTaskPress = (task: Task) => {
-    console.log('🔄 Navegando a detalle con task:', task);
-    
     router.push({
       pathname: "/features/task/detail_task",
       params: { 
@@ -107,8 +105,20 @@ useFocusEffect(
       }
     });
   };
-  const displayTasks =
-    viewMode === "calendar" && selectedDate ? tasksForSelectedDate : tasks;
+
+  // 🔥 ESTA ES LA FUNCIÓN CRÍTICA QUE DEBE PASARSE
+  const handleTaskDateUpdate = async (taskId: number, newDate: Date) => {
+    console.log("🔥 TaskScreen: handleTaskDateUpdate llamado", { taskId, newDate });
+    try {
+      await updateTaskDate(taskId, newDate);
+      showToast(`Fecha actualizada al ${newDate.toLocaleDateString('es-ES')}`, "success");
+    } catch (error) {
+      console.error('❌ Error en TaskScreen:', error);
+      showToast("Error al actualizar la fecha", "error");
+    }
+  };
+
+  const displayTasks = viewMode === "calendar" && selectedDate ? tasksForSelectedDate : tasks;
 
   const nextView = () => {
     if (viewMode === "list") return setViewMode("kanban");
@@ -127,10 +137,7 @@ useFocusEffect(
 
       <View style={styles.topBar}>
         {viewMode === "list" && (
-          <TouchableOpacity
-            style={styles.filterBtn}
-            onPress={() => setShowFilters(!showFilters)}
-          >
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setShowFilters(!showFilters)}>
             <Ionicons name="options-outline" size={18} color="#fff" />
             <Text style={styles.navText}>
               {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
@@ -141,26 +148,19 @@ useFocusEffect(
         <TouchableOpacity style={styles.kanbanBtn} onPress={nextView}>
           <Ionicons
             name={
-              viewMode === "list"
-                ? "albums-outline"
-                : viewMode === "kanban"
-                ? "calendar-outline"
-                : "list-outline"
+              viewMode === "list" ? "albums-outline" :
+              viewMode === "kanban" ? "calendar-outline" : "list-outline"
             }
             size={20}
             color="#fff"
           />
           <Text style={styles.navText}>
-            {viewMode === "list"
-              ? "Kanban"
-              : viewMode === "kanban"
-              ? "Calendario"
-              : "Lista"}
+            {viewMode === "list" ? "Kanban" :
+             viewMode === "kanban" ? "Calendario" : "Lista"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* 🔹 Contenido principal */}
       <View style={styles.content}>
         {viewMode === "list" && (
           <>
@@ -175,12 +175,8 @@ useFocusEffect(
 
             {displayTasks.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  No hay tareas en este proyecto.
-                </Text>
-                <Text style={styles.emptyStateSubtext}>
-                  Crea la primera tarea usando el botón +
-                </Text>
+                <Text style={styles.emptyStateText}>No hay tareas en este proyecto.</Text>
+                <Text style={styles.emptyStateSubtext}>Crea la primera tarea usando el botón +</Text>
               </View>
             ) : (
               <TaskList
@@ -192,7 +188,7 @@ useFocusEffect(
                   setSelectedTaskId(id);
                   setAssignModalVisible(true);
                 }}
-                onTaskPress={handleTaskPress} // ✅ Pasamos la función corregida
+                onTaskPress={handleTaskPress}
               />
             )}
           </>
@@ -207,37 +203,34 @@ useFocusEffect(
             setCurrentStartDate={setCurrentStartDate}
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
+            onTaskDateUpdate={handleTaskDateUpdate} // 🔥 ESTA LÍNEA ES LA CLAVE
           />
         )}
       </View>
 
-    <TouchableOpacity
-      style={styles.fab}
-      onPress={async () => {
-        const userId = await getUserId();
-
-        if (!userId) {
-          Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
-          return;
-        }
-
-        if (!projectId) {
-          Alert.alert("Error", "No se encontró el ID del proyecto.");
-          return;
-        }
-
-        router.push({
-          pathname: "/features/task/components/CreateTask",
-          params: {
-            projectId: projectId.toString(),
-            creatorId: userId.toString(),
-          },
-        });
-      }}
-    >
-      <Ionicons name="add" size={28} color="#fff" />
-    </TouchableOpacity>
-
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={async () => {
+          const userId = await getUserId();
+          if (!userId) {
+            Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
+            return;
+          }
+          if (!projectId) {
+            Alert.alert("Error", "No se encontró el ID del proyecto.");
+            return;
+          }
+          router.push({
+            pathname: "/features/task/components/CreateTask",
+            params: {
+              projectId: projectId.toString(),
+              creatorId: userId.toString(),
+            },
+          });
+        }}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
 
       <AssignModal
         visible={assignModalVisible}
@@ -257,7 +250,6 @@ useFocusEffect(
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F9F9FB" },
-
   topBar: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -268,7 +260,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#E5E5E5",
   },
-
   kanbanBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -287,13 +278,11 @@ const styles = StyleSheet.create({
     marginRight: 90, 
     height: 36,
   },
-
   navText: {
     color: "#fff",
     marginLeft: 6,
     fontWeight: "600",
   },
-
   content: {
     flex: 1,
     padding: 16,
@@ -301,7 +290,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
-
   fab: {
     position: "absolute",
     right: 20,
@@ -314,58 +302,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     elevation: 8,
   },
-
   emptyState: { alignItems: "center", justifyContent: "center", padding: 40 },
   emptyStateText: { fontSize: 16, color: "#666", marginBottom: 8 },
   emptyStateSubtext: { fontSize: 14, color: "#999", textAlign: "center" },
-
-  taskItem: {
-    backgroundColor: "white",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  taskHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
-    marginRight: 8,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  priorityText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  taskFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  taskAssignee: {
-    fontSize: 12,
-    color: "#3B34FF",
-    fontWeight: "500",
-  },
-  taskStatus: {
-    fontSize: 12,
-    color: "#666",
-  },
 });

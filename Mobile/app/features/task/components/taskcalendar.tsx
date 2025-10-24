@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Vibration } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import type { Task } from "../types";
@@ -10,6 +10,7 @@ interface TaskCalendarProps {
   setCurrentStartDate: (date: Date) => void;
   selectedDate: Date | null;
   setSelectedDate: (date: Date | null) => void;
+  onTaskDateUpdate?: (taskId: number, newDate: Date) => void;
 }
 
 export function TaskCalendar({
@@ -18,17 +19,15 @@ export function TaskCalendar({
   setCurrentStartDate,
   selectedDate,
   setSelectedDate,
+  onTaskDateUpdate,
 }: TaskCalendarProps) {
   const router = useRouter();
   const today = new Date();
+  const [draggingTask, setDraggingTask] = useState<Task | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null);
 
-  // DEBUG: Verificar tareas y fechas
-  console.log("📊 Total tareas:", tasks.length);
-  tasks.forEach(task => {
-    if (task.dueDate) {
-      console.log(`📅 Tarea "${task.title}": ${new Date(task.dueDate).toLocaleDateString()}`);
-    }
-  });
+  // DEBUG: Verificar si la prop llega
+  console.log("🎯 TaskCalendar - onTaskDateUpdate disponible:", !!onTaskDateUpdate);
 
   // Generar días del mes actual
   const getDaysInMonth = () => {
@@ -46,7 +45,6 @@ export function TaskCalendar({
     
     return tasks.filter(task => {
       if (!task.dueDate) return false;
-      
       try {
         const taskDate = new Date(task.dueDate);
         return (
@@ -55,7 +53,6 @@ export function TaskCalendar({
           taskDate.getFullYear() === selectedDate.getFullYear()
         );
       } catch (error) {
-        console.log("Error procesando fecha:", task.dueDate);
         return false;
       }
     });
@@ -64,10 +61,8 @@ export function TaskCalendar({
   // Verificar si un día tiene tareas
   const hasTasks = (day: number) => {
     const date = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth(), day);
-    
-    const hasTask = tasks.some(task => {
+    return tasks.some(task => {
       if (!task.dueDate) return false;
-      
       try {
         const taskDate = new Date(task.dueDate);
         return (
@@ -76,16 +71,9 @@ export function TaskCalendar({
           taskDate.getFullYear() === date.getFullYear()
         );
       } catch (error) {
-        console.log("Error procesando fecha:", task.dueDate);
         return false;
       }
     });
-
-    if (hasTask) {
-      console.log(`✅ Día ${day} tiene tareas`);
-    }
-
-    return hasTask;
   };
 
   // Verificar si un día es hoy
@@ -109,13 +97,18 @@ export function TaskCalendar({
 
   const handleDateSelect = (day: number) => {
     const newDate = new Date(currentStartDate.getFullYear(), currentStartDate.getMonth(), day);
-    console.log("🗓️ Fecha seleccionada:", newDate.toLocaleDateString());
     setSelectedDate(newDate);
   };
 
+  // FUNCIONES DRAG & DROP
+  const handleTaskLongPress = (task: Task) => {
+    console.log("🧩 Iniciando drag de tarea:", task.title);
+    Vibration.vibrate(50);
+    setDraggingTask(task);
+  };
+
   const handleTaskPress = (task: Task) => {
-    console.log('🔄 Navegando a detalle con task:', task);
-    
+    if (draggingTask) return;
     router.push({
       pathname: "/features/task/detail_task",
       params: { 
@@ -125,11 +118,56 @@ export function TaskCalendar({
     });
   };
 
+  const handleDayPressForDrop = async (day: number) => {
+    if (!draggingTask) {
+      handleDateSelect(day);
+      return;
+    }
+
+    const newDate = new Date(
+      currentStartDate.getFullYear(),
+      currentStartDate.getMonth(),
+      day
+    );
+
+    console.log(`🧩 Moviendo tarea "${draggingTask.title}" a día ${day}`);
+
+    // SI onTaskDateUpdate existe, lo usamos
+    if (onTaskDateUpdate) {
+      try {
+        await onTaskDateUpdate(draggingTask.id, newDate);
+        console.log("✅ Tarea movida exitosamente");
+      } catch (error) {
+        console.error("❌ Error moviendo tarea:", error);
+      }
+    } else {
+      // SI NO existe, solo mostramos en consola
+      console.log("📝 Tarea movida (modo demo):", {
+        task: draggingTask.title,
+        newDate: newDate.toLocaleDateString()
+      });
+    }
+
+    setDraggingTask(null);
+    setDragOverDay(null);
+  };
+
+  const handleDayDragOver = (day: number) => {
+    if (draggingTask) setDragOverDay(day);
+  };
+
+  const handleDayDragLeave = () => setDragOverDay(null);
+  const cancelDrag = () => {
+    setDraggingTask(null);
+    setDragOverDay(null);
+  };
+
   const goToPreviousMonth = () => {
     const newDate = new Date(currentStartDate);
     newDate.setMonth(currentStartDate.getMonth() - 1);
     setCurrentStartDate(newDate);
     setSelectedDate(null);
+    cancelDrag();
   };
 
   const goToNextMonth = () => {
@@ -137,6 +175,7 @@ export function TaskCalendar({
     newDate.setMonth(currentStartDate.getMonth() + 1);
     setCurrentStartDate(newDate);
     setSelectedDate(null);
+    cancelDrag();
   };
 
   const getCurrentMonthName = () => {
@@ -148,9 +187,56 @@ export function TaskCalendar({
 
   const tasksForSelectedDate = getTasksForSelectedDate();
 
+  // Renderizar tarea individual
+  const renderTaskItem = (task: Task) => (
+    <TouchableOpacity
+      key={task.id}
+      style={[
+        styles.taskItem,
+        draggingTask?.id === task.id && styles.draggingTask,
+      ]}
+      onLongPress={() => handleTaskLongPress(task)}
+      delayLongPress={500}
+      onPress={() => handleTaskPress(task)}
+    >
+      <View style={styles.dragHandle}>
+        <Ionicons name="reorder-three-outline" size={20} color="#ccc" />
+      </View>
+      
+      <View style={styles.taskContent}>
+        <Text style={styles.taskTitle} numberOfLines={1}>
+          {task.title}
+        </Text>
+        <Text style={styles.taskDescription} numberOfLines={2}>
+          {task.description || 'Sin descripción'}
+        </Text>
+        <View style={styles.taskMeta}>
+          {task.priority && (
+            <View style={[
+              styles.priorityBadge,
+              { 
+                backgroundColor: 
+                  task.priority === 'high' ? '#E74C3C' : 
+                  task.priority === 'medium' ? '#F39C12' : '#27AE60'
+              }
+            ]}>
+              <Text style={styles.priorityText}>
+                {task.priority === 'high' ? 'Alta' : 
+                 task.priority === 'medium' ? 'Media' : 'Baja'}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.taskStatus}>
+            {task.status || 'Pendiente'}
+          </Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#ccc" />
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
-      {/* Header con navegación */}
       <View style={styles.header}>
         <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
           <Ionicons name="chevron-back" size={24} color="#333" />
@@ -167,7 +253,20 @@ export function TaskCalendar({
         </TouchableOpacity>
       </View>
 
-      {/* Fecha seleccionada */}
+      {draggingTask && (
+        <View style={styles.dragIndicator}>
+          <Text style={styles.dragIndicatorText}>
+            🎯 Arrastrando: "{draggingTask.title}"
+          </Text>
+          <Text style={styles.dragIndicatorSubtext}>
+            Suelta en un día para mover la tarea
+          </Text>
+          <TouchableOpacity onPress={cancelDrag} style={styles.cancelButton}>
+            <Text style={styles.cancelButtonText}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.selectedDateContainer}>
         <Text style={styles.selectedDateText}>
           {selectedDate 
@@ -182,7 +281,6 @@ export function TaskCalendar({
         </Text>
       </View>
 
-      {/* Indicadores de colores */}
       <View style={styles.indicators}>
         <View style={styles.indicator}>
           <View style={[styles.indicatorColor, { backgroundColor: "#3B34FF" }]} />
@@ -196,27 +294,33 @@ export function TaskCalendar({
           <View style={[styles.indicatorColor, { backgroundColor: "#FF6B6B" }]} />
           <Text style={styles.indicatorText}>Seleccionado</Text>
         </View>
+        <View style={styles.indicator}>
+          <View style={[styles.indicatorColor, { backgroundColor: "#FFA500" }]} />
+          <Text style={styles.indicatorText}>Drag Over</Text>
+        </View>
       </View>
 
-      {/* Grid de días - SOLO NÚMEROS */}
       <View style={styles.daysGrid}>
         {daysInMonth.map((day) => {
           const dayHasTasks = hasTasks(day);
           const dayIsToday = isToday(day);
           const dayIsSelected = isSelected(day);
+          const dayIsDragOver = dragOverDay === day;
 
-          // Determinar colores
           let backgroundColor = "#f8f9fa";
           let textColor = "#666";
           
-          if (dayIsToday) {
-            backgroundColor = "#1a8f2e"; // VERDE para hoy
+          if (dayIsDragOver) {
+            backgroundColor = "#FFA500";
+            textColor = "white";
+          } else if (dayIsToday) {
+            backgroundColor = "#1a8f2e";
             textColor = "white";
           } else if (dayIsSelected) {
-            backgroundColor = "#FF6B6B"; // ROJO para seleccionado
+            backgroundColor = "#FF6B6B";
             textColor = "white";
           } else if (dayHasTasks) {
-            backgroundColor = "#3B34FF"; // AZUL para días con tareas
+            backgroundColor = "#3B34FF";
             textColor = "white";
           }
 
@@ -228,25 +332,32 @@ export function TaskCalendar({
                 { 
                   backgroundColor,
                   borderWidth: dayIsToday ? 2 : 1,
-                  borderColor: dayIsToday ? "#1a8f2e" : "transparent"
-                }
+                  borderColor: dayIsToday ? "#1a8f2e" : "transparent",
+                },
+                dayIsDragOver && styles.dayButtonDragOver
               ]}
-              onPress={() => handleDateSelect(day)}
+              onPress={() => handleDayPressForDrop(day)}
+              onPressIn={() => handleDayDragOver(day)}
+              onPressOut={handleDayDragLeave}
             >
               <Text style={[styles.dayText, { color: textColor }]}>
                 {day}
               </Text>
               
-              {/* Puntito para días con tareas que no están seleccionados ni son hoy */}
-              {dayHasTasks && !dayIsToday && !dayIsSelected && (
+              {dayHasTasks && !dayIsToday && !dayIsSelected && !dayIsDragOver && (
                 <View style={styles.taskDot} />
+              )}
+
+              {dayIsDragOver && (
+                <View style={styles.dropIndicator}>
+                  <Ionicons name="download-outline" size={16} color="white" />
+                </View>
               )}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* Lista de tareas para la fecha seleccionada */}
       {selectedDate && (
         <View style={styles.tasksSection}>
           <View style={styles.tasksHeader}>
@@ -259,45 +370,8 @@ export function TaskCalendar({
           </View>
 
           {tasksForSelectedDate.length > 0 ? (
-            <ScrollView 
-              style={styles.tasksList}
-              showsVerticalScrollIndicator={false}
-            >
-              {tasksForSelectedDate.map((task) => (
-                <TouchableOpacity
-                  key={task.id}
-                  style={styles.taskItem}
-                  onPress={() => handleTaskPress(task)}
-                >
-                  <View style={styles.taskContent}>
-                    <Text style={styles.taskTitle} numberOfLines={1}>
-                      {task.title}
-                    </Text>
-                    <Text style={styles.taskDescription} numberOfLines={2}>
-                      {task.description || 'Sin descripción'}
-                    </Text>
-                    <View style={styles.taskMeta}>
-                      <View style={[
-                        styles.priorityBadge,
-                        { 
-                          backgroundColor: 
-                            task.priority === 'high' ? '#E74C3C' : 
-                            task.priority === 'medium' ? '#F39C12' : '#27AE60'
-                        }
-                      ]}>
-                        <Text style={styles.priorityText}>
-                          {task.priority === 'high' ? 'Alta' : 
-                           task.priority === 'medium' ? 'Media' : 'Baja'}
-                        </Text>
-                      </View>
-                      <Text style={styles.taskStatus}>
-                        {task.status || 'Pendiente'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#ccc" />
-                </TouchableOpacity>
-              ))}
+            <ScrollView style={styles.tasksList}>
+              {tasksForSelectedDate.map(renderTaskItem)}
             </ScrollView>
           ) : (
             <View style={styles.emptyState}>
@@ -306,7 +380,7 @@ export function TaskCalendar({
                 No hay tareas para esta fecha
               </Text>
               <Text style={styles.emptyStateSubtext}>
-                Las tareas con fecha límite {selectedDate.toLocaleDateString('es-ES')} aparecerán aquí
+                Mantén presionado una tarea para arrastrarla a otra fecha
               </Text>
             </View>
           )}
@@ -343,6 +417,36 @@ const styles = StyleSheet.create({
     fontWeight: "bold", 
     color: "#333",
     textTransform: 'capitalize'
+  },
+  dragIndicator: {
+    backgroundColor: '#e3f2fd',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196f3',
+  },
+  dragIndicatorText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1976d2',
+    marginBottom: 4,
+  },
+  dragIndicatorSubtext: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#ff4757',
+    padding: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 12,
   },
   selectedDateContainer: {
     backgroundColor: "#f8f9fa",
@@ -394,6 +498,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     position: "relative",
   },
+  dayButtonDragOver: {
+    transform: [{ scale: 1.1 }],
+  },
   dayText: {
     fontWeight: "600",
     fontSize: 14,
@@ -407,7 +514,17 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "white",
   },
-  // Estilos para la sección de tareas
+  dropIndicator: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    backgroundColor: '#FFA500',
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tasksSection: {
     borderTopWidth: 1,
     borderTopColor: "#e9ecef",
@@ -442,6 +559,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: "#e9ecef",
+  },
+  draggingTask: {
+    backgroundColor: "#e3f2fd",
+    borderColor: "#2196f3",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  dragHandle: {
+    marginRight: 12,
+    padding: 4,
   },
   taskContent: {
     flex: 1,
