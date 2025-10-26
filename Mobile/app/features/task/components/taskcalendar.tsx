@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Vibration } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Vibration, PanResponder, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import type { Task } from "../types";
@@ -25,6 +25,10 @@ export function TaskCalendar({
   const today = new Date();
   const [draggingTask, setDraggingTask] = useState<Task | null>(null);
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+  const [dragPosition, setDragPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+
+  const { width: screenWidth } = Dimensions.get('window');
 
   // DEBUG: Verificar si la prop llega
   console.log("🎯 TaskCalendar - onTaskDateUpdate disponible:", !!onTaskDateUpdate);
@@ -100,15 +104,40 @@ export function TaskCalendar({
     setSelectedDate(newDate);
   };
 
-  // FUNCIONES DRAG & DROP
-  const handleTaskLongPress = (task: Task) => {
+  // FUNCIONES DRAG & DROP MEJORADAS
+  const startDrag = (task: Task, x: number, y: number) => {
     console.log("🧩 Iniciando drag de tarea:", task.title);
     Vibration.vibrate(50);
     setDraggingTask(task);
+    setDragPosition({ x, y });
+    setIsDragging(true);
+  };
+
+  const updateDragPosition = (x: number, y: number) => {
+    setDragPosition({ x, y });
+    
+    // Detectar sobre qué día estamos (posición aproximada)
+    const daySize = 40 + 8; // tamaño del día + gap
+    const daysPerRow = 7;
+    const calendarTop = 300; // posición aproximada del calendario
+    
+    if (y > calendarTop && y < calendarTop + daySize * 6) {
+      const relativeY = y - calendarTop;
+      const relativeX = x - 16; // padding del calendario
+      
+      const row = Math.floor(relativeY / daySize);
+      const col = Math.floor(relativeX / daySize);
+      const dayIndex = row * daysPerRow + col;
+      
+      if (dayIndex >= 0 && dayIndex < daysInMonth.length) {
+        const day = daysInMonth[dayIndex];
+        setDragOverDay(day);
+      }
+    }
   };
 
   const handleTaskPress = (task: Task) => {
-    if (draggingTask) return;
+    if (isDragging) return;
     router.push({
       pathname: "/features/task/detail_task",
       params: { 
@@ -118,11 +147,8 @@ export function TaskCalendar({
     });
   };
 
-  const handleDayPressForDrop = async (day: number) => {
-    if (!draggingTask) {
-      handleDateSelect(day);
-      return;
-    }
+  const handleDayDrop = async (day: number) => {
+    if (!draggingTask) return;
 
     const newDate = new Date(
       currentStartDate.getFullYear(),
@@ -132,7 +158,6 @@ export function TaskCalendar({
 
     console.log(`🧩 Moviendo tarea "${draggingTask.title}" a día ${day}`);
 
-    // SI onTaskDateUpdate existe, lo usamos
     if (onTaskDateUpdate) {
       try {
         await onTaskDateUpdate(draggingTask.id, newDate);
@@ -141,26 +166,45 @@ export function TaskCalendar({
         console.error("❌ Error moviendo tarea:", error);
       }
     } else {
-      // SI NO existe, solo mostramos en consola
       console.log("📝 Tarea movida (modo demo):", {
         task: draggingTask.title,
         newDate: newDate.toLocaleDateString()
       });
     }
 
+    finishDrag();
+  };
+
+  const finishDrag = () => {
     setDraggingTask(null);
     setDragOverDay(null);
+    setIsDragging(false);
   };
 
-  const handleDayDragOver = (day: number) => {
-    if (draggingTask) setDragOverDay(day);
-  };
-
-  const handleDayDragLeave = () => setDragOverDay(null);
   const cancelDrag = () => {
-    setDraggingTask(null);
-    setDragOverDay(null);
+    finishDrag();
   };
+
+  // PanResponder para el drag
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt, gestureState) => {
+      // El drag se inicia con onLongPress en cada tarea
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      if (draggingTask) {
+        updateDragPosition(gestureState.moveX, gestureState.moveY);
+      }
+    },
+    onPanResponderRelease: () => {
+      if (draggingTask && dragOverDay) {
+        handleDayDrop(dragOverDay);
+      } else {
+        finishDrag();
+      }
+    }
+  });
 
   const goToPreviousMonth = () => {
     const newDate = new Date(currentStartDate);
@@ -195,7 +239,9 @@ export function TaskCalendar({
         styles.taskItem,
         draggingTask?.id === task.id && styles.draggingTask,
       ]}
-      onLongPress={() => handleTaskLongPress(task)}
+      onLongPress={(evt) => {
+        startDrag(task, evt.nativeEvent.pageX, evt.nativeEvent.pageY);
+      }}
       delayLongPress={500}
       onPress={() => handleTaskPress(task)}
     >
@@ -236,7 +282,7 @@ export function TaskCalendar({
   );
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...panResponder.panHandlers}>
       <View style={styles.header}>
         <TouchableOpacity onPress={goToPreviousMonth} style={styles.navButton}>
           <Ionicons name="chevron-back" size={24} color="#333" />
@@ -254,16 +300,34 @@ export function TaskCalendar({
       </View>
 
       {draggingTask && (
-        <View style={styles.dragIndicator}>
-          <Text style={styles.dragIndicatorText}>
-            🎯 Arrastrando: "{draggingTask.title}"
-          </Text>
-          <Text style={styles.dragIndicatorSubtext}>
-            Suelta en un día para mover la tarea
-          </Text>
-          <TouchableOpacity onPress={cancelDrag} style={styles.cancelButton}>
-            <Text style={styles.cancelButtonText}>Cancelar</Text>
-          </TouchableOpacity>
+        <View 
+          style={[
+            styles.draggingTaskOverlay,
+            {
+              top: dragPosition.y - 30,
+              left: dragPosition.x - 100,
+            }
+          ]}
+        >
+          <View style={styles.draggingTaskPreview}>
+            <View style={styles.dragHandle}>
+              <Ionicons name="reorder-three-outline" size={20} color="#ccc" />
+            </View>
+            <View style={styles.taskContent}>
+              <Text style={styles.taskTitle} numberOfLines={1}>
+                {draggingTask.title}
+              </Text>
+              <Text style={styles.taskDescription} numberOfLines={1}>
+                {draggingTask.description || 'Sin descripción'}
+              </Text>
+            </View>
+            <Ionicons name="move-outline" size={20} color="#2196f3" />
+          </View>
+          <View style={styles.dropHint}>
+            <Text style={styles.dropHintText}>
+              {dragOverDay ? `Soltar en día ${dragOverDay}` : "Arrastra a un día del calendario"}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -336,9 +400,17 @@ export function TaskCalendar({
                 },
                 dayIsDragOver && styles.dayButtonDragOver
               ]}
-              onPress={() => handleDayPressForDrop(day)}
-              onPressIn={() => handleDayDragOver(day)}
-              onPressOut={handleDayDragLeave}
+              onPress={() => {
+                if (draggingTask) {
+                  handleDayDrop(day);
+                } else {
+                  handleDateSelect(day);
+                }
+              }}
+              onPressIn={() => {
+                if (draggingTask) setDragOverDay(day);
+              }}
+              onPressOut={() => setDragOverDay(null)}
             >
               <Text style={[styles.dayText, { color: textColor }]}>
                 {day}
@@ -418,35 +490,39 @@ const styles = StyleSheet.create({
     color: "#333",
     textTransform: 'capitalize'
   },
-  dragIndicator: {
-    backgroundColor: '#e3f2fd',
-    padding: 12,
+  draggingTaskOverlay: {
+    position: 'absolute',
+    zIndex: 1000,
+    backgroundColor: 'white',
     borderRadius: 8,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 4.65,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: '#2196f3',
+    width: 200,
   },
-  dragIndicatorText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1976d2',
-    marginBottom: 4,
+  draggingTaskPreview: {
+    flexDirection: "row",
+    alignItems: "center",
   },
-  dragIndicatorSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
+  dropHint: {
+    marginTop: 8,
+    padding: 4,
+    backgroundColor: '#2196f3',
+    borderRadius: 4,
   },
-  cancelButton: {
-    backgroundColor: '#ff4757',
-    padding: 8,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
+  dropHintText: {
     color: 'white',
+    fontSize: 10,
     fontWeight: '600',
-    fontSize: 12,
+    textAlign: 'center',
   },
   selectedDateContainer: {
     backgroundColor: "#f8f9fa",
@@ -561,16 +637,7 @@ const styles = StyleSheet.create({
     borderColor: "#e9ecef",
   },
   draggingTask: {
-    backgroundColor: "#e3f2fd",
-    borderColor: "#2196f3",
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    opacity: 0.5,
   },
   dragHandle: {
     marginRight: 12,
