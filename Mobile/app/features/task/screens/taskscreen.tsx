@@ -5,7 +5,9 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,Alert,TextInput,
+  ScrollView,
+  Alert,
+  TextInput,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -21,18 +23,30 @@ import type { Task } from "../types";
 import { getUserId } from "@/lib/secure-store";
 import { useFocusEffect } from "@react-navigation/native";
 
-const PRIMARY = "#3B34FF";
+// 🎨 tokens de tema centralizados
+import { useThemedColors } from "@/hooks/use-theme-color";
 
 export function TaskScreen({ projectId }: { projectId?: string }) {
   const router = useRouter();
 
+  // Colores del tema
+  const {
+    BG,
+    TEXT,
+    SUBTEXT,
+    BRAND,
+    CARD_BG,
+    CARD_BORDER,
+    INPUT_BG,
+    INPUT_BORDER,
+  } = useThemedColors();
 
   if (!projectId) {
     return (
       <SafeAreaView
-        style={[styles.container, { justifyContent: "center", alignItems: "center" }]}
+        style={[styles.container, { justifyContent: "center", alignItems: "center", backgroundColor: BG }]}
       >
-        <Text style={{ color: "#fff", fontSize: 16 }}>Cargando proyecto...</Text>
+        <Text style={{ color: TEXT, fontSize: 16 }}>Cargando proyecto...</Text>
       </SafeAreaView>
     );
   }
@@ -55,11 +69,12 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     tasksForSelectedDate,
     fetchTasks,
   } = useTasks(projectId);
-useFocusEffect(
-  React.useCallback(() => {
-    fetchTasks();
-  }, [fetchTasks])
-);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
 
   const [showFilters, setShowFilters] = useState(false);
   const [columns, setColumns] = useState({
@@ -95,25 +110,21 @@ useFocusEffect(
     setToastVisible(true);
   };
 
-
   const handleTaskPress = (task: Task) => {
-    console.log('🔄 Navegando a detalle con task:', task);
-    
     router.push({
       pathname: "/features/task/detail_task",
-      params: { 
+      params: {
         taskId: String(task.id),
-        taskData: JSON.stringify(task)
-      }
+        taskData: JSON.stringify(task),
+      },
     });
   };
+
   const displayTasks =
     viewMode === "calendar" && selectedDate ? tasksForSelectedDate : tasks;
 
-
   const filteredTasks = React.useMemo(() => {
     if (!displayTasks || displayTasks.length === 0) return [];
-
     return displayTasks.filter((t) => {
       const title = (t.title ?? "").toLowerCase();
       const status = (t.status ?? "").toLowerCase();
@@ -133,14 +144,11 @@ useFocusEffect(
       const matchStatus = f.status ? status.includes(f.status) : true;
       const matchAssignee = f.assignee ? assignee.includes(f.assignee) : true;
       const matchDate = f.dueDate ? dueDate.startsWith(f.dueDate) : true;
-      const matchSearch = f.search
-        ? title.includes(f.search) || tags.includes(f.search)
-        : true;
+      const matchSearch = f.search ? title.includes(f.search) || tags.includes(f.search) : true;
 
       return matchStatus && matchAssignee && matchDate && matchSearch;
     });
   }, [displayTasks, filters]);
-
 
   const nextView = () => {
     if (viewMode === "list") return setViewMode("kanban");
@@ -149,38 +157,46 @@ useFocusEffect(
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: BG }]}>
       <ToastMessage
         visible={toastVisible}
         message={toastMsg}
         type={toastType}
         onHide={() => setToastVisible(false)}
       />
-              {/* 🔍 Barra de búsqueda global */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search-outline" size={18} color="#666" style={{ marginRight: 6 }} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar tarea por título..."
-            placeholderTextColor="#999"
-            value={filters.search}
-            onChangeText={(t: string) => setFilters({ ...filters, search: t })}
 
-          />
-          {filters.search.length > 0 && (
-            <TouchableOpacity onPress={() => setFilters({ ...filters, search: "" })}>
-              <Ionicons name="close-circle" size={18} color="#999" />
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* 🔍 Búsqueda */}
+      <View
+        style={[
+          styles.searchContainer,
+          { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER },
+        ]}
+      >
+        <Ionicons name="search-outline" size={18} color={SUBTEXT} style={{ marginRight: 6 }} />
+        <TextInput
+          style={[styles.searchInput, { color: TEXT }]}
+          placeholder="Buscar tarea por título..."
+          placeholderTextColor={SUBTEXT}
+          value={filters.search}
+          onChangeText={(t: string) => setFilters({ ...filters, search: t })}
+        />
+        {filters.search.length > 0 && (
+          <TouchableOpacity onPress={() => setFilters({ ...filters, search: "" })}>
+            <Ionicons name="close-circle" size={18} color={SUBTEXT} />
+          </TouchableOpacity>
+        )}
+      </View>
 
-      <View style={styles.topBar}>
-
-
-
+      {/* Top bar */}
+      <View
+        style={[
+          styles.topBar,
+          { backgroundColor: CARD_BG, borderBottomColor: CARD_BORDER },
+        ]}
+      >
         {viewMode === "list" && (
           <TouchableOpacity
-            style={styles.filterBtn}
+            style={[styles.filterBtn, { backgroundColor: BRAND }]}
             onPress={() => setShowFilters(!showFilters)}
           >
             <Ionicons name="options-outline" size={18} color="#fff" />
@@ -190,7 +206,7 @@ useFocusEffect(
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.kanbanBtn} onPress={nextView}>
+        <TouchableOpacity style={[styles.kanbanBtn, { backgroundColor: BRAND }]} onPress={nextView}>
           <Ionicons
             name={
               viewMode === "list"
@@ -203,17 +219,13 @@ useFocusEffect(
             color="#fff"
           />
           <Text style={styles.navText}>
-            {viewMode === "list"
-              ? "Kanban"
-              : viewMode === "kanban"
-              ? "Calendario"
-              : "Lista"}
+            {viewMode === "list" ? "Kanban" : viewMode === "kanban" ? "Calendario" : "Lista"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* 🔹 Contenido principal */}
-      <View style={styles.content}>
+      {/* Contenido */}
+      <View style={[styles.content, { backgroundColor: CARD_BG }]}>
         {viewMode === "list" && (
           <>
             <TaskFilters
@@ -227,10 +239,10 @@ useFocusEffect(
 
             {filteredTasks.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
+                <Text style={[styles.emptyStateText, { color: SUBTEXT }]}>
                   No hay tareas en este proyecto.
                 </Text>
-                <Text style={styles.emptyStateSubtext}>
+                <Text style={[styles.emptyStateSubtext, { color: SUBTEXT }]}>
                   Crea la primera tarea usando el botón +
                 </Text>
               </View>
@@ -244,7 +256,7 @@ useFocusEffect(
                   setSelectedTaskId(id);
                   setAssignModalVisible(true);
                 }}
-                onTaskPress={handleTaskPress} 
+                onTaskPress={handleTaskPress}
               />
             )}
           </>
@@ -263,33 +275,30 @@ useFocusEffect(
         )}
       </View>
 
-    <TouchableOpacity
-      style={styles.fab}
-      onPress={async () => {
-        const userId = await getUserId();
-
-        if (!userId) {
-          Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
-          return;
-        }
-
-        if (!projectId) {
-          Alert.alert("Error", "No se encontró el ID del proyecto.");
-          return;
-        }
-
-        router.push({
-          pathname: "/features/task/components/CreateTask",
-          params: {
-            projectId: projectId.toString(),
-            creatorId: userId.toString(),
-          },
-        });
-      }}
-    >
-      <Ionicons name="add" size={28} color="#fff" />
-    </TouchableOpacity>
-
+      {/* FAB */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: BRAND }]}
+        onPress={async () => {
+          const userId = await getUserId();
+          if (!userId) {
+            Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
+            return;
+          }
+          if (!projectId) {
+            Alert.alert("Error", "No se encontró el ID del proyecto.");
+            return;
+          }
+          router.push({
+            pathname: "/features/task/components/CreateTask",
+            params: {
+              projectId: projectId.toString(),
+              creatorId: userId.toString(),
+            },
+          });
+        }}
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </TouchableOpacity>
 
       <AssignModal
         visible={assignModalVisible}
@@ -308,7 +317,7 @@ useFocusEffect(
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F9F9FB" },
+  container: { flex: 1 },
 
   topBar: {
     flexDirection: "row",
@@ -316,15 +325,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
   },
 
   kanbanBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#3B34FF",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
@@ -332,11 +338,10 @@ const styles = StyleSheet.create({
   filterBtn: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#3B34FF",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    marginRight: 90, 
+    marginRight: 90,
     height: 36,
   },
 
@@ -349,7 +354,6 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#fff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
@@ -361,87 +365,34 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#5B55FF",
     alignItems: "center",
     justifyContent: "center",
     elevation: 8,
   },
 
   emptyState: { alignItems: "center", justifyContent: "center", padding: 40 },
-  emptyStateText: { fontSize: 16, color: "#666", marginBottom: 8 },
-  emptyStateSubtext: { fontSize: 14, color: "#999", textAlign: "center" },
+  emptyStateText: { fontSize: 16, marginBottom: 8 },
+  emptyStateSubtext: { fontSize: 14, textAlign: "center" },
 
-  taskItem: {
-    backgroundColor: "white",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  taskHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 8,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    flex: 1,
-    marginRight: 8,
-  },
-  priorityBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  priorityText: {
-    color: "white",
-    fontSize: 10,
-    fontWeight: "600",
-  },
-  taskDescription: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-    lineHeight: 18,
-  },
-  taskFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  taskAssignee: {
-    fontSize: 12,
-    color: "#3B34FF",
-    fontWeight: "500",
-  },
-  taskStatus: {
-    fontSize: 12,
-    color: "#666",
-  },
+  // Search bar
   searchContainer: {
-  flexDirection: "row",
-  alignItems: "center",
-  backgroundColor: "#fff",
-  marginHorizontal: 16,
-  marginTop: 10,
-  marginBottom: 6,
-  borderRadius: 12,
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderWidth: 1,
-  borderColor: "#E0E0E0",
-  shadowColor: "#000",
-  shadowOpacity: 0.05,
-  shadowRadius: 2,
-  elevation: 1,
-},
-searchInput: {
-  flex: 1,
-  fontSize: 14,
-  color: "#333",
-  paddingVertical: 4,
-},
-
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 4,
+  },
 });

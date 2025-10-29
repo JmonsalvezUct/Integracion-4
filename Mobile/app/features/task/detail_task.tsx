@@ -1,121 +1,483 @@
-import React, { useEffect, useState } from 'react';
-import { SafeAreaView, View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert, Linking, Image, Dimensions } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Modal,
+  Alert,
+  DeviceEventEmitter,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import * as WebBrowser from 'expo-web-browser';
-import WebView from 'react-native-webview';
-const PRIMARY = '#3B34FF';
+
 import { getAccessToken } from '@/lib/secure-store';
-import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch } from '@/lib/api-fetch';
+import { AssignModal } from './components/assignmodal';
+
+// 🎨 Hook de colores centralizado
+import { useThemedColors } from '@/hooks/use-theme-color';
+// 🧱 Layout y spacing global
+import LayoutContainer from '@/components/layout/layout_container';
+import { CONTAINER } from '@/constants/spacing';
+
+const TASK_UPDATED = 'TASK_UPDATED';
 
 export default function DetailTask() {
   const params = useLocalSearchParams();
   const router = useRouter();
-  
+
   const taskId = Array.isArray(params.taskId) ? params.taskId[0] : params.taskId;
   const taskDataParam = Array.isArray(params.taskData) ? params.taskData[0] : params.taskData;
 
   const [task, setTask] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modo edición local (la UI edita y al confirmar se persiste)
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState<any>({});
-  const [newComment, setNewComment] = useState("");
-  
-  // Estados para el modal de adjuntos
+  const [newComment, setNewComment] = useState('');
+
+  // Refs para enfocar inputs al tocar el texto
+  const titleRef = useRef<TextInput>(null);
+  const descRef = useRef<TextInput>(null);
+
+  // Modales para pickers
+  const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [showPriorityPicker, setShowPriorityPicker] = useState(false);
+
+  // Adjuntos
   const [attachModalVisible, setAttachModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
-  
-  // Estados para el visor de archivos
-  const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
-  const [imageViewerVisible, setImageViewerVisible] = useState(false);
-  const [currentFileUrl, setCurrentFileUrl] = useState<string | null>(null);
-  const [currentFileName, setCurrentFileName] = useState<string>('');
+  // Assign modal / members
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
+  const [projectMembers, setProjectMembers] = useState<Array<{ id: number; name: string }>>([]);
+  // Mantiene el mismo formato mostrado mientras se edita la fecha
+  const [dueDateEditingValue, setDueDateEditingValue] = useState<string | null>(null);
 
-  // Función para subir archivos con FormData
+    // --- Etiquetas ---
+  const [projectTags, setProjectTags] = useState<{ id: number; name: string }[]>([]);
+  const [selectedTag, setSelectedTag] = useState<any>(null);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+
+
+  const TAG_COLORS = [
+    "#FFD6A5", // naranja claro
+    "#FDFFB6", // amarillo
+    "#CAFFBF", // verde menta
+    "#9BF6FF", // celeste
+    "#A0C4FF", // azul suave
+    "#BDB2FF", // violeta claro
+    "#FFC6FF", // rosado
+    "#FFFFFC", // blanco cálido
+  ];
+
+
+  const getTagColor = (id: number) => TAG_COLORS[id % TAG_COLORS.length];
+
+
+
+  useEffect(() => {
+    const projectId = task?.projectId ?? task?.project?.id;
+    if (!projectId) return;
+
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await apiFetch(`/tags/project/${projectId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setProjectTags(data);
+      } catch (err) {
+        console.error("Error cargando etiquetas:", err);
+      }
+    })();
+  }, [task]);
+
+
+
+useEffect(() => {
+  if (!taskId) return;
+
+  (async () => {
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags/task/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+
+      const normalized =
+        Array.isArray(data) && data.length > 0 && data[0].tag
+          ? data.map((t: any) => t.tag)
+          : data;
+
+      setTask((prev: any) => ({ ...prev, tags: normalized }));
+    } catch (err) {
+      console.error("Error cargando etiquetas de la tarea:", err);
+    }
+  })();
+}, [taskId]);
+
+  // 🎨 tokens del tema
+  const {
+    isDark,
+    BG,
+    TEXT,
+    SUBTEXT,
+    BRAND,
+    CARD_BG,
+    CARD_BORDER,
+    INPUT_BG,
+    INPUT_BORDER,
+    MUTED_BG,
+  } = useThemedColors();
+
+  // Traducciones y helpers
+  const statusMap: Record<string, string> = {
+    created: 'Creada',
+    in_progress: 'En progreso',
+    completed: 'Completada',
+    archived: 'Archivada',
+  };
+  const priorityMap: Record<string, string> = {
+    high: 'Alta',
+    medium: 'Media',
+    low: 'Baja',
+  };
+
+  const assignTagToTask = async (tagId: number) => {
+    if (!taskId) return;
+    try {
+      const token = await getAccessToken();
+
+      const res = await apiFetch(`/tags/assign`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ taskId: Number(taskId), tagId: Number(tagId) }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const selected = projectTags.find((t) => t.id === tagId);
+
+
+      setTask((prev: any) => ({
+        ...prev,
+        tags: prev?.tags ? [...prev.tags, selected] : [selected],
+      }));
+
+      setSelectedTag(selected);
+      setShowTagPicker(false);
+
+      Alert.alert("Etiqueta asignada", `Se asignó "${selected?.name}"`);
+    } catch (err: any) {
+      const errorMsg = err?.message || "";
+
+      if (
+        errorMsg.includes("Unique constraint failed") ||
+        errorMsg.includes("taskId','tagId")
+      ) {
+        Alert.alert(
+          "Etiqueta ya asignada",
+          "Esta tarea ya tiene esa etiqueta asignada."
+        );
+      } else {
+        console.error("Error asignando etiqueta:", err);
+        Alert.alert("Error", "No se pudo asignar la etiqueta. Intenta nuevamente.");
+      }
+    }
+  };
+
+
+  
+  const removeTagFromTask = async (tagId?: number) => {
+    if (!taskId || !tagId) return;
+
+    Alert.alert("Quitar etiqueta", "¿Deseas eliminar esta etiqueta?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const token = await getAccessToken();
+          
+            const res = await apiFetch(`/tags/remove/${taskId}/${tagId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+              const txt = await res.text();
+              throw new Error(txt || "Error al eliminar etiqueta");
+            }
+
+          
+            setTask((prev: any) => ({
+              ...prev,
+              tags: prev.tags.filter((t: any) => t.id !== tagId),
+            }));
+
+            Alert.alert("Etiqueta eliminada", "La etiqueta fue eliminada correctamente.");
+          } catch (err) {
+            console.error("Error eliminando etiqueta:", err);
+            Alert.alert("Error", "No se pudo eliminar la etiqueta.");
+          }
+        },
+      },
+    ]);
+  };
+
+
+
+  // Date helpers: formato YYYY/MM/DD
+  const displayDateFromISO = (iso?: string | null) =>
+    iso ? String(iso).slice(0, 10).replace(/-/g, '/') : '';
+  const parseDisplayDateToISO = (input: string) => {
+    const raw = String(input || '').trim();
+    if (!raw) return null;
+    const cleaned = raw.replace(/\//g, '-');
+    const parts = cleaned.split('-');
+    if (parts.length === 3) {
+      const y = parts[0].padStart(4, '0');
+      const m = parts[1].padStart(2, '0');
+      const d = parts[2].padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+    const dt = new Date(raw);
+    if (!isNaN(dt.getTime())) return dt.toISOString().slice(0, 10);
+    return raw;
+  };
+  const normalize = (v: any) => String(v ?? '').toLowerCase().trim().replace(/\s+/g, '_');
+  const t = (map: Record<string, string>, v: any) => map[normalize(v)] ?? (v ?? '—');
+
+
+  const STATUS_OPTIONS = ['created', 'in_progress', 'completed', 'archived'];
+  const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
+
+
   const apiFetchWithFormData = async (url: string, options: any = {}) => {
     const token = await getAccessToken();
-    
     const headers = {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     };
 
-    if (options.body instanceof FormData) {
-      delete headers['Content-Type'];
-    }
+    if (options.body instanceof FormData) delete (headers as any)['Content-Type'];
+    return apiFetch(url, { ...options, headers });
 
-    return apiFetch(url, {
-      ...options,
-      headers,
-    });
   };
 
-  useEffect(() => {
-    if (taskDataParam) {
-      setLoading(true);
-      try {
-        const parsedTask = JSON.parse(taskDataParam);
-        
-        const correctedTask = {
-          ...parsedTask,
-          title: parsedTask.tile || parsedTask.title,
-          status: parsedTask._status || parsedTask.status,
-          assigneeId: parsedTask.assigneeld || parsedTask.assigneeId,
-        };
-        
-        setTask(correctedTask);
-        setEditState({
-          title: correctedTask.title,
-          description: correctedTask.description,
-          status: correctedTask.status,
-          priority: correctedTask.priority,
-          dueDate: correctedTask.dueDate,
-          assigneeId: correctedTask.assigneeId,
-        });
 
-        loadAttachments();
-      } catch (e: any) {
-        console.error('detail fetch error', e);
-        setError(e.message || String(e));
-      } finally {
-        setLoading(false);
-      }
+  useEffect(() => {
+    if (!taskDataParam) return;
+    setLoading(true);
+    try {
+      const parsedTask = JSON.parse(taskDataParam);
+      const correctedTask = {
+        ...parsedTask,
+        title: parsedTask.tile || parsedTask.title,
+        status: parsedTask._status || parsedTask.status,
+        assigneeId: parsedTask.assigneeld || parsedTask.assigneeId,
+      };
+      setTask(correctedTask);
+      setEditState({
+        title: correctedTask.title,
+        description: correctedTask.description,
+        status: correctedTask.status,
+        priority: correctedTask.priority,
+        dueDate: correctedTask.dueDate,
+        assigneeId: correctedTask.assigneeId,
+      });
+      loadAttachments(correctedTask?.id ?? taskId);
+    } catch (e: any) {
+      console.error('detail fetch error', e);
+      setError(e.message || String(e));
+    } finally {
+      setLoading(false);
     }
   }, [taskDataParam]);
 
-  const loadAttachments = async () => {
-    if (!taskId) return;
+  // 🔔 Si Kanban cambió el estado de ESTA misma tarea, sincroniza la vista de detalle
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
+      if (!updated) return;
+
+      // Compara contra el id de la tarea abierta en esta pantalla
+      const idActual = Number(taskId);
+      if (Number(updated.id) === idActual) {
+        // Actualiza el objeto task mostrado
+        setTask((prev: any) => (prev ? { ...prev, status: updated.status } : prev));
+        // Si tienes estado de edición activo/controlado, sincronízalo también
+        setEditState((prev: any) => ({ ...(prev ?? {}), status: updated.status }));
+      }
+    });
+
+    return () => sub.remove();
+  }, [taskId]);
+
+  const loadAttachments = async (id?: string | number) => {
+    const targetId = id ?? taskId;
+    if (!targetId) return;
     try {
-      const res = await apiFetch(`/attachments/${taskId}`);
+      const res = await apiFetch(`/attachments/${targetId}`);
       if (res.ok) {
         const attachments = await res.json();
         setTask((prev: any) => ({ ...prev, attachments }));
       }
-    } catch (error) {
-      console.error('Error loading attachments:', error);
+    } catch (err) {
+      console.error('Error loading attachments:', err);
     }
   };
 
-  const saveEdits = async () => {
-    if (!taskId) return;
+  // Emitir evento global
+  function emitTaskUpdated(updated: any) {
+    DeviceEventEmitter.emit(TASK_UPDATED, { task: updated });
+  }
+
+  //-----------------------------------------------------------------------------
+  //Cambiar SOLO el estado usando el endpoint especializado /status
+  async function updateTaskStatusOnly(id: string | number, newStatus: string) {
     try {
-      const updatedTask = {
-        ...task,
-        ...editState
-      };
-      
-      setTask(updatedTask);
-      setEditing(false);
-    } catch (e) {
-      console.error('save error', e);
-      setError('Error guardando cambios');
+      const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
+      if (!projectId) throw new Error('Falta projectId en la tarea.');
+
+      setTask((prev: any) => (prev ? { ...prev, status: newStatus } : prev));
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: newStatus }));
+
+      const res = await apiFetch(`/tasks/${projectId}/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      const text = await res.text();
+      if (!res.ok) throw new Error(text || `HTTP ${res.status}`);
+
+      const serverTask = text ? JSON.parse(text) : { ...(task ?? {}), status: newStatus };
+
+      setTask(serverTask);
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: serverTask.status }));
+      emitTaskUpdated({ ...(task ?? {}), id, status: serverTask.status, projectId });
+    } catch (err) {
+      setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
+      setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
+      Alert.alert('No se pudo actualizar el estado', (err as any)?.message ?? 'Intenta nuevamente.');
+      throw err;
     }
+  }
+
+  // Persistencia con PUT /tasks/:projectId/:id
+  async function persistTaskPatch(id: string | number, patch: Partial<any>) {
+    // Optimistic UI local: refleja inmediatamente
+    setTask((prev: any) => (prev ? { ...prev, ...patch } : prev));
+    setEditState((prev: any) => ({ ...prev, ...patch }));
+
+    try {
+      const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
+      if (!projectId) throw new Error('Falta projectId en la tarea.');
+
+      // Solo campos permitidos por el schema de actualización
+      const allowed = ['title', 'description', 'dueDate', 'assigneeId', 'status', 'priority'];
+      const base = { ...(task ?? {}), ...patch } as any;
+      const payload: any = {};
+      for (const k of allowed) {
+        let v = base[k];
+        if (v === null || v === undefined) continue;
+        if (k === 'assigneeId') {
+          if (v === '') continue;
+          if (typeof v === 'string') {
+            const n = Number(v);
+            if (!Number.isFinite(n)) continue;
+            v = n;
+          }
+        }
+        if (typeof v === 'string' && v.trim() === '') continue;
+        payload[k] = v;
+      }
+
+      const res = await apiFetch(`/tasks/projects/${projectId}/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const text = await res.text();
+      if (!res.ok) {
+        if (text && /^\s*<!DOCTYPE html>/i.test(text)) {
+          throw new Error('La URL de API devolvió HTML (host incorrecto)');
+        }
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+
+      const serverTask = text ? JSON.parse(text) : { ...(task ?? {}), ...patch };
+      setTask(serverTask);
+      emitTaskUpdated(serverTask); // 🔔 avisa a lista/kanban
+    } catch (err: any) {
+      console.error('Persist error:', err);
+      Alert.alert('No se pudo guardar', err?.message ?? 'Intenta nuevamente.');
+    }
+  }
+
+  // Guardado manual (opcional) — guarda sólo lo que cambió
+  const saveEdits = async () => {
+    if (!taskId || !task) return;
+    const patch: any = {};
+    const normalizeDateForCompare = (v: any) => {
+      if (v === null || v === undefined) return '';
+      const s = String(v).trim();
+      if (!s) return '';
+      const iso = parseDisplayDateToISO(s);
+      return iso ? iso : s;
+    };
+
+    ['title', 'description', 'status', 'priority', 'assigneeId'].forEach((k) => {
+      if (editState[k] !== (task as any)[k]) patch[k] = editState[k];
+    });
+    const editDue = normalizeDateForCompare(editState.dueDate);
+    const taskDue = normalizeDateForCompare((task as any).dueDate);
+    if (editDue !== taskDue) {
+      patch.dueDate = editDue === '' ? null : editDue;
+    }
+    if (Object.keys(patch).length === 0) {
+      setEditing(false);
+      return;
+    }
+
+    if (patch.status !== undefined) {
+      try {
+        await updateTaskStatusOnly(taskId, patch.status);
+      } catch (e: any) {
+        setTask((prev: any) => (prev ? { ...prev, status: (task as any)?.status } : prev));
+        setEditState((prev: any) => ({ ...(prev ?? {}), status: (task as any)?.status }));
+        Alert.alert('No se pudo actualizar el estado', e?.message ?? 'Intenta nuevamente.');
+        delete patch.status;
+      }
+      if (patch.status !== undefined) delete patch.status;
+    }
+
+    if (Object.keys(patch).length > 0) {
+      await persistTaskPatch(taskId, patch);
+    }
+    setEditing(false);
   };
 
+  // Comentarios locales (no se persisten en server)
   const postComment = async () => {
     if (!taskId || !newComment.trim()) return;
     try {
@@ -125,8 +487,7 @@ export default function DetailTask() {
         user: 'Usuario Actual',
         date: new Date().toISOString(),
       };
-      
-      setTask((t: any) => ({ ...t, comments: [...(t.comments || []), comment] }));
+      setTask((t: any) => ({ ...t, comments: [...(t?.comments || []), comment] }));
       setNewComment('');
     } catch (e) {
       console.error('comment error', e);
@@ -134,22 +495,20 @@ export default function DetailTask() {
     }
   };
 
-  // Funciones para adjuntos
+  // Adjuntos
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         copyToCacheDirectory: true,
       });
-
       if (result.canceled) return;
-
       const file = result.assets[0];
       setSelectedFile({
         name: file.name,
         uri: file.uri,
         size: file.size,
-        type: file.mimeType || 'application/octet-stream'
+        type: file.mimeType || 'application/octet-stream',
       });
     } catch (error) {
       console.error('Error picking document:', error);
@@ -159,7 +518,6 @@ export default function DetailTask() {
 
   const uploadFile = async () => {
     if (!selectedFile || !taskId) return;
-
     setUploading(true);
     try {
       const formData = new FormData();
@@ -173,27 +531,25 @@ export default function DetailTask() {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         throw new Error(`Error ${res.status}: ${errorText}`);
       }
 
       const result = await res.json();
-      
       setTask((prev: any) => ({
         ...prev,
-        attachments: [...(prev.attachments || []), result.attachment]
+        attachments: [...(prev.attachments || []), result.attachment],
       }));
 
       Alert.alert('Éxito', 'Archivo subido correctamente');
       setAttachModalVisible(false);
       setSelectedFile(null);
-      
-      loadAttachments();
+      loadAttachments(taskId);
     } catch (error: any) {
       console.error('❌ Upload error:', error);
-      Alert.alert('Error', error.message || 'Error al subir el archivo');
+      Alert.alert('Error', error.message || 'Error al subir el archivo. Verifica tu conexión.');
     } finally {
       setUploading(false);
     }
@@ -201,402 +557,493 @@ export default function DetailTask() {
 
   const deleteAttachment = async (attachmentId: number) => {
     try {
-      Alert.alert(
-        'Eliminar archivo',
-        '¿Estás seguro de que quieres eliminar este archivo?',
-        [
-          { text: 'Cancelar', style: 'cancel' as const },
-          {
-            text: 'Eliminar',
-            style: 'destructive' as const,
-            onPress: async () => {
-              const res = await apiFetch(`/attachments/${attachmentId}`, {
-                method: 'DELETE',
-              });
+      Alert.alert('Eliminar archivo', '¿Estás seguro de que quieres eliminar este archivo?', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            const token = await getAccessToken();
+            const res = await apiFetch(`/attachments/${attachmentId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` },
+            });
 
-              if (res.ok) {
-                setTask((prev: any) => ({
-                  ...prev,
-                  attachments: prev.attachments.filter((a: any) => a.id !== attachmentId)
-                }));
-                Alert.alert('Éxito', 'Archivo eliminado correctamente');
-              } else {
-                throw new Error('Error al eliminar archivo');
-              }
+            if (res.ok) {
+              setTask((prev: any) => ({
+                ...prev,
+                attachments: prev.attachments.filter((a: any) => a.id !== attachmentId),
+              }));
+              Alert.alert('Éxito', 'Archivo eliminado correctamente');
+            } else {
+              throw new Error('Error al eliminar archivo');
             }
-          }
-        ]
-      );
+          },
+        },
+      ]);
     } catch (error) {
       console.error('Delete error:', error);
       Alert.alert('Error', 'No se pudo eliminar el archivo');
     }
   };
 
-  // Función para descargar archivo
-  const downloadAttachment = async (attachment: any) => {
+  const downloadAttachment = async (_attachmentId: number, fileName: string) => {
     try {
-      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
-      
-      // Abrir en el navegador para descarga
-      await WebBrowser.openBrowserAsync(downloadUrl);
-      
-    } catch (error: any) {
-      console.error('Error en descarga:', error);
-      Alert.alert('Error', `No se pudo descargar el archivo: ${error.message}`);
+      Alert.alert('Descargar', `Funcionalidad de descarga en desarrollo para: ${fileName}`);
+    } catch (error) {
+      console.error('Download error:', error);
+      Alert.alert('Error', 'No se pudo descargar el archivo');
     }
   };
 
-  // Función para previsualizar PDF usando Google Docs Viewer
-  const previewPdf = async (attachment: any) => {
-    try {
-      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
-      
-      // Usar Google Docs Viewer para mostrar el PDF
-      const googleDocsViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`;
-      
-      setCurrentFileUrl(googleDocsViewerUrl);
-      setCurrentFileName(attachment.originalName);
-      setPdfViewerVisible(true);
-      
-    } catch (error: any) {
-      console.error('Error al abrir PDF:', error);
-      Alert.alert('Error', 'No se pudo abrir el PDF para visualización');
-    }
+  // Helpers: activar edición al tocar campos de texto
+  const startEditTitle = () => {
+    setEditing(true);
+    setTimeout(() => titleRef.current?.focus(), 0);
+  };
+  const startEditDescription = () => {
+    setEditing(true);
+    setTimeout(() => descRef.current?.focus(), 0);
   };
 
-  // Función para previsualizar imágenes
-  const previewImage = async (attachment: any) => {
-    try {
-      const imageUrl = `https://integracion-4.onrender.com/api/attachments/${attachment.id}/download`;
-      
-      setCurrentFileUrl(imageUrl);
-      setCurrentFileName(attachment.originalName);
-      setImageViewerVisible(true);
-      
-    } catch (error: any) {
-      console.error('Error al abrir imagen:', error);
-      Alert.alert('Error', 'No se pudo abrir la imagen para visualización');
-    }
+  // Guardado al salir de inputs (si cambió algo)
+  const onTitleEndEditing = () => {
+    if (!taskId || !task) return;
+    if (editState.title !== task.title) persistTaskPatch(taskId, { title: editState.title });
+  };
+  const onDescriptionEndEditing = () => {
+    if (!taskId || !task) return;
+    if (editState.description !== task.description)
+      persistTaskPatch(taskId, { description: editState.description });
   };
 
-  // Función para determinar el tipo de archivo y mostrar opciones apropiadas
-  const getFileType = (fileName: string) => {
-    const lowerName = fileName.toLowerCase();
-    if (lowerName.endsWith('.pdf')) return 'pdf';
-    if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg') || 
-        lowerName.endsWith('.png') || lowerName.endsWith('.gif') || 
-        lowerName.endsWith('.bmp') || lowerName.endsWith('.webp')) return 'image';
-    return 'other';
+  // Pickers: editar y guardar al instante
+  const onPickStatus = (value: string) => {
+    setShowStatusPicker(false);
+    setEditing(true);
+    setEditState((s: any) => ({ ...s, status: value }));
+    if (taskId) updateTaskStatusOnly(taskId, value).catch(() => {});
   };
 
-  // Función para manejar el clic en un adjunto - CORREGIDA
-  const handleAttachmentPress = (attachment: any) => {
-    const fileType = getFileType(attachment.originalName);
-    
-    const actions: any[] = [];
-    
-    // Agregar acción de visualización según el tipo de archivo
-    if (fileType === 'pdf') {
-      actions.push({
-        text: '📄 Visualizar PDF',
-        onPress: () => previewPdf(attachment)
-      });
-    } else if (fileType === 'image') {
-      actions.push({
-        text: '🖼️ Visualizar Imagen',
-        onPress: () => previewImage(attachment)
-      });
-    }
-    
-    // Acciones comunes para todos los tipos de archivo
-    actions.push(
-      {
-        text: '📥 Descargar',
-        onPress: () => downloadAttachment(attachment)
-      },
-      {
-        text: '🗑️ Eliminar',
-        style: 'destructive' as const,
-        onPress: () => deleteAttachment(attachment.id)
-      },
-      {
-        text: 'Cancelar',
-        style: 'cancel' as const
-      }
-    );
-
-    Alert.alert(
-      attachment.originalName,
-      `Tipo: ${fileType === 'pdf' ? 'PDF' : fileType === 'image' ? 'Imagen' : 'Archivo'}`,
-      actions
-    );
+  const onPickPriority = (value: string) => {
+    setShowPriorityPicker(false);
+    setEditing(true);
+    setEditState((s: any) => ({ ...s, priority: value }));
+    if (taskId) persistTaskPatch(taskId, { priority: value });
   };
 
-  // Componente del visor de PDF con Google Docs Viewer
-  const PdfViewer = () => {
-    if (!currentFileUrl) return null;
-
+  if (!taskId)
     return (
-      <Modal
-        visible={pdfViewerVisible}
-        animationType="slide"
-        onRequestClose={() => setPdfViewerVisible(false)}
-      >
-        <View style={styles.viewerContainer}>
-          <View style={styles.viewerHeader}>
-            <TouchableOpacity 
-              onPress={() => setPdfViewerVisible(false)}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.viewerTitle} numberOfLines={1}>
-              {currentFileName}
-            </Text>
-            <View style={{ width: 24 }} />
-          </View>
-          
-          <WebView
-            source={{ uri: currentFileUrl }}
-            style={styles.webview}
-            startInLoadingState={true}
-            renderLoading={() => (
-              <View style={styles.viewerLoading}>
-                <ActivityIndicator size="large" color={PRIMARY} />
-                <Text style={styles.viewerLoadingText}>Cargando PDF...</Text>
-              </View>
-            )}
-            onError={(syntheticEvent) => {
-              const { nativeEvent } = syntheticEvent;
-              console.error('WebView error:', nativeEvent);
-              Alert.alert('Error', 'No se pudo cargar el PDF');
-            }}
-          />
-        </View>
-      </Modal>
+      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+        <Text>ID de tarea no proporcionado</Text>
+      </LayoutContainer>
     );
-  };
 
-  // Componente del visor de imágenes
-  const ImageViewer = () => {
-    if (!currentFileUrl) return null;
-
-    return (
-      <Modal
-        visible={imageViewerVisible}
-        animationType="slide"
-        onRequestClose={() => setImageViewerVisible(false)}
-        statusBarTranslucent={true}
-      >
-        <View style={styles.viewerContainer}>
-          <View style={styles.viewerHeader}>
-            <TouchableOpacity 
-              onPress={() => setImageViewerVisible(false)}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.viewerTitle} numberOfLines={1}>
-              {currentFileName}
-            </Text>
-            <View style={{ width: 24 }} />
-          </View>
-          
-          <View style={styles.imageViewerContent}>
-            <Image
-              source={{ uri: currentFileUrl }}
-              style={styles.fullSizeImage}
-              resizeMode="contain"
-              onLoadStart={() => console.log('Cargando imagen...')}
-              onLoadEnd={() => console.log('Imagen cargada')}
-              onError={(error) => {
-                console.error('Error cargando imagen:', error);
-                Alert.alert('Error', 'No se pudo cargar la imagen');
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
-    );
-  };
-
-  if (!taskId) return <SafeAreaView><Text>ID de tarea no proporcionado</Text></SafeAreaView>;
+  // Mostrar valores en edición si existen; si no, los del task original
+  const statusValue = editState?.status ?? task?.status;
+  const priorityValue = editState?.priority ?? task?.priority;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f4f6fb' }}>
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
       <Header title={`Tarea #${taskId}`} />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.card}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container, // se mantiene por compatibilidad
+          {
+            paddingHorizontal: CONTAINER.horizontal,
+            paddingTop: CONTAINER.top,
+            paddingBottom: CONTAINER.bottom,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text
+            style={{
+            color: TEXT,              // ← usa el color del tema
+            fontSize: 28,
+            fontWeight: "800",
+            marginBottom: 12,
+          }}
+        >
+          {`Tarea #${taskId}`}
+        </Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+          ]}
+        >
           {loading ? (
-            <ActivityIndicator size="large" color={PRIMARY} />
+            <ActivityIndicator />
           ) : error ? (
-            <Text style={{ color: 'red' }}>{error}</Text>
+            <Text style={{ color: '#E74C3C' }}>{error}</Text>
           ) : task ? (
             <>
               <View style={styles.headerRow}>
+                {/* Título editable: guarda al salir */}
                 {editing ? (
-                  <TextInput 
-                    style={{ fontSize: 18, fontWeight: '800', flex: 1 }} 
-                    value={editState.title} 
-                    onChangeText={(t) => setEditState((s:any)=>({ ...s, title: t }))} 
+                  <TextInput
+                    ref={titleRef}
+                    style={[
+                      styles.titleInput,
+                      { color: TEXT, backgroundColor: INPUT_BG, borderColor: INPUT_BORDER },
+                    ]}
+                    value={editState.title}
+                    onChangeText={(t) => setEditState((s: any) => ({ ...s, title: t }))}
+                    onEndEditing={onTitleEndEditing}
+                    placeholder="Título"
+                    placeholderTextColor={SUBTEXT}
+                    returnKeyType="done"
                   />
                 ) : (
-                  <Text style={styles.title}>{task.title}</Text>
+                  <TouchableOpacity onPress={startEditTitle} style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={[styles.title, { color: TEXT }]} numberOfLines={2}>
+                      {task.title}
+                    </Text>
+                  </TouchableOpacity>
                 )}
+
+                {/* Estado y Prioridad (pickers) */}
                 <View style={styles.metaRight}>
-                  <Text style={styles.meta}>{task.status}</Text>
-                  <Text style={styles.meta}>{task.priority}</Text>
+                  <TouchableOpacity
+                    style={styles.metaGroup}
+                    onPress={() => setShowStatusPicker(true)}
+                  >
+                    <Text style={[styles.metaLabel, { color: SUBTEXT }]}>Estado</Text>
+                    <Text style={[styles.metaValue, { color: TEXT }]}>
+                      {t(statusMap, statusValue)}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.metaGroup, { marginLeft: 50 }]}
+                    onPress={() => setShowPriorityPicker(true)}
+                  >
+                    <Text style={[styles.metaLabel, { color: SUBTEXT }]}>Prioridad</Text>
+                    <Text style={[styles.metaValue, { color: TEXT }]}>
+                      {t(priorityMap, priorityValue)}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+
+                
               </View>
 
-              <Text style={styles.sectionLabel}>Descripción</Text>
+              <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Descripción</Text>
+              {/* Descripción editable: guarda al salir */}
               {editing ? (
-                <TextInput 
-                  multiline 
-                  value={editState.description} 
-                  onChangeText={(t)=>setEditState((s:any)=>({...s, description: t}))} 
-                  style={{ minHeight: 80, borderColor: '#eee', borderWidth: 1, padding: 8, borderRadius: 8 }} 
+                <TextInput
+                  ref={descRef}
+                  multiline
+                  value={editState.description}
+                  onChangeText={(t) => setEditState((s: any) => ({ ...s, description: t }))}
+                  onEndEditing={onDescriptionEndEditing}
+                  style={[
+                    styles.descInput,
+                    { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+                  ]}
+                  placeholder="Descripción"
+                  placeholderTextColor={SUBTEXT}
+                  returnKeyType="done"
                 />
               ) : (
-                <Text style={styles.description}>{task.description}</Text>
+                <TouchableOpacity onPress={startEditDescription}>
+                  <Text style={[styles.description, { color: TEXT }]}>
+                    {task.description || '—'}
+                  </Text>
+                </TouchableOpacity>
               )}
 
               <View style={styles.row}>
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Fecha límite</Text>
+                  <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Fecha</Text>
                   {editing ? (
-                    <TextInput 
-                      value={editState.dueDate} 
-                      onChangeText={(t)=>setEditState((s:any)=>({...s, dueDate: t}))} 
-                      style={{ borderColor: '#eee', borderWidth: 1, padding: 4, borderRadius: 4 }}
+                    <TextInput
+                      value={
+                        dueDateEditingValue ??
+                        (editState.dueDate
+                          ? displayDateFromISO(editState.dueDate)
+                          : displayDateFromISO(task.dueDate))
+                      }
+                      placeholder="YYYY/MM/DD"
+                      placeholderTextColor={SUBTEXT}
+                      onChangeText={(t) => setDueDateEditingValue(t)}
+                      onEndEditing={() => {
+                        const raw =
+                          dueDateEditingValue ?? (editState.dueDate ?? task.dueDate ?? '');
+                        const iso = parseDisplayDateToISO(String(raw));
+                        setEditState((s: any) => ({ ...s, dueDate: iso }));
+                        setDueDateEditingValue(null);
+                      }}
+                      style={[
+                        styles.dateInput,
+                        { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+                      ]}
                     />
                   ) : (
-                    <Text style={styles.fieldValue}>{task.dueDate}</Text>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setEditing(true);
+                        const display = task.dueDate ? displayDateFromISO(task.dueDate) : '';
+                        setEditState((s: any) => ({
+                          ...s,
+                          title: s.title ?? task.title,
+                          description: s.description ?? task.description,
+                          status: s.status ?? task.status,
+                          priority: s.priority ?? task.priority,
+                          dueDate: s.dueDate ?? task.dueDate,
+                          assigneeId: s.assigneeId ?? task.assignee?.id ?? task.assigneeId,
+                        }));
+                        setDueDateEditingValue(display);
+                      }}
+                    >
+                      <Text style={[styles.fieldValue, { color: TEXT }]}>
+                        {task.dueDate ? displayDateFromISO(task.dueDate) : '—'}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </View>
                 <View style={styles.field}>
-                  <Text style={styles.fieldLabel}>Responsable</Text>
-                  <Text style={styles.fieldValue}>{task.assignee?.name ?? '—'}</Text>
+                  <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Responsable</Text>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        if (!editing) {
+                          setEditing(true);
+                          if (!editState || Object.keys(editState).length === 0) {
+                            setEditState({
+                              title: task.title,
+                              description: task.description,
+                              status: task.status,
+                              priority: task.priority,
+                              dueDate: task.dueDate,
+                              assigneeId: task.assignee?.id ?? task.assigneeId,
+                            });
+                          }
+                          await new Promise((r) => setTimeout(r, 0));
+                        }
+                        const projectId =
+                          (task as any)?.projectId ?? (task as any)?.project?.id;
+                        if (!projectId) throw new Error('Falta projectId');
+                        if (projectMembers.length === 0) {
+                          const res = await apiFetch(`/projects/${projectId}/members`);
+                          const txt = await res.text();
+                          if (!res.ok) throw new Error(txt || `HTTP ${res.status}`);
+                          const data = txt ? JSON.parse(txt) : [];
+                          const list = (data.members ?? data) as any[];
+                          const users = list.map((m: any) => ({
+                            id: m.userId ?? m.id ?? m.user?.id,
+                            name:
+                              m.name ?? m.user?.name ?? m.email ?? String(m.userId ?? m.id),
+                          }));
+                          setProjectMembers(users.filter((u) => u.id));
+                        }
+                        setAssignModalVisible(true);
+                      } catch (e: any) {
+                        console.error('Error cargando miembros:', e);
+                      }
+                    }}
+                  >
+                    <Text style={[styles.fieldValue, { color: BRAND }]}>
+                      {(() => {
+                        const selId =
+                          editState.assigneeId ?? task.assignee?.id ?? task.assigneeId;
+                        const found = projectMembers.find((p) => p.id === selId);
+                        return found ? found.name : task.assignee?.name ?? '—';
+                      })()}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
+              
+              <View style={[styles.field, { marginTop: 12 }]}>
+                <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Etiquetas</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
+                    {task?.tags && task.tags.length > 0 ? (
+                      task.tags.map((tag: any) => (
+                        <View
+                          key={tag.id}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            backgroundColor: getTagColor(tag.id),
+                            borderRadius: 16,
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            marginRight: 8,
+                            marginBottom: 6,
+                          }}
+                        >
+                          <Text style={{ color: BRAND, fontWeight: "600" }}>{tag.name}</Text>
+                          <TouchableOpacity
+                            onPress={() => removeTagFromTask(tag.id)}
+                            style={{ marginLeft: 6 }}
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={{ color: SUBTEXT, fontStyle: "italic" }}>Sin etiquetas</Text>
+                    )}
+                  </View>
+                </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                <TouchableOpacity onPress={()=> setEditing(!editing)} style={{ padding: 8, backgroundColor: '#ddd', borderRadius: 8 }}>
-                  <Text>{editing ? 'Cancelar' : 'Editar'}</Text>
+                <TouchableOpacity onPress={() => setShowTagPicker(true)} style={{ marginTop: 8 }}>
+                  <Text style={{ color: BRAND, fontWeight: "600" }}>+ Agregar etiqueta</Text>
                 </TouchableOpacity>
-                {editing && (
-                  <TouchableOpacity onPress={saveEdits} style={{ padding: 8, backgroundColor: PRIMARY, borderRadius: 8 }}>
-                    <Text style={{ color: '#fff' }}>Guardar</Text>
-                  </TouchableOpacity>
-                )}
               </View>
 
-              {/* Sección de Adjuntos */}
+
+              {/* Botón Guardar (opcional si prefieres guardar manualmente cambios múltiples) */}
+              {editing && (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  <TouchableOpacity
+                    onPress={saveEdits}
+                    style={{
+                      padding: 10,
+                      backgroundColor: BRAND,
+                      borderRadius: 8,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#fff', fontWeight: '700' }}>Guardar</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Adjuntos */}
               <View style={styles.attachmentsHeader}>
-                <Text style={styles.sectionLabel}>Adjuntos</Text>
-                <TouchableOpacity 
+                <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Adjuntos</Text>
+                <TouchableOpacity
                   onPress={() => setAttachModalVisible(true)}
-                  style={styles.addAttachmentButton}
+                  style={[styles.addAttachmentButton, { backgroundColor: BRAND }]}
                 >
                   <Ionicons name="add" size={16} color="#fff" />
                   <Text style={styles.addAttachmentText}>Agregar</Text>
                 </TouchableOpacity>
               </View>
 
-              {(task.attachments && task.attachments.length > 0) ? (
-                task.attachments.map((a: any) => {
-                  const fileType = getFileType(a.originalName);
-                  const iconName = fileType === 'pdf' ? "document-text-outline" : 
-                                 fileType === 'image' ? "image-outline" : 
-                                 "document-attach-outline";
-                  
-                  const fileTypeText = fileType === 'pdf' ? 'PDF' : 
-                                     fileType === 'image' ? 'Imagen' : 
-                                     'Archivo';
-
-                  return (
-                    <View key={a.id} style={styles.attachmentItem}>
-                      <TouchableOpacity 
-                        style={styles.attachRow}
-                        onPress={() => handleAttachmentPress(a)}
-                      >
-                        <Ionicons 
-                          name={iconName} 
-                          size={18} 
-                          color="#3b3b3b" 
-                        />
-                        <View style={styles.attachmentInfo}>
-                          <Text style={styles.attachText}>{a.originalName}</Text>
-                          <Text style={styles.attachmentSize}>
-                            {(a.size / 1024).toFixed(1)} KB • {fileTypeText}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        onPress={() => deleteAttachment(a.id)}
-                        style={styles.deleteAttachmentButton}
-                      >
-                        <Ionicons name="trash-outline" size={16} color="#ff4444" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })
+              {task.attachments && task.attachments.length > 0 ? (
+                task.attachments.map((a: any) => (
+                  <View
+                    key={a.id}
+                    style={[
+                      styles.attachmentItem,
+                      { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
+                    ]}
+                  >
+                    <TouchableOpacity
+                      style={styles.attachRow}
+                      onPress={() => downloadAttachment(a.id, a.originalName)}
+                    >
+                      <Ionicons
+                        name="document-attach-outline"
+                        size={18}
+                        color={SUBTEXT}
+                      />
+                      <View style={styles.attachmentInfo}>
+                        <Text style={[styles.attachText, { color: TEXT }]}>
+                          {a.originalName}
+                        </Text>
+                        <Text style={[styles.attachmentSize, { color: SUBTEXT }]}>
+                          {(a.size / 1024).toFixed(1)} KB
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => deleteAttachment(a.id)}
+                      style={styles.deleteAttachmentButton}
+                    >
+                      <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
+                    </TouchableOpacity>
+                  </View>
+                ))
               ) : (
-                <Text style={styles.emptyText}>No hay archivos adjuntos</Text>
+                <Text style={[styles.emptyText, { color: SUBTEXT }]}>
+                  No hay archivos adjuntos
+                </Text>
               )}
 
               {/* Modal para Adjuntar Archivos */}
               <Modal
                 visible={attachModalVisible}
                 animationType="slide"
-                transparent={true}
+                transparent
                 onRequestClose={() => setAttachModalVisible(false)}
               >
                 <View style={styles.modalOverlay}>
-                  <View style={styles.modalContent}>
-                    <Text style={styles.modalTitle}>Adjuntar Archivo</Text>
-                    
+                  <View
+                    style={[
+                      styles.modalContent,
+                      { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+                    ]}
+                  >
+                    <Text style={[styles.modalTitle, { color: TEXT }]}>
+                      Adjuntar Archivo
+                    </Text>
+
                     {selectedFile ? (
-                      <View style={styles.selectedFile}>
-                        <Ionicons name="document-outline" size={24} color={PRIMARY} />
-                        <View style={styles.fileInfo}>
-                          <Text style={styles.fileName}>{selectedFile.name}</Text>
-                          <Text style={styles.fileSize}>
+                      <View
+                        style={[
+                          styles.selectedFile,
+                          { backgroundColor: MUTED_BG, borderColor: CARD_BORDER },
+                        ]}
+                      >
+                        <Ionicons name="document-outline" size={24} color={BRAND} />
+                        <View className="fileInfo" style={styles.fileInfo}>
+                          <Text style={[styles.fileName, { color: TEXT }]}>
+                            {selectedFile.name}
+                          </Text>
+                          <Text style={[styles.fileSize, { color: SUBTEXT }]}>
                             {(selectedFile.size / 1024).toFixed(1)} KB
                           </Text>
                         </View>
                         <TouchableOpacity onPress={() => setSelectedFile(null)}>
-                          <Ionicons name="close" size={20} color="#666" />
+                          <Ionicons name="close" size={20} color={SUBTEXT} />
                         </TouchableOpacity>
                       </View>
                     ) : (
-                      <TouchableOpacity style={styles.pickFileButton} onPress={pickDocument}>
-                        <Ionicons name="cloud-upload-outline" size={32} color={PRIMARY} />
-                        <Text style={styles.pickFileText}>Seleccionar Archivo</Text>
-                        <Text style={styles.pickFileSubtext}>
+                      <TouchableOpacity
+                        style={[
+                          styles.pickFileButton,
+                          { borderColor: CARD_BORDER, backgroundColor: isDark ? '#1f1f1f' : undefined },
+                        ]}
+                        onPress={pickDocument}
+                      >
+                        <Ionicons name="cloud-upload-outline" size={32} color={BRAND} />
+                        <Text style={[styles.pickFileText, { color: TEXT }]}>
+                          Seleccionar Archivo
+                        </Text>
+                        <Text style={[styles.pickFileSubtext, { color: SUBTEXT }]}>
                           Tamaño máximo: 10MB • Formatos: Todos
                         </Text>
                       </TouchableOpacity>
                     )}
 
                     <View style={styles.modalButtons}>
-                      <TouchableOpacity 
-                        style={[styles.modalButton, styles.cancelButton]}
+                      <TouchableOpacity
+                        style={[
+                          styles.modalButton,
+                          styles.cancelButton,
+                          { backgroundColor: MUTED_BG, borderColor: CARD_BORDER },
+                        ]}
                         onPress={() => {
                           setAttachModalVisible(false);
                           setSelectedFile(null);
                         }}
                       >
-                        <Text style={styles.cancelButtonText}>Cancelar</Text>
+                        <Text style={[styles.cancelButtonText, { color: TEXT }]}>
+                          Cancelar
+                        </Text>
                       </TouchableOpacity>
-                      
-                      <TouchableOpacity 
+
+                      <TouchableOpacity
                         style={[
-                          styles.modalButton, 
+                          styles.modalButton,
                           styles.uploadButton,
-                          (!selectedFile || uploading) && styles.disabledButton
+                          { backgroundColor: BRAND },
+                          (!selectedFile || uploading) && styles.disabledButton,
                         ]}
                         onPress={uploadFile}
                         disabled={!selectedFile || uploading}
@@ -612,94 +1059,259 @@ export default function DetailTask() {
                 </View>
               </Modal>
 
-              <Text style={styles.sectionLabel}>Comentarios</Text>
+              {/* Comentarios / Historial (locales) */}
+              <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Comentarios</Text>
               {(task.comments || []).map((c: any) => (
                 <View key={c.id} style={styles.commentRow}>
-                  <View style={styles.avatarPlaceholder}><Text style={{color:'#fff'}}>{c.user?.[0] ?? 'U'}</Text></View>
+                  <View style={[styles.avatarPlaceholder, { backgroundColor: BRAND }]}>
+                    <Text style={{ color: '#fff' }}>{c.user?.[0] ?? 'U'}</Text>
+                  </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.commentUser}>{c.user} · <Text style={styles.commentDate}>{c.date}</Text></Text>
-                    <Text style={styles.commentText}>{c.text}</Text>
+                    <Text style={[styles.commentUser, { color: TEXT }]}>
+                      {c.user}{' '}
+                      <Text style={[styles.commentDate, { color: SUBTEXT }]}>
+                        · {c.date}
+                      </Text>
+                    </Text>
+                    <Text style={[styles.commentText, { color: TEXT }]}>{c.text}</Text>
                   </View>
                 </View>
               ))}
 
               <View style={{ marginTop: 8 }}>
-                <TextInput 
-                  placeholder="Añadir comentario..." 
-                  value={newComment} 
-                  onChangeText={setNewComment} 
-                  style={{ borderWidth:1, borderColor:'#eee', padding:8, borderRadius:8 }} 
+                <TextInput
+                  placeholder="Añadir comentario..."
+                  placeholderTextColor={SUBTEXT}
+                  value={newComment}
+                  onChangeText={setNewComment}
+                  style={[
+                    styles.commentInput,
+                    { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+                  ]}
                 />
-                <TouchableOpacity onPress={postComment} style={{ marginTop:8, backgroundColor: PRIMARY, padding:8, borderRadius:8 }}>
-                  <Text style={{ color:'#fff' }}>Comentar</Text>
+                <TouchableOpacity
+                  onPress={postComment}
+                  style={{ marginTop: 8, backgroundColor: BRAND, padding: 8, borderRadius: 8 }}
+                >
+                  <Text style={{ color: '#fff' }}>Comentar</Text>
                 </TouchableOpacity>
               </View>
 
               <TouchableOpacity
                 onPress={() =>
                   router.push({
-                    pathname: "/features/task/components/taskhistory",
+                    pathname: '/features/task/components/taskhistory',
                     params: { projectId: task.projectId, taskId },
                   })
                 }
                 style={{
-                  backgroundColor: PRIMARY,
+                  backgroundColor: BRAND,
                   paddingVertical: 10,
                   borderRadius: 8,
-                  alignItems: "center",
+                  alignItems: 'center',
                   marginTop: 20,
                 }}
               >
-                <Text style={{ color: "#fff", fontWeight: "600" }}>Ver historial</Text>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Ver historial</Text>
               </TouchableOpacity>
-
-
-
             </>
           ) : (
-            <Text>No se encontró la tarea.</Text>
+            <Text style={{ color: TEXT }}>No se encontró la tarea.</Text>
           )}
         </View>
       </ScrollView>
 
-      {/* Visor de PDF con Google Docs Viewer */}
-      <PdfViewer />
+      {/* Picker de Estado */}
+      <Modal
+        visible={showStatusPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowStatusPicker(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <View
+            style={[
+              styles.sheetCard,
+              { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+            ]}
+          >
+            <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona estado</Text>
+            {STATUS_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
+                ]}
+                onPress={() => onPickStatus(opt)}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>
+                  {t(statusMap, opt)}
+                </Text>
+                {normalize(statusValue) === normalize(opt) && (
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowStatusPicker(false)}>
+              <Text style={{ color: SUBTEXT }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Picker de Prioridad */}
+      <Modal
+        visible={showPriorityPicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPriorityPicker(false)}
+      >
+        <View style={styles.sheetOverlay}>
+          <View
+            style={[
+              styles.sheetCard,
+              { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+            ]}
+          >
+            <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona prioridad</Text>
+            {PRIORITY_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
+                ]}
+                onPress={() => onPickPriority(opt)}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>
+                  {t(priorityMap, opt)}
+                </Text>
+                {normalize(priorityValue) === normalize(opt) && (
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
+                )}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity
+              style={styles.sheetCancel}
+              onPress={() => setShowPriorityPicker(false)}
+            >
+              <Text style={{ color: SUBTEXT }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Assign modal (selección de responsable) */}
+      <AssignModal
+        visible={assignModalVisible}
+        onClose={() => setAssignModalVisible(false)}
+        users={projectMembers}
+        onAssign={(userId: number) => {
+          setEditState((s: any) => ({ ...s, assigneeId: Number(userId) }));
+          setAssignModalVisible(false);
+        }}
+      />
+
+      {/* Picker de Etiquetas */}
+    <Modal
+      visible={showTagPicker}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowTagPicker(false)}
+    >
+      <View style={styles.sheetOverlay}>
+        <View
+          style={[
+            styles.sheetCard,
+            { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+          ]}
+        >
+          <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona etiqueta</Text>
+
+          {projectTags.length === 0 ? (
+            <Text style={{ color: SUBTEXT, paddingVertical: 8 }}>
+              No hay etiquetas disponibles
+            </Text>
+          ) : (
+            projectTags.map((tag) => (
+              <TouchableOpacity
+                key={tag.id}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? "#222" : "#f0f0f0" },
+                ]}
+                onPress={() => {
+                  assignTagToTask(tag.id);
+                  setShowTagPicker(false);
+                }}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>{tag.name}</Text>
+                {selectedTag?.id === tag.id ||
+                task?.tag?.id === tag.id ? (
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
+                ) : null}
+              </TouchableOpacity>
+            ))
+          )}
+
+          <TouchableOpacity
+            style={styles.sheetCancel}
+            onPress={() => setShowTagPicker(false)}
+          >
+            <Text style={{ color: SUBTEXT }}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+
+
       
-      {/* Visor de Imágenes */}
-      <ImageViewer />
-    </SafeAreaView>
+    </LayoutContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 16, shadowColor: '#000', shadowOpacity: 0.06, elevation: 2 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  container: { padding: 16 }, // se mantiene por compatibilidad; el padding real lo define CONTAINER
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    elevation: 2,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
-  metaRight: { alignItems: 'flex-end' },
-  meta: { fontSize: 12, color: '#444', marginBottom: 2 },
-  sectionLabel: { marginTop: 16, fontSize: 13, fontWeight: '700', marginBottom: 8 },
-  description: { color: '#333', lineHeight: 20 },
+  titleInput: {
+    fontSize: 18,
+    fontWeight: '800',
+    flex: 1,
+    marginRight: 8,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+
+  // Estado/Prioridad con etiqueta arriba
+  metaRight: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'flex-end',
+  },
+  metaGroup: { alignItems: 'flex-end' },
+  metaLabel: { fontSize: 11, marginBottom: 2, fontWeight: '600' },
+  metaValue: { fontSize: 13, fontWeight: '700' },
+
+  sectionLabel: { marginTop: 12, fontSize: 13, fontWeight: '700' },
+  description: { marginTop: 6, lineHeight: 20 },
+
   row: { flexDirection: 'row', marginTop: 12 },
   field: { flex: 1 },
-  fieldLabel: { fontSize: 12, color: '#666', marginBottom: 4 },
+  fieldLabel: { fontSize: 12 },
   fieldValue: { fontSize: 14, fontWeight: '700' },
-  attachRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, flex: 1 },
-  attachText: { marginLeft: 8, color: '#2a2a2a', fontSize: 14 },
-  commentRow: { flexDirection: 'row', marginTop: 10, alignItems: 'flex-start' },
-  avatarPlaceholder: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#3B34FF', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
-  commentUser: { fontWeight: '700', fontSize: 14 },
-  commentDate: { fontWeight: '400', color: '#666', fontSize: 12 },
-  commentText: { color: '#333', marginTop: 4 },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
-  historyText: { color: '#444', flex: 1 },
-  historyDate: { color: '#777', fontSize: 12 },
-  emptyText: {
-    color: '#999',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: 8,
-  },
+
+  // Adjuntos
   attachmentsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -709,105 +1321,72 @@ const styles = StyleSheet.create({
   addAttachmentButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: PRIMARY,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     gap: 4,
   },
-  addAttachmentText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  addAttachmentText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   attachmentItem: {
     flexDirection: 'row',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
     paddingVertical: 8,
   },
-  attachmentInfo: {
-    flex: 1,
-    marginLeft: 8,
+  attachRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, flex: 1 },
+  attachmentInfo: { flex: 1, marginLeft: 8 },
+  attachText: { marginLeft: 8 },
+  attachmentSize: { fontSize: 11, marginTop: 2 },
+  deleteAttachmentButton: { padding: 6, marginLeft: 8 },
+
+  // Comentarios / Historial
+  commentRow: { flexDirection: 'row', marginTop: 10, alignItems: 'flex-start' },
+  avatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
-  attachmentSize: {
-    fontSize: 11,
-    color: '#666',
-    marginTop: 2,
-  },
-  deleteAttachmentButton: {
-    padding: 6,
-    marginLeft: 8,
-  },
+  commentUser: { fontWeight: '700' },
+  commentDate: { fontWeight: '400', fontSize: 12 },
+  commentText: {},
+  historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
+  historyText: {},
+  historyDate: { fontSize: 12 },
+  emptyText: { fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
+
+  // Modal adjuntos
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    width: '90%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
+  modalContent: { borderRadius: 12, padding: 20, width: '90%', maxWidth: 400 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
   pickFileButton: {
     borderWidth: 2,
-    borderColor: '#e0e0e0',
     borderStyle: 'dashed',
     borderRadius: 8,
     padding: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pickFileText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 8,
-    color: '#333',
-  },
-  pickFileSubtext: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 4,
-    textAlign: 'center',
-  },
+  pickFileText: { fontSize: 16, fontWeight: '600', marginTop: 8 },
+  pickFileSubtext: { fontSize: 12, marginTop: 4, textAlign: 'center' },
   selectedFile: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
     borderRadius: 8,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#e9ecef',
   },
-  fileInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  fileName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  fileSize: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 20,
-  },
+  fileInfo: { flex: 1, marginLeft: 12 },
+  fileName: { fontSize: 14, fontWeight: '600' },
+  fileSize: { fontSize: 12 },
+  modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
   modalButton: {
     flex: 1,
     paddingVertical: 12,
@@ -815,72 +1394,46 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cancelButton: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  uploadButton: {
-    backgroundColor: PRIMARY,
-  },
-  disabledButton: {
-    backgroundColor: '#ccc',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontWeight: '600',
-  },
-  uploadButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  // Estilos para los visores
-  viewerContainer: {
-    flex: 1,
-    backgroundColor: '#1a1a1a',
-  },
-  viewerHeader: {
+  cancelButton: {},
+  uploadButton: {},
+  disabledButton: { backgroundColor: '#ccc' },
+  cancelButtonText: { fontWeight: '600' },
+  uploadButtonText: { color: '#fff', fontWeight: '600' },
+
+  // Bottom-sheet para pickers
+  sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  sheetCard: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
+  sheetTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
+  sheetItem: {
+    paddingVertical: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2d2d2d',
     borderBottomWidth: 1,
-    borderBottomColor: '#444',
   },
-  closeButton: {
-    padding: 4,
+  sheetText: { fontSize: 15 },
+  sheetCancel: { paddingVertical: 14, alignItems: 'center' },
+
+  // ⚙️ Estilos agregados
+  descInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
   },
-  viewerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 8,
+  dateInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
   },
-  viewerLoading: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-  },
-  viewerLoadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#fff',
-  },
-  webview: {
-    flex: 1,
-  },
-  imageViewerContent: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullSizeImage: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height - 100, // Restar altura del header
+  commentInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
   },
 });
