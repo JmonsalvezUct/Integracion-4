@@ -18,7 +18,7 @@ export const projectsRepository = {
     }
   }),
   getProjects: () => prisma.project.findMany(),
-  getProjectById: (projectId: number) => prisma.project.findUnique({ where: { id: projectId } }),
+  getProjectById: (id: number) => prisma.project.findUnique({ where: { id } }),
   updateProject: (id: number, data: UpdateProjectDTO) => prisma.project.update({ where: { id }, data }),
   deleteProject: (id: number) => prisma.project.delete({ where: { id } }),
 

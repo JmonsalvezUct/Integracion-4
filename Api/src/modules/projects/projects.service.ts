@@ -9,8 +9,8 @@ export const projectsService = {
   async getProjects() {
     return projectsRepository.getProjects();
   },
-  async getProjectById(projectId: number) {
-    return projectsRepository.getProjectById(projectId);
+  async getProjectById(id: number) {
+    return projectsRepository.getProjectById(id);
   },
   async updateProject(id: number, data: UpdateProjectDTO) {
     return projectsRepository.updateProject(id, data);
