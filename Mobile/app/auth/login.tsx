@@ -97,7 +97,7 @@ const onSubmit = async () => {
             <Image source={require("@/assets/images/fastplanner-logo.png")} style={styles.logo} />
           </View>
 
-          <Text style={styles.title}>Inicia sesión</Text>
+          <Text style={styles.title}>{checking ? "Comprobando sesión..." : "Inicia sesión"}</Text>
 
           {/* Input correo */}
           <View style={styles.inputWrap}>

@@ -6,16 +6,16 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
-  import { apiFetch } from "@/lib/api-fetch";
+import { apiFetch } from "@/lib/api-fetch";
 
-const PRIMARY = "#3B34FF";
+// 🎨 Hook de colores centralizado (dark mode)
+import { useThemedColors } from "@/hooks/use-theme-color";
 
 const priorityMap: Record<"Alta" | "Media" | "Baja", "high" | "medium" | "low"> = {
   Alta: "high",
   Media: "medium",
   Baja: "low",
 };
-
 
 function clean<T extends object>(obj: T): Partial<T> {
   const out: any = {};
@@ -27,10 +27,9 @@ function clean<T extends object>(obj: T): Partial<T> {
   return out;
 }
 
-
 function normalizeDate(dateStr?: string) {
   if (!dateStr) return null;
-  const cleaned = dateStr.replace(/[^\d]/g, ""); 
+  const cleaned = dateStr.replace(/[^\d]/g, "");
   if (cleaned.length !== 8) return null;
   const y = cleaned.slice(0, 4);
   const m = cleaned.slice(4, 6);
@@ -48,7 +47,6 @@ function isValidDate(dateStr: string) {
   const daysInMonth = [31, (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   if (d < 1 || d > daysInMonth[m - 1]) return false;
 
-
   const dt = new Date(y, m - 1, d);
   return dt.getFullYear() === y && dt.getMonth() + 1 === m && dt.getDate() === d;
 }
@@ -56,107 +54,150 @@ function isValidDate(dateStr: string) {
 function toISODateTime(dateStr?: string) {
   const norm = normalizeDate(dateStr);
   if (!norm) return undefined;
-  return norm; 
+  return norm;
 }
-
-
-
 
 export default function NewTaskScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ projectId?: string; creatorId?: string }>(); // --> EXTRAE PARAMETROS DE LA URL 
+  const params = useLocalSearchParams<{ projectId?: string; creatorId?: string }>();
+
+  const [tags, setTags] = useState<{ id: number; name: string; color?: string }[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
 
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [date, setDate] = useState("");
   const [priority, setPriority] = useState<"Alta" | "Media" | "Baja">("Media");
-  const [tag, setTag] = useState(""); 
+  const [tag, setTag] = useState("");
 
-  const canSave = title.trim().length > 0; 
+  const canSave = title.trim().length > 0;
+
+  // 🎨 Tokens del tema
+  const {
+    BG,
+    TEXT,
+    SUBTEXT,
+    BRAND,           // usa #0a7ea4 como fallback
+    CARD_BG,
+    CARD_BORDER,
+    INPUT_BG,
+    INPUT_BORDER,
+    PLACEHOLDER,
+  } = useThemedColors();
 
 
-  
+  React.useEffect(() => {
+  const fetchTags = async () => {
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags/project/${params.projectId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setTags(data);
+    } catch (err) {
+      console.error("Error cargando etiquetas:", err);
+    }
+  };
+
+  if (params.projectId) fetchTags();
+}, [params.projectId]);
 
   const submit = async () => {
     if (!canSave) {
       return Alert.alert("Falta título", "El título es obligatorio.");
     }
 
-
-
-  const token = await getAccessToken();
-
-  if (!token) {
-    Alert.alert("Error", "No hay token de acceso. Inicia sesión nuevamente.");
-    return;
-  }
-
-  const projectId = Number(params.projectId);
-  const creatorId = Number(params.creatorId);
-
-  if (!projectId || !creatorId) {
-    Alert.alert("Error", "Faltan los IDs de proyecto o usuario.");
-    return;
-  }
-
-const payload = clean({
-  title,
-  description: desc,
-  dueDate: normalizeDate(date), 
-  priority: priorityMap[priority],
-  projectId,
-  creatorId,
-});
-if (!isValidDate(date)) {
-  Alert.alert("Fecha inválida", "Usa el formato YYYY-MM-DD.");
-  return;
-}
-
-  try {
-  console.log("📤 Payload enviado:", JSON.stringify(payload, null, 2));
-
-  const res = await apiFetch(`/tasks/${projectId}/`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-
-    console.log("🧪 Status:", res.status);
-    const raw = await res.text();
-    console.log("🧪 Raw response:", raw);
-
-    if (!res.ok) {
-      throw new Error(`Error ${res.status}: ${raw}`);
+    const token = await getAccessToken();
+    if (!token) {
+      Alert.alert("Error", "No hay token de acceso. Inicia sesión nuevamente.");
+      return;
     }
 
-    const data = JSON.parse(raw);
-    Alert.alert("Éxito", "Tarea creada correctamente.");
-    router.back();
-  } catch (err) {
-    console.error("❌ Error al crear tarea:", err);
-    Alert.alert("Error", "No se pudo crear la tarea. Verifica los datos o el token.");
-  }
-};
-const handleDateChange = (text: string) => {
-  const cleaned = text.replace(/[^\d]/g, "");
-  let formatted = cleaned;
-  if (cleaned.length > 4 && cleaned.length <= 6) {
-    formatted = `${cleaned.slice(0, 4)}/${cleaned.slice(4)}`;
-  } else if (cleaned.length > 6) {
-    formatted = `${cleaned.slice(0, 4)}/${cleaned.slice(4, 6)}/${cleaned.slice(6, 8)}`;
-  }
-  setDate(formatted);
-};
+    const projectId = Number(params.projectId);
+    const creatorId = Number(params.creatorId);
+
+    if (!projectId || !creatorId) {
+      Alert.alert("Error", "Faltan los IDs de proyecto o usuario.");
+      return;
+    }
+
+    const payload = clean({
+      title,
+      description: desc,
+      dueDate: normalizeDate(date),
+      priority: priorityMap[priority],
+      projectId,
+      creatorId,
+      tag,
+    });
+
+    if (!isValidDate(date)) {
+      Alert.alert("Fecha inválida", "Usa el formato YYYY-MM-DD.");
+      return;
+    }
+
+    try {
+      const res = await apiFetch(`/tasks/${projectId}/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Error ${res.status}: ${text}`);
+    }
+
+    const task = await res.json();
 
 
+    if (selectedTagId) {
+      const tagRes = await apiFetch(`/tags/tasks/${task.id}/tags/${selectedTagId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!tagRes.ok) {
+        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+      }
+    }
 
+    if (tag.trim()) {
+      const tagRes = await apiFetch(`/tags/tasks/${task.id}/tags/${encodeURIComponent(tag)}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!tagRes.ok) {
+        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+      }
+    }
+
+      Alert.alert("Éxito", "Tarea creada correctamente.");
+      router.back();
+    } catch (err) {
+      console.error("❌ Error al crear tarea:", err);
+      Alert.alert("Error", "No se pudo crear la tarea. Verifica los datos o el token.");
+    }
+  };
+
+  const handleDateChange = (text: string) => {
+    const cleaned = text.replace(/[^\d]/g, "");
+    let formatted = cleaned;
+    if (cleaned.length > 4 && cleaned.length <= 6) {
+      formatted = `${cleaned.slice(0, 4)}/${cleaned.slice(4)}`;
+    } else if (cleaned.length > 6) {
+      formatted = `${cleaned.slice(0, 4)}/${cleaned.slice(4, 6)}/${cleaned.slice(6, 8)}`;
+    }
+    setDate(formatted);
+  };
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={[styles.root, { backgroundColor: BRAND }]}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={22} color="#fff" />
@@ -166,62 +207,113 @@ const handleDateChange = (text: string) => {
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={styles.card}>
-          <Text style={styles.label}>Título</Text>
+        <View
+          style={[
+            styles.card,
+            { backgroundColor: CARD_BG, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderColor: CARD_BORDER, borderWidth: 1 },
+          ]}
+        >
+          <Text style={[styles.label, { color: TEXT }]}>Título</Text>
           <TextInput
             placeholder="Diseñar interfaz"
-            placeholderTextColor="#9aa0a6"
+            placeholderTextColor={PLACEHOLDER}
             value={title}
             onChangeText={setTitle}
-            style={styles.input}
+            style={[
+              styles.input,
+              { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+            ]}
           />
 
-          <Text style={styles.label}>Descripción</Text>
+          <Text style={[styles.label, { color: TEXT }]}>Descripción</Text>
           <TextInput
             placeholder="Detalles…"
-            placeholderTextColor="#9aa0a6"
+            placeholderTextColor={PLACEHOLDER}
             value={desc}
             onChangeText={setDesc}
-            style={[styles.input, { height: 90, textAlignVertical: "top" }]}
+            style={[
+              styles.input,
+              { height: 90, textAlignVertical: "top", backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+            ]}
             multiline
           />
 
-          <Text style={styles.label}>Fecha</Text>
+          <Text style={[styles.label, { color: TEXT }]}>Fecha</Text>
           <TextInput
             placeholder="YYYY/MM/DD"
-            placeholderTextColor="#9aa0a6"
+            placeholderTextColor={PLACEHOLDER}
             value={date}
             onChangeText={handleDateChange}
             keyboardType="numeric"
-            maxLength={10} 
-            style={styles.input}
+            maxLength={10}
+            style={[
+              styles.input,
+              { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+            ]}
           />
 
-
-
-          <Text style={styles.label}>Prioridad</Text>
+          <Text style={[styles.label, { color: TEXT }]}>Prioridad</Text>
           <View style={styles.priorityRow}>
             {(["Alta", "Media", "Baja"] as const).map((p) => {
               const active = p === priority;
               return (
-                <TouchableOpacity key={p} onPress={() => setPriority(p)} style={[styles.chip, active && styles.chipActive]}>
-                  <Text style={[styles.chipText, active && styles.chipTextActive]}>{p}</Text>
+                <TouchableOpacity
+                  key={p}
+                  onPress={() => setPriority(p)}
+                  style={[
+                    styles.chip,
+                    { borderColor: BRAND, backgroundColor: "transparent" },
+                    active && { backgroundColor: BRAND },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      { color: BRAND },
+                      active && { color: "#fff" },
+                    ]}
+                  >
+                    {p}
+                  </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
 
-          <Text style={styles.label}>Etiqueta</Text>
-          <TextInput
-            placeholder="UI, Backend, Bug… (no se envía)"
-            placeholderTextColor="#9aa0a6"
-            value={tag}
-            onChangeText={setTag}
-            style={styles.input}
-          />
+        <Text style={[styles.label, { color: TEXT }]}>Etiqueta</Text>
+        <View style={styles.tagRow}>
+          {tags.length === 0 ? (
+            <Text style={{ color: SUBTEXT, fontStyle: "italic" }}>No hay etiquetas disponibles</Text>
+          ) : (
+            tags.map((t) => {
+              const active = selectedTagId === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  onPress={() => setSelectedTagId(active ? null : t.id)}
+                  style={[
+                    styles.tagChip,
+                    { borderColor: BRAND, backgroundColor: active ? BRAND : "transparent" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      { color: active ? "#fff" : BRAND },
+                    ]}
+                  >
+                    {t.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+
+
 
           <TouchableOpacity
-            style={[styles.primaryBtn, !canSave && { opacity: 0.5 }]}
+            style={[styles.primaryBtn, { backgroundColor: BRAND }, !canSave && { opacity: 0.5 }]}
             disabled={!canSave}
             onPress={submit}
           >
@@ -233,9 +325,8 @@ const handleDateChange = (text: string) => {
   );
 }
 
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: PRIMARY },
+  root: { flex: 1 },
   header: {
     paddingHorizontal: 16, paddingTop: 8, paddingBottom: 16,
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
@@ -244,27 +335,59 @@ const styles = StyleSheet.create({
   backBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 
   card: {
-    flex: 1, backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 16, gap: 10,
+    flex: 1,
+    padding: 16,
+    gap: 10,
   },
-  label: { color: "#4a4a4a", fontWeight: "600", marginTop: 4 },
+  label: { fontWeight: "600", marginTop: 4 },
   input: {
-    borderWidth: 1, borderColor: "#E3E5EA", backgroundColor: "#F7F8FA",
-    borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: "#111",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
   },
+
   priorityRow: { flexDirection: "row", gap: 8, marginBottom: 4 },
   chip: {
-    borderWidth: 1, borderColor: "#d7daf5", backgroundColor: "#F5F6FF",
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
-  chipActive: { backgroundColor: "#5B55FF", borderColor: "#5B55FF" },
-  chipText: { color: "#5B55FF", fontWeight: "600" },
-  chipTextActive: { color: "#fff" },
+  chipText: { fontWeight: "600" },
 
   primaryBtn: {
-    marginTop: 12, backgroundColor: "#5B55FF", borderRadius: 14,
-    alignItems: "center", justifyContent: "center", paddingVertical: 14,
-    elevation: 3, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
+    marginTop: 12,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  tagRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 8,
+  marginTop: 4,
+  marginBottom: 8,
+},
+
+tagChip: {
+  borderWidth: 1,
+  borderRadius: 999,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+},
+
+tagText: {
+  fontWeight: "600",
+  fontSize: 14,
+},
+
 });
