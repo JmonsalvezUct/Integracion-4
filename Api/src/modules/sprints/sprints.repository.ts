@@ -8,7 +8,7 @@ export const sprintsRepository = {
     }),
 
   getSprintsByProjectId: (projectId: number) =>
-    prisma.sprint.findMany({
+    prisma.sprint.findMany({ 
       where: { projectId },
       include: {
         tasks: {
@@ -30,7 +30,7 @@ export const sprintsRepository = {
       },
     }),
 
-  updateSprint: (id: number, data: UpdateSprintDTO) =>
+  updateSprint: (id: number, data: Partial<UpdateSprintDTO>) =>
     prisma.sprint.update({
       where: { id },
       data,
