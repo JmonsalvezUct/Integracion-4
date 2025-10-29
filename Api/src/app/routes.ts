@@ -8,6 +8,7 @@ import projectsRoutes from '../modules/projects/projects.routes.js';
 import attachmentRoutes from '../modules/attachments/attachments.routes.js';
 import changeHistoryRoutes from "../modules/change-history/changeHistory.routes.js";
 import tagsRoutes from "../modules/tags/tags.routes.js";
+import taskTimesRoutes from "../modules/task-times/taskTimes.routes.js";
 import swaggerUI from 'swagger-ui-express'
 import specs from '../swagger/swagger.js';
 
@@ -19,6 +20,7 @@ router.use('/tasks', tasksRoutes);
 router.use('/projects', projectsRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/tags', tagsRoutes);
+router.use('/task-times', taskTimesRoutes);
 router.use('/docs', swaggerUI.serve, swaggerUI.setup(specs))
 router.use("/history", changeHistoryRoutes);
 export default router;
