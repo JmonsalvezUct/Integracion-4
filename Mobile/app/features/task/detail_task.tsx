@@ -336,7 +336,7 @@ useEffect(() => {
     const targetId = id ?? taskId;
     if (!targetId) return;
     try {
-      const res = await apiFetch(`/attachments/${targetId}`);
+      const res = await apiFetch(`/attachments/projects/${task.projectId}/tasks/${taskId}`);
       if (res.ok) {
         const attachments = await res.json();
         setTask((prev: any) => ({ ...prev, attachments }));
@@ -517,7 +517,8 @@ useEffect(() => {
   };
 
   const uploadFile = async () => {
-    if (!selectedFile || !taskId) return;
+    if (!selectedFile || !taskId || !task?.projectId) return;
+
     setUploading(true);
     try {
       const formData = new FormData();
@@ -527,7 +528,8 @@ useEffect(() => {
         name: selectedFile.name,
       } as any);
 
-      const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
+      // ✅ RUTA CORREGIDA: usar projectId + taskId
+      const res = await apiFetchWithFormData(`/attachments/projects/${task.projectId}/tasks/${taskId}`, {
         method: 'POST',
         body: formData,
       });
@@ -556,18 +558,22 @@ useEffect(() => {
   };
 
   const deleteAttachment = async (attachmentId: number) => {
+    if (!task?.projectId) return;
+    
     try {
-      Alert.alert('Eliminar archivo', '¿Estás seguro de que quieres eliminar este archivo?', [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const token = await getAccessToken();
-            const res = await apiFetch(`/attachments/${attachmentId}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${token}` },
-            });
+      Alert.alert(
+        'Eliminar archivo',
+        '¿Estás seguro de que quieres eliminar este archivo?',
+        [
+          { text: 'Cancelar', style: 'cancel' as const },
+          {
+            text: 'Eliminar',
+            style: 'destructive' as const,
+            onPress: async () => {
+              // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+              const res = await apiFetch(`/attachments/projects/${task.projectId}/attachments/${attachmentId}`, {
+                method: 'DELETE',
+              });
 
             if (res.ok) {
               setTask((prev: any) => ({
@@ -587,34 +593,60 @@ useEffect(() => {
     }
   };
 
-  const downloadAttachment = async (_attachmentId: number, fileName: string) => {
+  // Función para descargar archivo
+  const downloadAttachment = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
     try {
-      Alert.alert('Descargar', `Funcionalidad de descarga en desarrollo para: ${fileName}`);
-    } catch (error) {
-      console.error('Download error:', error);
-      Alert.alert('Error', 'No se pudo descargar el archivo');
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
+      
+      // Abrir en el navegador para descarga
+      await WebBrowser.openBrowserAsync(downloadUrl);
+      
+    } catch (error: any) {
+      console.error('Error en descarga:', error);
+      Alert.alert('Error', `No se pudo descargar el archivo: ${error.message}`);
     }
   };
 
-  // Helpers: activar edición al tocar campos de texto
-  const startEditTitle = () => {
-    setEditing(true);
-    setTimeout(() => titleRef.current?.focus(), 0);
-  };
-  const startEditDescription = () => {
-    setEditing(true);
-    setTimeout(() => descRef.current?.focus(), 0);
+  // Función para previsualizar PDF usando Google Docs Viewer
+  const previewPdf = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
+    try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
+      
+      // Usar Google Docs Viewer para mostrar el PDF
+      const googleDocsViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`;
+      
+      setCurrentFileUrl(googleDocsViewerUrl);
+      setCurrentFileName(attachment.originalName);
+      setPdfViewerVisible(true);
+      
+    } catch (error: any) {
+      console.error('Error al abrir PDF:', error);
+      Alert.alert('Error', 'No se pudo abrir el PDF para visualización');
+    }
   };
 
-  // Guardado al salir de inputs (si cambió algo)
-  const onTitleEndEditing = () => {
-    if (!taskId || !task) return;
-    if (editState.title !== task.title) persistTaskPatch(taskId, { title: editState.title });
-  };
-  const onDescriptionEndEditing = () => {
-    if (!taskId || !task) return;
-    if (editState.description !== task.description)
-      persistTaskPatch(taskId, { description: editState.description });
+  // Función para previsualizar imágenes
+  const previewImage = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
+    try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const imageUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
+      
+      setCurrentFileUrl(imageUrl);
+      setCurrentFileName(attachment.originalName);
+      setImageViewerVisible(true);
+      
+    } catch (error: any) {
+      console.error('Error al abrir imagen:', error);
+      Alert.alert('Error', 'No se pudo abrir la imagen para visualización');
+    }
   };
 
   // Pickers: editar y guardar al instante

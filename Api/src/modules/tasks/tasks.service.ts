@@ -47,12 +47,12 @@ export const tasksService = {
     return tasksRepository.getTaskById(taskId);
   },
 
-  updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => {
-    const oldTask = await tasksRepository.getTaskById(taskId);
-    if (!oldTask) throw new Error(`No se encontró la tarea con id ${taskId}`);
+updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => {
+  const oldTask = await tasksRepository.getTaskById(taskId);
+  if (!oldTask) throw new Error(`No se encontró la tarea con id ${taskId}`);
 
-    const { userId, ...taskData } = data;
-    const updatedTask = await tasksRepository.updateTask(taskId, taskData);
+  const { userId, ...taskData } = data;
+  const updatedTask = await tasksRepository.updateTask(taskId, taskData);
 
 
   const formatDate = (value: any) => {
