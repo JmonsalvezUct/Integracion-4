@@ -19,6 +19,10 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useThemedColors } from "@/hooks/use-theme-color";
 import LayoutContainer from "@/components/layout/layout_container";
 import { CONTAINER } from "@/constants/spacing";
+import FullBleed from "@/components/layout/FullBleed";
+import { useGutter } from "../../../hooks/use-gutter";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 export default function ProjectOverview() {
   const router = useRouter();
@@ -33,6 +37,8 @@ export default function ProjectOverview() {
   const TAB_BG = isDark ? "#141414" : "#ffffff";
   const TAB_BORDER = isDark ? "#2a2a2a" : "#E5E5E5";
   const TAB_TEXT = isDark ? "#b3b3b3" : "#555";
+
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const loadProjectName = async () => {
@@ -68,7 +74,8 @@ export default function ProjectOverview() {
 
   return (
     <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
-      {/* Header */}
+    {/* Header - full-bleed, con padding interno */}
+    <FullBleed>
       <View style={[styles.header, { backgroundColor: BRAND }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
@@ -77,13 +84,18 @@ export default function ProjectOverview() {
           {projectName || `Proyecto #${projectId}`}
         </Text>
       </View>
+    </FullBleed>
 
-      {/* Tabs */}
+    {/* Tabs - full-bleed, pero reintroducimos paddingHorizontal */}
+    <FullBleed>
       <View
         style={[
           styles.tabs,
-          { backgroundColor: TAB_BG, borderBottomColor: TAB_BORDER },
-          { paddingHorizontal: CONTAINER.horizontal }, // margen global lateral
+          {
+            backgroundColor: TAB_BG,
+            borderBottomColor: TAB_BORDER,
+            paddingHorizontal: CONTAINER.horizontal, // 👈 padding interno
+          },
         ]}
       >
         <TouchableOpacity
@@ -122,23 +134,24 @@ export default function ProjectOverview() {
           </Text>
         </TouchableOpacity>
       </View>
+    </FullBleed>
 
-      {/* Contenido */}
-      <View
-        style={[
-          styles.content,
-          {
-            paddingHorizontal: CONTAINER.horizontal,
-            paddingTop: CONTAINER.top,
-            paddingBottom: CONTAINER.bottom,
-          },
-        ]}
-      >
-        {activeTab === "details" && <DetailProject />}
-        {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
-        {activeTab === "edit" && <EditProject projectId={projectId} />}
-      </View>
-    </LayoutContainer>
+    {/* Contenido - con gutter normal y bottom compacto según safe-area */}
+    <View
+      style={[
+        styles.content,
+        {
+          paddingHorizontal: CONTAINER.horizontal,
+          paddingTop: CONTAINER.top,
+          paddingBottom: Math.max(8, insets.bottom + 8), // 👈 menos “hueco” inferior
+        },
+      ]}
+    >
+      {activeTab === "details" && <DetailProject />}
+      {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
+      {activeTab === "edit" && <EditProject projectId={projectId} />}
+    </View>
+  </LayoutContainer>
   );
 }
 
