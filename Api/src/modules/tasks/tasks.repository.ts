@@ -3,16 +3,28 @@ import type { CreateTaskDTO, UpdateTaskDTO } from './tasks.validators.js';
 import type { StatusType, PriorityType } from '@prisma/client';
 
 export const tasksRepository = {
-  createTask: (data: CreateTaskDTO) => prisma.task.create({ data }),
+  createTask: (data: CreateTaskDTO & { creatorId: number }) =>
+    prisma.task.create({
+      data,
+      include: {
+        project: true,
+        assignee: true,
+        creator: true,
+        tags: { include: { tag: true } }, 
+      },
+    }),
 
-  getTasks: () => prisma.task.findMany({
-    include: {
-      assignee: true,
-      creator: true,
-      project: true,
-    },
-  }),
-
+  getTasks: () =>
+    prisma.task.findMany({
+      include: {
+        assignee: true,
+        creator: true,
+        project: true,
+        attachments: true,
+        tags: { include: { tag: true } }, 
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
   getTaskById: (taskId: number) =>
     prisma.task.findUnique({
       where: { id: taskId },
@@ -21,40 +33,49 @@ export const tasksRepository = {
         creator: true,
         project: true,
         attachments: true,
+        tags: { include: { tag: true } }, 
       },
     }),
 
-  updateTask: (id: number, data: UpdateTaskDTO) =>
-    prisma.task.update({ where: { id }, data }),
+  updateTask: (taskId: number, data: UpdateTaskDTO) =>
+    prisma.task.update({
+      where: { id: taskId },
+      data,
+      include: {
+        project: true,
+        assignee: true,
+        creator: true,
+        tags: { include: { tag: true } }, 
+      },
+    }),
 
-  deleteTask: (id: number) =>
-    prisma.task.delete({ where: { id } }),
+  deleteTask: (taskId: number) =>
+    prisma.task.delete({
+      where: { id: taskId },
+    }),
 
   getTasksByProject: (projectId: number) =>
     prisma.task.findMany({
-      where: {
-        projectId: projectId
-      },
+      where: { projectId },
       include: {
         assignee: true,
         creator: true,
         project: true,
-        attachments: true
+        attachments: true,
+        tags: { include: { tag: true } },
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: 'desc' },
     }),
 
-  assignTask: (id: number, assigneeId: number) =>
+  assignTask: (taskId: number, assigneeId: number) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { assigneeId },
     }),
 
-  changeStatus: (id: number, status: StatusType) =>
+  changeStatus: (taskId: number, status: StatusType) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { status },
     }),
 

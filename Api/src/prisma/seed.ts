@@ -11,10 +11,6 @@ async function main() {
     skipDuplicates: true,
   });
 
-  await prisma.action.createMany({
-    data: [{ action: "Created" }, { action: "Updated" }, { action: "Deleted" }],
-    skipDuplicates: true,
-  });
 
   // Create many users
   const users = [];
