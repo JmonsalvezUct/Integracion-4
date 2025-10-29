@@ -1,9 +1,10 @@
 import * as SecureStore from "expo-secure-store";
 
-const RAW = (process.env.EXPO_PUBLIC_API_URL ?? "https://integracion-4.onrender.com/api").trim();
+const RAW = (process.env.EXPO_PUBLIC_API_URL ?? "https://integracion-4-gsyz.onrender.com/api").trim();
 
 export const API_URL = RAW.replace(/\/+$/, "");
 
+//https://integracion-4-gsyz.onrender.com/api
 
 const buildUrl = (path: string) => `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
