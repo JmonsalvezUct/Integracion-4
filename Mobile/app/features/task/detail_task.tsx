@@ -76,7 +76,6 @@ export default function DetailTask() {
 
   const TAG_COLORS = [
     "#FFD6A5", // naranja claro
-    "#FDFFB6", // amarillo
     "#CAFFBF", // verde menta
     "#9BF6FF", // celeste
     "#A0C4FF", // azul suave
@@ -641,33 +640,8 @@ useEffect(() => {
     if (taskId) persistTaskPatch(taskId, { priority: value });
   };
 // --- Manejadores de edición de título y descripción ---
-const startEditTitle = () => {
-  setEditing(true);
-  setTimeout(() => {
-    titleRef.current?.focus();
-  }, 100);
-};
 
-const onTitleEndEditing = () => {
-  setEditing(false);
-  if (taskId && editState.title !== task?.title) {
-    persistTaskPatch(taskId, { title: editState.title });
-  }
-};
 
-const startEditDescription = () => {
-  setEditing(true);
-  setTimeout(() => {
-    descRef.current?.focus();
-  }, 100);
-};
-
-const onDescriptionEndEditing = () => {
-  setEditing(false);
-  if (taskId && editState.description !== task?.description) {
-    persistTaskPatch(taskId, { description: editState.description });
-  }
-};
 
   if (!taskId)
     return (
