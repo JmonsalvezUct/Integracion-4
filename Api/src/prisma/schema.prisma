@@ -111,8 +111,6 @@ model ChangeHistory {
   user        User     @relation(fields: [userId], references: [id])
 }
 
-
-
 enum ActionType {
   CREATED
   UPDATED

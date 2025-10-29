@@ -315,7 +315,7 @@ router.post('/:projectId/:taskId/assign', authMiddleware, rbacMiddleware(['admin
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [pending, in_progress, review, completed]
+ *                 enum: [created, in_progress, completed, archived]
  *                 example: "in_progress"
  *               comment:
  *                 type: string
