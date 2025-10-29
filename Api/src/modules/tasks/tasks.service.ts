@@ -1,6 +1,6 @@
 import { tasksRepository } from './tasks.repository.js';
 import { changeHistoryService } from '../change-history/changeHistory.service.js'; 
-
+import { prisma } from '../../app/loaders/prisma.js';
 
 import type {
   CreateTaskDTO,
@@ -19,15 +19,19 @@ export const tasksService = {
     const task = await tasksRepository.createTask({ //--> se crea la tarea usando el repositorio y se agrega el creator id cn el userid
       ...rest,
       creatorId: userId, 
+      
     });
-
+  const creator = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true },
+  });
 
 
     await changeHistoryService.logChange({
       userId,
       taskId: task.id,
       action: ActionType.CREATED,
-      description: `Tarea creada por el usuario ${userId}`,
+      description: `Tarea creada por ${creator?.name || "un usuario desconocido"}`,
     });
 
     return task;
@@ -42,33 +46,66 @@ export const tasksService = {
     return tasksRepository.getTaskById(taskId);
   },
 
-  updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => { //--> se ibtiene el id de la tarea que se quiere actalizar, los datos nuevos de la tarea y el userid del iusuario que la actualiza
-    const oldTask = await tasksRepository.getTaskById(taskId); //--> se busca la tarea actual en la base de datos por su id y si no existe lanza error
-    if (!oldTask) {
-      throw new Error(`No se encontró la tarea con id ${taskId}`);
-    }
+updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => {
+  const oldTask = await tasksRepository.getTaskById(taskId);
+  if (!oldTask) throw new Error(`No se encontró la tarea con id ${taskId}`);
 
-    const { userId, ...taskData } = data;  // se separa el userid de los demas datos de la tarea
-    const updatedTask = await tasksRepository.updateTask(taskId, taskData); // --> se actualiza la tarea con los nuevos valores
+  const { userId, ...taskData } = data;
+  const updatedTask = await tasksRepository.updateTask(taskId, taskData);
 
 
-    for (const field of Object.keys(taskData) as (keyof UpdateTaskDTO)[]) {
-      const oldValue = oldTask[field];
-      const newValue = taskData[field];
-      if (oldValue !== newValue) {
+  const formatDate = (value: any) => {
+    if (!(value instanceof Date) && isNaN(Date.parse(value))) return String(value ?? "");
+    const d = new Date(value);
+    const day = d.getDate().toString().padStart(2, "0");
+    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  };
+
+  for (const field of Object.keys(taskData) as (keyof UpdateTaskDTO)[]) {
+    const oldValue = oldTask[field];
+    const newValue = taskData[field];
+
+    const oldValStr = formatDate(oldValue);
+    const newValStr = formatDate(newValue);
+
+    if (oldValStr !== newValStr) {
+
+      if (field === "assigneeId") {
+        const newAssignee = newValue
+          ? await prisma.user.findUnique({
+              where: { id: Number(newValue) },
+              select: { name: true },
+            })
+          : null;
+
         await changeHistoryService.logChange({
           userId,
-          taskId: taskId,
+          taskId,
           projectId: oldTask.projectId,
           action: ActionType.UPDATED,
-          description: `Campo "${String(field)}" cambiado de "${oldValue}" a "${newValue}"`,
+          description: newAssignee
+            ? `Campo "Responsable" cambiado a ${newAssignee.name}`
+            : `Campo "Responsable" eliminado o sin asignar`,
         });
+
+        continue; 
       }
+
+
+      await changeHistoryService.logChange({
+        userId,
+        taskId,
+        projectId: oldTask.projectId,
+        action: ActionType.UPDATED,
+        description: `Campo "${String(field)}" cambiado de "${oldValStr}" a "${newValStr}"`,
+      });
     }
+  }
 
-    return updatedTask;
-  },
-
+  return updatedTask;
+},
 
 
   deleteTask: async (taskId: number, userId: number) => {
@@ -77,13 +114,17 @@ export const tasksService = {
       throw new Error(`No se encontró la tarea con id ${taskId}`);
     }
     
+      const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
 
     await changeHistoryService.logChange({ // se registra un cambio en el historial, taskid se pone en null porque ya no va a existir y se conserva projectid para que se sepa aque proyecto pertenecia
       userId,
       taskId: null, 
       projectId: task.projectId ?? null,
       action: ActionType.DELETED,
-      description: `Tarea "${task.title}" (ID ${task.id}) eliminada por el usuario ${userId}`,
+      description: `Tarea "${task.title}" (ID ${task.id}) eliminada por ${user?.name || "un usuario desconocido"}`,
     });
 
 
@@ -100,13 +141,23 @@ export const tasksService = {
   assignTask: async (taskId: number, data: AssignTaskDTO & { userId: number }) => { // se toma el id de la tarea,, los datos, el id de el usuario al que se va a asignar la tarea, y el id del usuario que esta realizado la asignacion
     const updatedTask = await tasksRepository.assignTask(taskId, data.assigneeId);
 
+    const assignee = await prisma.user.findUnique({
+    where: { id: data.assigneeId },
+    select: { name: true },
+  });
+
+
+    const assigner = await prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { name: true },
+    });
 
     await changeHistoryService.logChange({ //registra la asignacion en el historial
       userId: data.userId,
       taskId: taskId,
       projectId: updatedTask.projectId,
       action: ActionType.ASSIGNED,
-      description: `Tarea asignada al usuario ${data.assigneeId} por ${data.userId}`,
+      description: `Tarea asignada a ${assignee?.name || "usuario desconocido"} por ${assigner?.name || "usuario desconocido"}`,
     });
 
     return updatedTask;
@@ -115,14 +166,17 @@ export const tasksService = {
 
   changeStatus: async (taskId: number, data: ChangeStatusDTO & { userId: number }) => {
     const updatedTask = await tasksRepository.changeStatus(taskId, data.status as StatusType);
-
+    const user = await prisma.user.findUnique({
+    where: { id: data.userId },
+    select: { name: true },
+  });
 
     await changeHistoryService.logChange({
       userId: data.userId,
       taskId: taskId,
       projectId: updatedTask.projectId,
       action: ActionType.STATUS_CHANGED,
-      description: `Estado cambiado a "${data.status}" por el usuario ${data.userId}`,
+      description: `Estado cambiado a "${data.status}" por ${user?.name || "un usuario desconocido"}`,
     });
 
     return updatedTask;

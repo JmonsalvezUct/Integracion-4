@@ -26,5 +26,6 @@ export const createApp = () => {
   app.use('/api', routes); 
   app.use(errorHandler); // Middleware global de errores (debe ir al final)
 
+
   return app;
 };

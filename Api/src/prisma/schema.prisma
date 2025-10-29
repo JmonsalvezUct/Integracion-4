@@ -35,6 +35,7 @@ model Project {
   history     ChangeHistory[]
   tasks       Task[]
   users       UserProject[]
+  tags        Tag[]
 }
 
 model UserProject {
@@ -62,6 +63,7 @@ model Task {
   project     Project         @relation(fields: [projectId], references: [id])
   status      StatusType   @default(created)
   priority    PriorityType @default(medium)
+  tags TaskTag[] 
 }
 
 model Attachment {
@@ -148,5 +150,30 @@ enum StatusType {
   in_progress
   completed
   archived
+}
+
+ 
+
+model Tag {
+  id         Int        @id @default(autoincrement())
+  name       String
+  color      String? 
+  projectId  Int        
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks      TaskTag[]   
+  @@unique([name, projectId]) 
+}
+
+
+model TaskTag {
+  id     Int   @id @default(autoincrement())
+  taskId Int
+  tagId  Int
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, tagId])
 }
 
