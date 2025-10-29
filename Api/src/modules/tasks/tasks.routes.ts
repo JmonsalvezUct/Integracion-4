@@ -16,7 +16,7 @@ const router = Router();
 
 /**
  * @swagger
- * /tasks:
+ * /tasks/{projectId}:
  *   post:
  *     summary: Crear nueva tarea
  *     description: Crea una nueva tarea en un proyecto específico.
@@ -95,9 +95,9 @@ router.post('/:projectId', authMiddleware, rbacMiddleware(['admin', 'developer']
 
 /**
  * @swagger
- * /tasks/{id}:
+ * /tasks/projects/{projectId}/tasks/{taskId}:
  *   get:
- *     summary: Get task by ID
+ *     summary: Obtener tareas por id de proyecto y tarea.
  *     tags: [Tasks]
  *     parameters:
  *       - in: path
@@ -114,7 +114,7 @@ router.get('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(
 
 /**
  * @swagger
- * /tasks/{id}:
+ * /tasks/projects/{projectId}/tasks/{taskId}:
  *   put:
  *     summary: Update a task
  *     tags: [Tasks]
@@ -135,11 +135,11 @@ router.get('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(
  *         description: Task updated
  */
 
-router.put('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'developer']), updateTask);
+router.put('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(['admin', 'developer']), updateTask);
 
 /**
  * @swagger
- * /tasks/{id}:
+ * /tasks/projects/{projectId}/tasks/{taskId}:
  *   delete:
  *     summary: Delete a task
  *     tags: [Tasks]
@@ -154,11 +154,11 @@ router.put('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'develope
  *         description: Task deleted
  */
 
-router.delete('/:projectId/:id', authMiddleware, rbacMiddleware(['admin', 'developer']), deleteTask);
+router.delete('/projects/:projectId/tasks/:taskId', authMiddleware, rbacMiddleware(['admin', 'developer']), deleteTask);
 
 /**
  * @swagger
- * /tasks/project/{projectId}:
+ * /tasks/projects/{projectId}/tasks:
  *   get:
  *     summary: Obtener tareas por proyecto
  *     description: Lista todas las tareas de un proyecto específico con filtros y paginación.
@@ -262,7 +262,7 @@ router.get('/projects/:projectId/tasks', authMiddleware, rbacMiddleware(['admin'
 
 /**
  * @swagger
- * /tasks/{id}/assign:
+ * /tasks/{projectId}/{taskId}/assign:
  *   post:
  *     summary: Assign a task to a user
  *     tags: [Tasks]
@@ -286,11 +286,11 @@ router.get('/projects/:projectId/tasks', authMiddleware, rbacMiddleware(['admin'
  *         description: Task assigned
  */
 
-router.post('/:projectId/:id/assign', authMiddleware, rbacMiddleware(['admin', 'developer']), assignTask);
+router.post('/:projectId/:taskId/assign', authMiddleware, rbacMiddleware(['admin', 'developer']), assignTask);
 
 /**
  * @swagger
- * /tasks/{id}/status:
+ * /tasks/{projectId}/{taskId}/status:
  *   post:
  *     summary: Cambiar estado de una tarea
  *     description: Actualiza el estado de una tarea y registra el cambio.
@@ -354,6 +354,6 @@ router.post('/:projectId/:id/assign', authMiddleware, rbacMiddleware(['admin', '
  *       - authMiddleware
  */
 
-router.patch('/:projectId/:id/status', authMiddleware, rbacMiddleware(['admin', 'developer']), changeStatus);
+router.patch('/:projectId/:taskId/status', authMiddleware, rbacMiddleware(['admin', 'developer']), changeStatus);
 
 export default router;

@@ -6,22 +6,24 @@
   "prisma": {
     "schema": "./src/prisma/schema.prisma"
   },
-  "scripts": {
-    "dev": "tsx --watch --env-file .env src/index.ts",
-    "start": "node --env-file .env dist/index.js",
-    "build": "tsc",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "db:seed": "tsx src/prisma/seed.ts",
-    "db:generate": "npx prisma generate --schema=./src/prisma/schema.prisma",
-    "db:migrate": "npx prisma migrate dev --schema=./src/prisma/schema.prisma",
-    "db:reset": "npx prisma migrate reset --schema=./src/prisma/schema.prisma --force",
-    "db:studio": "npx prisma studio --schema=./src/prisma/schema.prisma"
-  },
+
+"scripts": {
+  "dev": "tsx --watch --env-file .env src/index.ts",
+  "build": "tsc",
+  "start": "node dist/index.js",
+
+  "type-check": "tsc --noEmit",
+  "lint": "eslint .",
+  "lint:fix": "eslint --fix .",
+  "format": "prettier --write .",
+  "format:check": "prettier --check .",
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "db:seed": "tsx src/prisma/seed.ts",
+  "db:generate": "npx prisma generate --schema=./src/prisma/schema.prisma",
+  "db:migrate": "npx prisma migrate dev --schema=./src/prisma/schema.prisma",
+  "db:reset": "npx prisma migrate reset --schema=./src/prisma/schema.prisma --force",
+  "db:studio": "npx prisma studio --schema=./src/prisma/schema.prisma"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

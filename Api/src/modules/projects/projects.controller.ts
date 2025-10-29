@@ -92,8 +92,8 @@ export const addUserToProject = async (req: Request, res: Response) => {
 
 export const updateUserRoleInProject = async (req: Request, res: Response) => {
   try {
-    const { userProjectId, roleId } = req.body;
-    const result = await projectsService.updateUserRoleInProject(userProjectId, roleId);
+    const { userProjectId, role } = req.body;
+    const result = await projectsService.updateUserRoleInProject(userProjectId, role);
     return res.json(result);
   } catch (e: any) {
     return res.status(500).json({ error: 'Error al actualizar el rol del usuario', details: e.message });
