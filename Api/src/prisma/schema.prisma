@@ -36,7 +36,9 @@ model Project {
   tasks       Task[]
   users       UserProject[]
   tags        Tag[]
+  sprints     Sprint[]
 }
+
 
 model UserProject {
   id        Int             @id @default(autoincrement())
@@ -56,16 +58,33 @@ model Task {
   creatorId   Int
   assigneeId  Int?
   projectId   Int
+  sprintId    Int?
+  sprint      Sprint?         @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   attachments Attachment[]
   history     ChangeHistory[]
   assignee    User?           @relation("AssignedTasks", fields: [assigneeId], references: [id])
   creator     User            @relation("CreatedTasks", fields: [creatorId], references: [id])
   project     Project         @relation(fields: [projectId], references: [id])
-  status      StatusType   @default(created)
-  priority    PriorityType @default(medium)
-  tags TaskTag[] 
+  status      StatusType      @default(created)
+  priority    PriorityType    @default(medium)
+  tags        TaskTag[]
 }
+model Sprint {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  isActive    Boolean   @default(true)
 
+  projectId   Int
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks       Task[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
 model Attachment {
   id           Int      @id @default(autoincrement())
   taskId       Int
