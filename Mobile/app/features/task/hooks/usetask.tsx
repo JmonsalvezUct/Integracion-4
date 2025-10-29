@@ -74,7 +74,10 @@ const TASK_UPDATED = "TASK_UPDATED";
     }
 
 
-    
+const normalize = (v?: string) =>
+    (v ?? "").toLowerCase().trim().replace(/\s+/g, "_");
+
+
 export function useTasks(projectId?: string | number) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [projectName, setProjectName] = useState("");
@@ -163,9 +166,10 @@ export function useTasks(projectId?: string | number) {
 
     const visibleTasks = useMemo(() => {
     let filtered = tasks.filter((t) => {
-        const matchStatus = filters.status
-        ? t.status?.toLowerCase().includes(filters.status.toLowerCase())
-        : true;
+    const matchStatus = filters.status
+    ? normalize(t.status) === normalize(filters.status)
+    : true;
+
 
         const matchAssignee = filters.assignee
         ? t.assignee?.name?.toLowerCase().includes(filters.assignee.toLowerCase())

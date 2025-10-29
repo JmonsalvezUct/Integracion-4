@@ -41,15 +41,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     INPUT_BORDER,
   } = useThemedColors();
 
-  if (!projectId) {
-    return (
-      <SafeAreaView
-        style={[styles.container, { justifyContent: "center", alignItems: "center", backgroundColor: BG }]}
-      >
-        <Text style={{ color: TEXT, fontSize: 16 }}>Cargando proyecto...</Text>
-      </SafeAreaView>
-    );
-  }
+
 
   const {
     tasks,
@@ -133,7 +125,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
       const tags = (t.tags ?? [])
         .map((tt) => tt.tag?.name?.toLowerCase?.() ?? "")
         .join(" ");
-
+      
       const f = {
         status: filters.status.toLowerCase(),
         assignee: filters.assignee.toLowerCase(),
@@ -149,7 +141,18 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
       return matchStatus && matchAssignee && matchDate && matchSearch;
     });
   }, [displayTasks, filters]);
-
+  if (!projectId) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center", backgroundColor: BG },
+        ]}
+      >
+        <Text style={{ color: TEXT, fontSize: 16 }}>Cargando proyecto...</Text>
+      </SafeAreaView>
+    );
+  }
   const nextView = () => {
     if (viewMode === "list") return setViewMode("kanban");
     if (viewMode === "kanban") return setViewMode("calendar");
@@ -247,17 +250,19 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
                 </Text>
               </View>
             ) : (
-              <TaskList
-                tasks={filteredTasks}
-                sortBy={sortBy}
-                sortDirection={sortDirection}
-                onSort={handleSort}
-                onAssign={(id) => {
-                  setSelectedTaskId(id);
-                  setAssignModalVisible(true);
-                }}
-                onTaskPress={handleTaskPress}
-              />
+          <TaskList
+            tasks={filteredTasks}
+            sortBy={sortBy}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+            onAssign={(id) => {
+              setSelectedTaskId(id);
+              setAssignModalVisible(true);
+            }}
+            onTaskPress={handleTaskPress}
+            columns={columns} 
+          />
+
             )}
           </>
         )}

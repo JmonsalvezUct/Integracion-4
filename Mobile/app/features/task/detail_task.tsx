@@ -15,6 +15,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from '@/lib/api-fetch';
@@ -43,6 +44,11 @@ export default function DetailTask() {
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState<any>({});
   const [newComment, setNewComment] = useState('');
+  // --- Visualizadores de archivos ---
+  const [currentFileUrl, setCurrentFileUrl] = useState<string | null>(null);
+  const [currentFileName, setCurrentFileName] = useState<string | null>(null);
+  const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
   // Refs para enfocar inputs al tocar el texto
   const titleRef = useRef<TextInput>(null);
@@ -634,6 +640,34 @@ useEffect(() => {
     setEditState((s: any) => ({ ...s, priority: value }));
     if (taskId) persistTaskPatch(taskId, { priority: value });
   };
+// --- Manejadores de edición de título y descripción ---
+const startEditTitle = () => {
+  setEditing(true);
+  setTimeout(() => {
+    titleRef.current?.focus();
+  }, 100);
+};
+
+const onTitleEndEditing = () => {
+  setEditing(false);
+  if (taskId && editState.title !== task?.title) {
+    persistTaskPatch(taskId, { title: editState.title });
+  }
+};
+
+const startEditDescription = () => {
+  setEditing(true);
+  setTimeout(() => {
+    descRef.current?.focus();
+  }, 100);
+};
+
+const onDescriptionEndEditing = () => {
+  setEditing(false);
+  if (taskId && editState.description !== task?.description) {
+    persistTaskPatch(taskId, { description: editState.description });
+  }
+};
 
   if (!taskId)
     return (
@@ -1103,7 +1137,7 @@ useEffect(() => {
               <TouchableOpacity
                 onPress={() =>
                   router.push({
-                    pathname: '/features/task/components/taskhistory',
+                    pathname: '/features/task/components/sprintscreen',
                     params: { projectId: task.projectId, taskId },
                   })
                 }
