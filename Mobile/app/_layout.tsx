@@ -1,24 +1,41 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import "react-native-gesture-handler"; // debe estar arriba de todo
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Stack } from "expo-router";
+import React from "react";
+import { StatusBar } from "expo-status-bar";
+import { ThemeProvider } from "@/app/theme-context"; // tu provider
+import { useColorScheme } from "@/hooks/use-color-scheme"; // 'light' | 'dark'
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+// Tema de React Navigation para que headers/gestos tomen dark-mode
+import {
+  ThemeProvider as NavThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+} from "@react-navigation/native";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const scheme = useColorScheme();
+  const isDark = scheme === "dark";
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
+    // Mantengo tu ThemeProvider exactamente igual
+    <ThemeProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        {/* Barra de estado acorde al tema */}
+        <StatusBar style={isDark ? "light" : "dark"} />
+
+        {/* Solo se agrega el ThemeProvider de React Navigation */}
+        <NavThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              // Fondo global para TODAS las pantallas
+              contentStyle: { backgroundColor: isDark ? "#0c0c0c" : "#ffffff" },
+            }}
+          />
+        </NavThemeProvider>
+      </GestureHandlerRootView>
     </ThemeProvider>
   );
 }
+
