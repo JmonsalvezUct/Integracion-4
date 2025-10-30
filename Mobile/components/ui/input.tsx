@@ -1,4 +1,4 @@
-import React, { useMemo, useState, forwardRef } from "react";
+import React, { useMemo, useState, useEffect, forwardRef } from "react";
 import {
   View,
   Text,
@@ -29,13 +29,18 @@ export interface InputProps extends Omit<TextInputProps, "style"> {
   /** Estilo del TextInput en sí */
   inputStyle?: any;
 
+  /** Toggle interno del componente para ocultar/mostrar contraseña */
   secureToggle?: boolean;
-  variant?: Variant;             // "surface" (default) o "flat"
-  backgroundOverride?: string;   // fuerza el fondo del contenedor del input
+
+  /** Variante visual: "surface" usa Colors.surface; "flat" usa Colors.background */
+  variant?: Variant;
+
+  /** Forzar el fondo del contenedor del input (p. ej. blanco en pantallas sin dark mode) */
+  backgroundOverride?: string;
 }
 
 /**
- * Usamos forwardRef para que <Input ref={...} /> funcione
+ * forwardRef para que <Input ref={...} /> apunte al TextInput interno (focus, etc.)
  */
 const Input = forwardRef<TextInput, InputProps>(function Input(
   {
@@ -58,7 +63,7 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
   const scheme = useColorScheme();
   const Colors = (Theme as any)?.[scheme] ?? {};
 
-  // Tokens desde el tema (con respaldos defensivos)
+  // 🎨 Tokens desde el tema (con respaldos defensivos)
   const text = Colors.text ?? (scheme === "dark" ? "#f3f4f6" : "#111827");
   const muted = Colors.muted ?? (scheme === "dark" ? "#9ca3af" : "#6b7280");
   const surface = Colors.surface ?? (scheme === "dark" ? "#1E1E1E" : "#f3f3f3");
@@ -68,11 +73,23 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
   const danger = Colors.danger ?? "#E74C3C";
 
   const [isFocused, setIsFocused] = useState(false);
+
+  // Estado interno solo para el toggle interno
   const [hidden, setHidden] = useState<boolean>(!!secureTextEntry);
+
+  // Si el control es EXTERNO (secureToggle=false), sincroniza con la prop
+  useEffect(() => {
+    if (!secureToggle) {
+      setHidden(!!secureTextEntry);
+    }
+  }, [secureTextEntry, secureToggle]);
+
+  // Valor efectivo: respeta el control externo cuando secureToggle=false
+  const effectiveSecure = secureToggle ? hidden : !!secureTextEntry;
 
   const showError = !!error;
 
-  // Color del borde según estado (sin hardcode)
+  // Color del borde según estado
   const borderColor = useMemo(() => {
     if (showError) return danger;
     if (isFocused) return primary;
@@ -82,12 +99,8 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
   // Grosor del borde: más visible en foco
   const borderWidth = isFocused ? 2 : StyleSheet.hairlineWidth;
 
-  // Fondo de la caja del input:
-  // - backgroundOverride → manda
-  // - variant="flat" → usa bg (fondo global)
-  // - variant="surface" → usa surface (relleno gris del tema)
-  const containerBg =
-    backgroundOverride ?? (variant === "flat" ? bg : surface);
+  // Fondo del contenedor
+  const containerBg = backgroundOverride ?? (variant === "flat" ? bg : surface);
 
   return (
     <View style={[{ width: "100%" }, containerStyle]}>
@@ -120,7 +133,7 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
         <TextInput
           ref={ref}
           {...props}
-          secureTextEntry={hidden}
+          secureTextEntry={effectiveSecure}
           placeholderTextColor={muted}
           onFocus={(e) => {
             setIsFocused(true);
@@ -140,6 +153,7 @@ const Input = forwardRef<TextInput, InputProps>(function Input(
           ]}
         />
 
+        {/* Ojo interno SOLO si se usa el toggle interno */}
         {secureToggle && secureTextEntry ? (
           <Pressable
             onPress={() => setHidden((v) => !v)}

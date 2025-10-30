@@ -39,6 +39,7 @@ export default function ProjectOverview() {
   const TAB_TEXT = isDark ? "#b3b3b3" : "#555";
 
   const insets = useSafeAreaInsets();
+  const gutter = useGutter();
 
   useEffect(() => {
     const loadProjectName = async () => {
@@ -94,7 +95,7 @@ export default function ProjectOverview() {
           {
             backgroundColor: TAB_BG,
             borderBottomColor: TAB_BORDER,
-            paddingHorizontal: CONTAINER.horizontal, // 👈 padding interno
+            paddingHorizontal: gutter, // padding interno
           },
         ]}
       >
@@ -141,9 +142,9 @@ export default function ProjectOverview() {
       style={[
         styles.content,
         {
-          paddingHorizontal: CONTAINER.horizontal,
+          paddingHorizontal: gutter,
           paddingTop: CONTAINER.top,
-          paddingBottom: Math.max(8, insets.bottom + 8), // 👈 menos “hueco” inferior
+          paddingBottom: Math.max(8, insets.bottom + 8), // menos “hueco” inferior
         },
       ]}
     >

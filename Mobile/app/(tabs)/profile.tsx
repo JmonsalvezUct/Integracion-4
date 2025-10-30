@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Image,
   Switch,
   ScrollView,
@@ -13,13 +12,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import performLogout from '@/app/features/profile/components/logout';
 import { Ionicons } from '@expo/vector-icons';
+import performLogout from '@/app/features/profile/components/logout';
 import { getSavedUser, type LoginResponse } from '@/services/auth';
 
-// Tema global (no tocar la lógica del switch)
+// 🎨 Tema y componentes
 import { useThemeMode } from '@/app/theme-context';
 import { Colors } from '@/constants/theme';
+import Button from '@/components/ui/button';
 
 type User = LoginResponse['user'];
 
@@ -48,17 +48,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}>
-        <View
-          style={[
-            styles.container,
-            {
-              flex: 1,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: Colors[theme].background,
-            },
-          ]}
-        >
+        <View style={[styles.centered, { backgroundColor: Colors[theme].background }]}>
           <ActivityIndicator />
           <Text style={{ marginTop: 8, color: Colors[theme].text }}>Cargando perfil...</Text>
         </View>
@@ -69,25 +59,34 @@ export default function ProfileScreen() {
   const displayName = user?.name?.trim() || 'Usuario';
   const displayEmail = user?.email || '—';
 
-  // 🎨 Colores dinámicos
+  //temas
   const BG = Colors[theme].background;
   const TEXT = Colors[theme].text;
-  const CARD_BG = Colors[theme].background;
-  const BORDER = Colors[theme].icon;
-
-  // 🔹 Color de marca: usa el de modo claro en ambos modos
-  // (si tu paleta define otro, lo toma; si no, usa #0a7ea4)
+  const BORDER = Colors[theme].icon;       
   const BRAND = Colors.light.tint || '#0a7ea4';
 
-  // 🔹 Camarita: mismo color que en modo claro también en modo oscuro
-  const camBg = BRAND;         // fondo SIEMPRE del color de marca
-  const camColor = '#ffffff';  // icono siempre blanco
-  const camBorderColor = theme === 'light' ? '#ffffff' : 'transparent';
-  const camBorderWidth = theme === 'light' ? 2 : 0;
+  const logout = async () => {
+    Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres cerrar sesión?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Sí',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await performLogout();
+            router.replace('/auth/login');
+          } catch (err) {
+            console.error('Logout error', err);
+          }
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>
       <ScrollView contentContainerStyle={[styles.container, { backgroundColor: BG }]}>
+        {/* Header de usuario */}
         <View style={styles.header}>
           <View style={styles.avatarWrap}>
             {user?.profilePicture ? (
@@ -98,100 +97,81 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            {/* 🔹 Botón de cámara con color persistente en ambos modos */}
-            <TouchableOpacity
+            {/* Cámara – forzamos remount por tema para evitar artefactos visuales */}
+            <Button
+              key={`camera-${theme}`}
+              variant="solid"
+              size="sm"
               style={[
                 styles.avatarBtn,
                 {
-                  backgroundColor: camBg,
-                  borderColor: camBorderColor,
-                  borderWidth: camBorderWidth,
+                  backgroundColor: Colors[theme].primary,                 // relleno marca
+                  borderColor: theme === 'light' ? '#ffffff' : 'transparent',
+                  borderWidth: theme === 'light' ? 2 : 0,
                 },
               ]}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="camera" size={18} color={camColor} />
-            </TouchableOpacity>
+              leftIcon={<Ionicons name="camera" size={18} color="#ffffff" />}
+              onPress={() => console.log('Cambiar foto')}
+            />
           </View>
 
           <View style={styles.userInfo}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.inline}>
               <Text style={[styles.name, { color: TEXT }]}>{displayName}</Text>
-              <TouchableOpacity style={{ marginLeft: 8 }}>
-                <Ionicons name="pencil" size={18} color={BRAND} />
-              </TouchableOpacity>
+              <Ionicons name="pencil" size={18} color={BRAND} style={{ marginLeft: 8 }} />
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6 }}>
-              <Text style={[styles.email, { color: theme === 'dark' ? '#bbb' : '#888' }]}>
-                {displayEmail}
-              </Text>
-              <TouchableOpacity style={{ marginLeft: 8 }}>
-                <Ionicons name="pencil" size={14} color={BRAND} />
-              </TouchableOpacity>
+            <View style={[styles.inline, { marginTop: 6 }]}>
+              <Text style={[styles.email, { color: theme === 'dark' ? '#bbb' : '#888' }]}>{displayEmail}</Text>
+              <Ionicons name="pencil" size={14} color={BRAND} style={{ marginLeft: 8 }} />
             </View>
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: CARD_BG, borderColor: BORDER }]}>
+        {/* Apariencia */}
+        <View style={[styles.card, { borderColor: BORDER }]}>
           <Text style={[styles.cardTitle, { color: TEXT }]}>Apariencia</Text>
           <View style={styles.rowBetween}>
             <Text style={[styles.cardText, { color: TEXT }]}>Modo oscuro</Text>
-            {/* ⚠️ Switch intacto */}
             <Switch value={theme === 'dark'} onValueChange={toggleTheme} />
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: CARD_BG, borderColor: BORDER }]}>
+        {/* Notificaciones */}
+        <View style={[styles.card, { borderColor: BORDER }]}>
           <Text style={[styles.cardTitle, { color: TEXT }]}>Notificaciones</Text>
           <View style={styles.rowBetween}>
             <Text style={[styles.cardText, { color: TEXT }]}>Notificaciones push</Text>
             <Switch value={pushEnabled} onValueChange={setPushEnabled} />
           </View>
-          <TouchableOpacity style={{ marginTop: 10 }}>
-            <Text style={[styles.link, { color: BRAND }]}>Gestionar preferencias de notificación</Text>
-          </TouchableOpacity>
+          <Text style={[styles.link, { color: Colors[theme].primary, marginTop: 10 }]}>
+            Gestionar preferencias de notificación
+          </Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: CARD_BG, borderColor: BORDER }]}>
+        {/* Seguridad */}
+        <View style={[styles.card, { borderColor: BORDER }]}>
           <Text style={[styles.cardTitle, { color: TEXT }]}>Seguridad</Text>
-          <TouchableOpacity style={styles.rowBetween}>
+          <View style={styles.rowBetween}>
             <Text style={[styles.cardText, { color: TEXT }]}>Cambiar contraseña</Text>
             <Ionicons name="chevron-forward" size={18} color={theme === 'dark' ? '#aaa' : '#999'} />
-          </TouchableOpacity>
+          </View>
         </View>
 
-        <TouchableOpacity
+        {/* Botón de logout – outline real sin fondo */}
+        <Button
+          key={`logout-${theme}`}
+          variant="outline"
+          fullWidth
           style={[
             styles.logoutBtn,
-            { backgroundColor: CARD_BG, borderColor: theme === 'dark' ? '#5c2a2a' : '#ffd6d6' },
+            { borderColor: theme === 'dark' ? '#5c2a2a' : '#ffd6d6' }, // sin backgroundColor
           ]}
-          activeOpacity={0.8}
-          onPress={() => {
-            Alert.alert(
-              'Cerrar sesión',
-              '¿Estás seguro de que quieres cerrar sesión?',
-              [
-                { text: 'No', style: 'cancel' },
-                {
-                  text: 'Sí',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await performLogout();
-                      router.replace('/auth/login');
-                    } catch (err) {
-                      console.error('Logout error', err);
-                    }
-                  },
-                },
-              ],
-              { cancelable: true }
-            );
-          }}
+          textStyle={[styles.logoutText, { color: '#d9534f' }]}
+          onPress={logout}
         >
-          <Text style={[styles.logoutText, { color: '#d9534f' }]}>Cerrar sesión</Text>
-        </TouchableOpacity>
+          Cerrar sesión
+        </Button>
       </ScrollView>
     </SafeAreaView>
   );
@@ -204,6 +184,8 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     paddingTop: Platform.OS === 'android' ? 32 : 18,
   },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   avatarWrap: { position: 'relative' },
   avatarPlaceholder: {
@@ -214,6 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarImg: { width: 88, height: 88, borderRadius: 44, backgroundColor: '#e9e9ff' },
+
   avatarBtn: {
     position: 'absolute',
     right: -6,
@@ -225,21 +208,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     elevation: 2,
   },
+
   userInfo: { marginLeft: 14, flex: 1 },
   name: { fontSize: 22, fontWeight: '800' },
   email: {},
 
-  card: { borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1 },
+  inline: { flexDirection: 'row', alignItems: 'center' },
+
+  card: {
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
   cardTitle: { fontWeight: '700', marginBottom: 8 },
   cardText: { fontSize: 16 },
+
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   link: {},
-  logoutBtn: {
-    marginTop: 18,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  logoutText: { fontWeight: '700' },
+
+  logoutBtn: { marginTop: 18, borderRadius: 10, borderWidth: 1, paddingVertical: 12 },
+  logoutText: { fontWeight: '700', textAlign: 'center' },
 });

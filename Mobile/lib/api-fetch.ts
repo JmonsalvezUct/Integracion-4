@@ -2,6 +2,8 @@
 import { API_URL } from "@/constants/api";
 import { getAccessToken } from "@/lib/secure-store";
 import { refreshTokens, logout } from "@/services/auth";
+import * as SecureStore from "expo-secure-store";
+import { StorageKey } from "@/lib/secure-store";
 
 // Normaliza la ruta (acepta "tasks" o "/tasks")
 function buildUrl(path: string) {
@@ -71,4 +73,9 @@ async function withRefresh() {
   })();
 
   return _refreshPromise;
+}
+
+// Helper expuesto (si lo necesitas desde aquí)
+export async function getRefreshToken() {
+  return SecureStore.getItemAsync(StorageKey.refreshToken);
 }
