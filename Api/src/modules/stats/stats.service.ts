@@ -97,9 +97,18 @@ export const statsService = {
       return acc;
     }, {} as Record<string, number>);
 
+    // Total de tareas asignadas al usuario en el periodo
+    const assignedTasksCount = await prisma.task.count({
+      where: {
+        assigneeId: userId,
+        ...(from || to ? { createdAt: dateFilter } : {}),
+      },
+    });
+
     return {
       completedTasks,
       completedTasksCount: completedTasks.length,
+      assignedTasksCount,
       totalMinutes,
       totalHours: totalMinutes / 60,
       workedDates,
