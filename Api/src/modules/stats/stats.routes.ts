@@ -9,7 +9,7 @@ const router = Router();
 /**
  * @swagger
  * /stats/project/{projectId}/user-stats:
- *   get:
+ *   post:
  *     summary: Obtener estadísticas de desempeño individual de un usuario
  *     description: Retorna estadísticas detalladas incluyendo tareas completadas, burndown, tiempo trabajado, etc.
  *     tags: [Stats]
