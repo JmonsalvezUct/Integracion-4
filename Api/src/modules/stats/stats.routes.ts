@@ -55,7 +55,7 @@ const router = Router();
  *       - authMiddleware
  *       - rbacMiddleware
  */
-router.get(
+router.post(
   '/project/:projectId/user-stats',
   authMiddleware,
   rbacMiddleware([ProjectRoleType.admin, ProjectRoleType.developer, ProjectRoleType.guest]),

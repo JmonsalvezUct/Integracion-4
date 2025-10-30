@@ -19,13 +19,14 @@ import { apiFetch } from "@/lib/api-fetch";
 import { useThemedColors } from "@/hooks/use-theme-color";
 import LayoutContainer from "@/components/layout/layout_container";
 import { CONTAINER } from "@/constants/spacing";
+import StatsProjectScreen from "../stats/screens/StatsProjectScreen";
 
 export default function ProjectOverview() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const projectId = (params.projectId || params.id) as string;
 
-  const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit" | "stats">("details");
   const [projectName, setProjectName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -121,6 +122,19 @@ export default function ProjectOverview() {
             Editar
           </Text>
         </TouchableOpacity>
+
+
+        <TouchableOpacity
+          style={[
+            styles.tabBtn,
+            activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+          ]}
+          onPress={() => setActiveTab("stats")}
+        >
+          <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
+            Estadísticas
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Contenido */}
@@ -137,6 +151,7 @@ export default function ProjectOverview() {
         {activeTab === "details" && <DetailProject />}
         {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
         {activeTab === "edit" && <EditProject projectId={projectId} />}
+        {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
       </View>
     </LayoutContainer>
   );
