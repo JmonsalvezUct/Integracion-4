@@ -37,8 +37,7 @@ export default function StatsProjectScreen({ projectId}: StatsProjectScreenProps
 
 
    return (
-    <ScrollView style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12 }}>Estadísticas del Proyecto</Text>
+    <ScrollView style={{ flex: 1 }}>
       <StatsDatePicker label="Desde" value={fromDate} onChange={setFromDate} />
       <StatsDatePicker label="Hasta" value={toDate} onChange={setToDate} />
 
