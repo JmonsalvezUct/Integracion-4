@@ -73,8 +73,26 @@ export default function StatsProjectScreen({ projectId}: StatsProjectScreenProps
       ) : errorStats ? (
         <Text>{errorStats}</Text>
       ) : stats ? (
+        
+        
         <View>
 
+          <View style={{ marginTop: 16, backgroundColor: '#f5f5f5', padding: 16, borderRadius: 8 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>Resumen</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 16 }}>Tareas asignadas:</Text>
+              <Text style={{ fontSize: 16, fontWeight: '500' }}>{stats.assignedTasksCount}</Text>
+            </View>
+           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Text style={{ fontSize: 16 }}>Tareas completadas:</Text>
+              <Text style={{ fontSize: 16, fontWeight: '500' }}>{stats.completedTasksCount}</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 16 }}>Horas trabajadas:</Text>
+              <Text style={{ fontSize: 16, fontWeight: '500' }}>{stats.totalHours.toFixed(2)}h</Text>
+            </View>
+          </View>
+        
 
           {stats.burndown && Object.keys(stats.burndown).length > 0 && (
             <View style={{ marginTop: 24 }}>

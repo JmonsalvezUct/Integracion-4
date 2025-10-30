@@ -47,7 +47,7 @@ export function StatsBurndownChart({ data, color = "#1976d2", label }: BurndownC
         yKeys={["y"]}
         axisOptions={{
             font, 
-            tickCount: {x:6, y: 10},
+            tickCount: {x:5, y: 10},
             formatXLabel: formatDate, 
         }}
       >
