@@ -77,11 +77,10 @@ export default function DetailTask() {
   const TAG_COLORS = [
     "#FFD6A5", // naranja claro
     "#CAFFBF", // verde menta
-    "#9BF6FF", // celeste
     "#A0C4FF", // azul suave
     "#BDB2FF", // violeta claro
     "#FFC6FF", // rosado
-    "#FFFFFC", // blanco cálido
+
   ];
 
 
