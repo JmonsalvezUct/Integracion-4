@@ -1,15 +1,12 @@
 import React from "react";
 import { View, Text, Switch, TextInput, StyleSheet } from "react-native";
-
-// 🎨 Hook de tema centralizado
 import { useThemedColors } from "@/hooks/use-theme-color";
 
 interface Filters {
   status: string;
   assignee: string;
   dueDate: string;
-  search: string;
-  tag: string;
+  priority: string;
 }
 
 interface Columns {
@@ -61,7 +58,7 @@ export function TaskFilters({
             { backgroundColor: CARD_BG, borderColor: CARD_BORDER },
           ]}
         >
-          {/* 🔹 Interruptores de columnas */}
+          {/* 🔹 Mostrar/ocultar columnas */}
           <View style={styles.switchMatrix}>
             <View style={styles.switchRow}>
               <ColSwitch
@@ -98,32 +95,22 @@ export function TaskFilters({
           <View style={styles.filtersSection}>
             <Text style={[styles.sectionTitle, { color: TEXT }]}>Filtros:</Text>
 
+            {/* Filtro Estado */}
             <Text style={[styles.label, { color: SUBTEXT }]}>Estado:</Text>
             <TextInput
               style={[
                 styles.input,
                 { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
               ]}
-              placeholder="Ej. Pendiente"
+              placeholder="Ej. en_progreso / completed"
               placeholderTextColor={PLACEHOLDER}
               value={filters.status}
-              onChangeText={(t) => setFilters({ ...filters, status: t })}
+              onChangeText={(t) =>
+                setFilters((prev) => ({ ...prev, status: t.trim() }))
+              }
             />
 
-            <Text style={[styles.label, { color: SUBTEXT }]}>
-              Buscar por etiqueta:
-            </Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-              ]}
-              placeholder="Ej. 'Urgente', 'Backend', etc."
-              placeholderTextColor={PLACEHOLDER}
-              value={filters.tag}
-              onChangeText={(t) => setFilters({ ...filters, tag: t })}
-            />
-
+            {/* Filtro Responsable */}
             <Text style={[styles.label, { color: SUBTEXT }]}>Responsable:</Text>
             <TextInput
               style={[
@@ -133,21 +120,39 @@ export function TaskFilters({
               placeholder="Ej. Juan"
               placeholderTextColor={PLACEHOLDER}
               value={filters.assignee}
-              onChangeText={(t) => setFilters({ ...filters, assignee: t })}
+              onChangeText={(t) =>
+                setFilters((prev) => ({ ...prev, assignee: t.trim() }))
+              }
             />
 
-            <Text style={[styles.label, { color: SUBTEXT }]}>
-              Fecha (YYYY-MM-DD):
-            </Text>
+            {/* Filtro Fecha límite */}
+            <Text style={[styles.label, { color: SUBTEXT }]}>Fecha (YYYY-MM-DD):</Text>
             <TextInput
               style={[
                 styles.input,
                 { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
               ]}
-              placeholder="Ej. 2025-10-01"
+              placeholder="Ej. 2025-11-01"
               placeholderTextColor={PLACEHOLDER}
               value={filters.dueDate}
-              onChangeText={(t) => setFilters({ ...filters, dueDate: t })}
+              onChangeText={(t) =>
+                setFilters((prev) => ({ ...prev, dueDate: t.trim() }))
+              }
+            />
+
+            {/* Filtro Prioridad */}
+            <Text style={[styles.label, { color: SUBTEXT }]}>Prioridad:</Text>
+            <TextInput
+              style={[
+                styles.input,
+                { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
+              ]}
+              placeholder="Ej. high / medium / low"
+              placeholderTextColor={PLACEHOLDER}
+              value={filters.priority}
+              onChangeText={(t) =>
+                setFilters((prev) => ({ ...prev, priority: t.trim() }))
+              }
             />
           </View>
         </View>

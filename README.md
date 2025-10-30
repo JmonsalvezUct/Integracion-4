@@ -32,7 +32,7 @@ Asegúrate de tener instalado:
 * **Node.js** (versión lts)
 
 ### Instalación
-
+cd integracion-4/Mobile
 npm install
 
 3.  **Inicia el proyecto:**

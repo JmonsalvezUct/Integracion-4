@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import * as WebBrowser from 'expo-web-browser';
 
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from '@/lib/api-fetch';
@@ -46,6 +47,11 @@ export default function DetailTask() {
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState<any>({});
   const [newComment, setNewComment] = useState('');
+  // --- Visualizadores de archivos ---
+  const [currentFileUrl, setCurrentFileUrl] = useState<string | null>(null);
+  const [currentFileName, setCurrentFileName] = useState<string | null>(null);
+  const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
   // Refs (enfoque)
   const titleRef = useRef<any>(null);
@@ -66,6 +72,73 @@ export default function DetailTask() {
 
   // Edición de fecha (formato mostrado)
   const [dueDateEditingValue, setDueDateEditingValue] = useState<string | null>(null);
+
+    // --- Etiquetas ---
+  const [projectTags, setProjectTags] = useState<{ id: number; name: string }[]>([]);
+  const [selectedTag, setSelectedTag] = useState<any>(null);
+  const [showTagPicker, setShowTagPicker] = useState(false);
+
+
+  const TAG_COLORS = [
+    "#FFD6A5", // naranja claro
+    "#CAFFBF", // verde menta
+    "#A0C4FF", // azul suave
+    "#BDB2FF", // violeta claro
+    "#FFC6FF", // rosado
+
+  ];
+
+
+  const getTagColor = (id: number) => TAG_COLORS[id % TAG_COLORS.length];
+
+
+
+  useEffect(() => {
+    const projectId = task?.projectId ?? task?.project?.id;
+    if (!projectId) return;
+
+    (async () => {
+      try {
+        const token = await getAccessToken();
+        const res = await apiFetch(`/tags/project/${projectId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        setProjectTags(data);
+      } catch (err) {
+        console.error("Error cargando etiquetas:", err);
+      }
+    })();
+  }, [task]);
+
+
+
+useEffect(() => {
+  if (!taskId) return;
+
+  (async () => {
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags/task/${taskId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+
+      const normalized =
+        Array.isArray(data) && data.length > 0 && data[0].tag
+          ? data.map((t: any) => t.tag)
+          : data;
+
+      setTask((prev: any) => ({ ...prev, tags: normalized }));
+    } catch (err) {
+      console.error("Error cargando etiquetas de la tarea:", err);
+    }
+  })();
+}, [taskId]);
 
   // 🎨 tokens del tema
   const {
@@ -88,7 +161,101 @@ export default function DetailTask() {
     completed: 'Completada',
     archived: 'Archivada',
   };
-  const priorityMap: Record<string, string> = { high: 'Alta', medium: 'Media', low: 'Baja' };
+  const priorityMap: Record<string, string> = {
+    high: 'Alta',
+    medium: 'Media',
+    low: 'Baja',
+  };
+
+  const assignTagToTask = async (tagId: number) => {
+    if (!taskId) return;
+    try {
+      const token = await getAccessToken();
+
+      const res = await apiFetch(`/tags/assign`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ taskId: Number(taskId), tagId: Number(tagId) }),
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+
+      const selected = projectTags.find((t) => t.id === tagId);
+
+
+      setTask((prev: any) => ({
+        ...prev,
+        tags: prev?.tags ? [...prev.tags, selected] : [selected],
+      }));
+
+      setSelectedTag(selected);
+      setShowTagPicker(false);
+
+      Alert.alert("Etiqueta asignada", `Se asignó "${selected?.name}"`);
+    } catch (err: any) {
+      const errorMsg = err?.message || "";
+
+      if (
+        errorMsg.includes("Unique constraint failed") ||
+        errorMsg.includes("taskId','tagId")
+      ) {
+        Alert.alert(
+          "Etiqueta ya asignada",
+          "Esta tarea ya tiene esa etiqueta asignada."
+        );
+      } else {
+        console.error("Error asignando etiqueta:", err);
+        Alert.alert("Error", "No se pudo asignar la etiqueta. Intenta nuevamente.");
+      }
+    }
+  };
+
+
+  
+  const removeTagFromTask = async (tagId?: number) => {
+    if (!taskId || !tagId) return;
+
+    Alert.alert("Quitar etiqueta", "¿Deseas eliminar esta etiqueta?", [
+      { text: "Cancelar", style: "cancel" },
+      {
+        text: "Eliminar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            const token = await getAccessToken();
+          
+            const res = await apiFetch(`/tags/remove/${taskId}/${tagId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (!res.ok) {
+              const txt = await res.text();
+              throw new Error(txt || "Error al eliminar etiqueta");
+            }
+
+          
+            setTask((prev: any) => ({
+              ...prev,
+              tags: prev.tags.filter((t: any) => t.id !== tagId),
+            }));
+
+            Alert.alert("Etiqueta eliminada", "La etiqueta fue eliminada correctamente.");
+          } catch (err) {
+            console.error("Error eliminando etiqueta:", err);
+            Alert.alert("Error", "No se pudo eliminar la etiqueta.");
+          }
+        },
+      },
+    ]);
+  };
+
+
+
+  // Date helpers: formato YYYY/MM/DD
   const displayDateFromISO = (iso?: string | null) =>
     iso ? String(iso).slice(0, 10).replace(/-/g, '/') : '';
   const parseDisplayDateToISO = (input: string) => {
@@ -168,7 +335,7 @@ export default function DetailTask() {
     const targetId = id ?? taskId;
     if (!targetId) return;
     try {
-      const res = await apiFetch(`/attachments/${targetId}`);
+      const res = await apiFetch(`/attachments/projects/${task.projectId}/tasks/${taskId}`);
       if (res.ok) {
         const attachments = await res.json();
         setTask((prev: any) => ({ ...prev, attachments }));
@@ -332,7 +499,8 @@ export default function DetailTask() {
   };
 
   const uploadFile = async () => {
-    if (!selectedFile || !taskId) return;
+    if (!selectedFile || !taskId || !task?.projectId) return;
+
     setUploading(true);
     try {
       const formData = new FormData();
@@ -342,7 +510,8 @@ export default function DetailTask() {
         name: selectedFile.name,
       } as any);
 
-      const res = await apiFetchWithFormData(`/attachments/${taskId}`, {
+      // ✅ RUTA CORREGIDA: usar projectId + taskId
+      const res = await apiFetchWithFormData(`/attachments/projects/${task.projectId}/tasks/${taskId}`, {
         method: 'POST',
         body: formData,
       });
@@ -371,18 +540,22 @@ export default function DetailTask() {
   };
 
   const deleteAttachment = async (attachmentId: number) => {
+    if (!task?.projectId) return;
+    
     try {
-      Alert.alert('Eliminar archivo', '¿Estás seguro de que quieres eliminar este archivo?', [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const token = await getAccessToken();
-            const res = await apiFetch(`/attachments/${attachmentId}`, {
-              method: 'DELETE',
-              headers: { Authorization: `Bearer ${token}` },
-            });
+      Alert.alert(
+        'Eliminar archivo',
+        '¿Estás seguro de que quieres eliminar este archivo?',
+        [
+          { text: 'Cancelar', style: 'cancel' as const },
+          {
+            text: 'Eliminar',
+            style: 'destructive' as const,
+            onPress: async () => {
+              // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+              const res = await apiFetch(`/attachments/projects/${task.projectId}/attachments/${attachmentId}`, {
+                method: 'DELETE',
+              });
 
             if (res.ok) {
               setTask((prev: any) => ({
@@ -402,10 +575,6 @@ export default function DetailTask() {
     }
   };
 
-  const downloadAttachment = async (_attachmentId: number, fileName: string) => {
-    Alert.alert('Descargar', `Funcionalidad de descarga en desarrollo para: ${fileName}`);
-  };
-
   const startEditTitle = () => {
     setEditing(true);
     setTimeout(() => titleRef.current?.focus(), 0);
@@ -423,6 +592,60 @@ export default function DetailTask() {
     if (!taskId || !task) return;
     if (editState.description !== task.description)
       persistTaskPatch(taskId, { description: editState.description });
+  // Función para descargar archivo
+  const downloadAttachment = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
+    try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
+      
+      // Abrir en el navegador para descarga
+      await WebBrowser.openBrowserAsync(downloadUrl);
+      
+    } catch (error: any) {
+      console.error('Error en descarga:', error);
+      Alert.alert('Error', `No se pudo descargar el archivo: ${error.message}`);
+    }
+  };
+
+  // Función para previsualizar PDF usando Google Docs Viewer
+  const previewPdf = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
+    try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
+      
+      // Usar Google Docs Viewer para mostrar el PDF
+      const googleDocsViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`;
+      
+      setCurrentFileUrl(googleDocsViewerUrl);
+      setCurrentFileName(attachment.originalName);
+      setPdfViewerVisible(true);
+      
+    } catch (error: any) {
+      console.error('Error al abrir PDF:', error);
+      Alert.alert('Error', 'No se pudo abrir el PDF para visualización');
+    }
+  };
+
+  // Función para previsualizar imágenes
+  const previewImage = async (attachment: any) => {
+    if (!task?.projectId) return;
+    
+    try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const imageUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
+      
+      setCurrentFileUrl(imageUrl);
+      setCurrentFileName(attachment.originalName);
+      setImageViewerVisible(true);
+      
+    } catch (error: any) {
+      console.error('Error al abrir imagen:', error);
+      Alert.alert('Error', 'No se pudo abrir la imagen para visualización');
+    }
   };
 
   const onPickStatus = (value: string) => {
@@ -437,6 +660,9 @@ export default function DetailTask() {
     setEditState((s: any) => ({ ...s, priority: value }));
     if (taskId) persistTaskPatch(taskId, { priority: value });
   };
+// --- Manejadores de edición de título y descripción ---
+
+
 
   if (!taskId)
     return (
@@ -516,6 +742,8 @@ export default function DetailTask() {
                     <Text style={[styles.metaValue, { color: TEXT }]}>{t(priorityMap, priorityValue)}</Text>
                   </TouchableOpacity>
                 </View>
+
+                
               </View>
 
               {/* Descripción */}
@@ -634,6 +862,46 @@ export default function DetailTask() {
                   </TouchableOpacity>
                 </View>
               </View>
+              
+              <View style={[styles.field, { marginTop: 12 }]}>
+                <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Etiquetas</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", alignItems: "center" }}>
+                    {task?.tags && task.tags.length > 0 ? (
+                      task.tags.map((tag: any) => (
+                        <View
+                          key={tag.id}
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            backgroundColor: getTagColor(tag.id),
+                            borderRadius: 16,
+                            paddingHorizontal: 10,
+                            paddingVertical: 4,
+                            marginRight: 8,
+                            marginBottom: 6,
+                          }}
+                        >
+                          <Text style={{ color: BRAND, fontWeight: "600" }}>{tag.name}</Text>
+                          <TouchableOpacity
+                            onPress={() => removeTagFromTask(tag.id)}
+                            style={{ marginLeft: 6 }}
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={{ color: SUBTEXT, fontStyle: "italic" }}>Sin etiquetas</Text>
+                    )}
+                  </View>
+                </ScrollView>
+
+                <TouchableOpacity onPress={() => setShowTagPicker(true)} style={{ marginTop: 8 }}>
+                  <Text style={{ color: BRAND, fontWeight: "600" }}>+ Agregar etiqueta</Text>
+                </TouchableOpacity>
+              </View>
+
 
               {/* Guardar cambios (manual) */}
               {editing && (
@@ -785,7 +1053,7 @@ export default function DetailTask() {
                 title="Ver historial"
                 onPress={() =>
                   router.push({
-                    pathname: '/features/task/components/taskhistory',
+                    pathname: '/features/task/components/sprintscreen',
                     params: { projectId: task.projectId, taskId },
                   })
                 }
@@ -867,6 +1135,61 @@ export default function DetailTask() {
           setAssignModalVisible(false);
         }}
       />
+
+      {/* Picker de Etiquetas */}
+    <Modal
+      visible={showTagPicker}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowTagPicker(false)}
+    >
+      <View style={styles.sheetOverlay}>
+        <View
+          style={[
+            styles.sheetCard,
+            { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
+          ]}
+        >
+          <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona etiqueta</Text>
+
+          {projectTags.length === 0 ? (
+            <Text style={{ color: SUBTEXT, paddingVertical: 8 }}>
+              No hay etiquetas disponibles
+            </Text>
+          ) : (
+            projectTags.map((tag) => (
+              <TouchableOpacity
+                key={tag.id}
+                style={[
+                  styles.sheetItem,
+                  { borderBottomColor: isDark ? "#222" : "#f0f0f0" },
+                ]}
+                onPress={() => {
+                  assignTagToTask(tag.id);
+                  setShowTagPicker(false);
+                }}
+              >
+                <Text style={[styles.sheetText, { color: TEXT }]}>{tag.name}</Text>
+                {selectedTag?.id === tag.id ||
+                task?.tag?.id === tag.id ? (
+                  <Ionicons name="checkmark" size={18} color={BRAND} />
+                ) : null}
+              </TouchableOpacity>
+            ))
+          )}
+
+          <TouchableOpacity
+            style={styles.sheetCancel}
+            onPress={() => setShowTagPicker(false)}
+          >
+            <Text style={{ color: SUBTEXT }}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+
+
+      
     </LayoutContainer>
   );
 }
@@ -960,3 +1283,4 @@ const styles = StyleSheet.create({
   },
   sheetText: { fontSize: 15 },
 });
+}

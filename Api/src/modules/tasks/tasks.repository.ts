@@ -37,9 +37,9 @@ export const tasksRepository = {
       },
     }),
 
-  updateTask: (id: number, data: UpdateTaskDTO) =>
+  updateTask: (taskId: number, data: UpdateTaskDTO) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data,
       include: {
         project: true,
@@ -49,9 +49,9 @@ export const tasksRepository = {
       },
     }),
 
-  deleteTask: (id: number) =>
+  deleteTask: (taskId: number) =>
     prisma.task.delete({
-      where: { id },
+      where: { id: taskId },
     }),
 
   getTasksByProject: (projectId: number) =>
@@ -67,15 +67,15 @@ export const tasksRepository = {
       orderBy: { createdAt: 'desc' },
     }),
 
-  assignTask: (id: number, assigneeId: number) =>
+  assignTask: (taskId: number, assigneeId: number) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { assigneeId },
     }),
 
-  changeStatus: (id: number, status: StatusType) =>
+  changeStatus: (taskId: number, status: StatusType) =>
     prisma.task.update({
-      where: { id },
+      where: { id: taskId },
       data: { status },
     }),
 

@@ -2,6 +2,7 @@ import React from "react";
 import {
   View,
   Text,
+  TextInput,
   ScrollView,
   RefreshControl,
   ActivityIndicator,
@@ -98,6 +99,53 @@ export default function DetailProject() {
   const [members, setMembers] = React.useState<Member[]>([]);
   const [taskMetrics, setTaskMetrics] = React.useState<TaskMetrics | null>(null);
   const [metricsLoading, setMetricsLoading] = React.useState(false);
+
+  // --- Gestión de etiquetas ---
+  const [tags, setTags] = React.useState<{ id: number; name: string; color?: string }[]>([]);
+  const [newTag, setNewTag] = React.useState("");
+  const [loadingTags, setLoadingTags] = React.useState(false);
+    
+
+  React.useEffect(() => {
+    if (projectId) fetchTags();
+  }, [projectId]);
+
+  const fetchTags = async () => {
+    try {
+      setLoadingTags(true);
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags/project/${projectId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setTags(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Error cargando etiquetas:", err);
+    } finally {
+      setLoadingTags(false);
+    }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTag.trim()) return;
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ name: newTag.trim(), projectId }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setNewTag("");
+      await fetchTags(); // recargar lista
+    } catch (err) {
+      console.error("Error creando etiqueta:", err);
+    }
+  };
 
   // ---------- utils ----------
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -335,6 +383,8 @@ export default function DetailProject() {
               ID del proyecto: {projectId}
             </Text>
           </View>
+
+          
         </ScrollView>
       ) : !project ? (
         <ScrollView
@@ -653,6 +703,83 @@ export default function DetailProject() {
               </View>
             )}
           </View>
+
+
+
+        <View
+          style={{
+            backgroundColor: CARD_BG,
+            borderRadius: 16,
+            padding: 16,
+            marginTop: 12,
+            borderWidth: 1,
+            borderColor: CARD_BORDER,
+          }}
+        >
+          <Text style={{ fontSize: 16, fontWeight: "700", marginBottom: 12, color: TEXT }}>
+            Etiquetas del Proyecto ({tags.length})
+          </Text>
+
+          {/* Campo para crear nueva etiqueta */}
+          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+            <TextInput
+              placeholder="Nueva etiqueta"
+              placeholderTextColor={SUBTEXT}
+              value={newTag}
+              onChangeText={setNewTag}
+              style={{
+                flex: 1,
+                backgroundColor: CARD_BG,
+                borderWidth: 1,
+                borderColor: CARD_BORDER,
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                color: TEXT,
+              }}
+            />
+            <TouchableOpacity
+              onPress={handleCreateTag}
+              style={{
+                marginLeft: 8,
+                backgroundColor: "#3f3df8",
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+              }}
+            >
+              <Text style={{ color: "white", fontWeight: "600" }}>Agregar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Lista de etiquetas */}
+          {loadingTags ? (
+            <ActivityIndicator size="small" color="#888" />
+          ) : tags.length === 0 ? (
+            <Text style={{ color: SUBTEXT, fontStyle: "italic" }}>
+              No hay etiquetas en este proyecto.
+            </Text>
+          ) : (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {tags.map((tag) => (
+                <View
+                  key={tag.id}
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#3f3df8",
+                    borderRadius: 999,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    backgroundColor: "#3f3df820",
+                  }}
+                >
+                  <Text style={{ color: "#3f3df8", fontWeight: "600" }}>{tag.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         </ScrollView>
       )}
     </View>

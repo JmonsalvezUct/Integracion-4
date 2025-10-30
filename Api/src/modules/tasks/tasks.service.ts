@@ -21,10 +21,11 @@ export const tasksService = {
       creatorId: userId, 
       
     });
-  const creator = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true },
-  });
+    
+    const creator = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
 
 
     await changeHistoryService.logChange({
@@ -106,8 +107,6 @@ updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => 
 
   return updatedTask;
 },
-
-
 
   deleteTask: async (taskId: number, userId: number) => {
     const task = await tasksRepository.getTaskById(taskId); //busca la tarea por su id, si no exisre lanza error

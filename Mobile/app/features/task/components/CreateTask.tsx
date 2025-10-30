@@ -61,6 +61,9 @@ export default function NewTaskScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ projectId?: string; creatorId?: string }>();
 
+  const [tags, setTags] = useState<{ id: number; name: string; color?: string }[]>([]);
+  const [selectedTagId, setSelectedTagId] = useState<number | null>(null);
+
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [date, setDate] = useState("");
@@ -81,6 +84,25 @@ export default function NewTaskScreen() {
     INPUT_BORDER,
     PLACEHOLDER,
   } = useThemedColors();
+
+
+  React.useEffect(() => {
+  const fetchTags = async () => {
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(`/tags/project/${params.projectId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      setTags(data);
+    } catch (err) {
+      console.error("Error cargando etiquetas:", err);
+    }
+  };
+
+  if (params.projectId) fetchTags();
+}, [params.projectId]);
 
   const submit = async () => {
     if (!canSave) {
@@ -108,6 +130,7 @@ export default function NewTaskScreen() {
       priority: priorityMap[priority],
       projectId,
       creatorId,
+      tag,
     });
 
     if (!isValidDate(date)) {
@@ -125,8 +148,34 @@ export default function NewTaskScreen() {
         body: JSON.stringify(payload),
       });
 
-      const raw = await res.text();
-      if (!res.ok) throw new Error(`Error ${res.status}: ${raw}`);
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Error ${res.status}: ${text}`);
+    }
+
+    const task = await res.json();
+
+
+    if (selectedTagId) {
+      const tagRes = await apiFetch(`/tags/tasks/${task.id}/tags/${selectedTagId}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!tagRes.ok) {
+        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+      }
+    }
+
+    if (tag.trim()) {
+      const tagRes = await apiFetch(`/tags/tasks/${task.id}/tags/${encodeURIComponent(tag)}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!tagRes.ok) {
+        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+      }
+    }
 
       Alert.alert("Éxito", "Tarea creada correctamente.");
       router.back();
@@ -231,17 +280,37 @@ export default function NewTaskScreen() {
             })}
           </View>
 
-          <Text style={[styles.label, { color: TEXT }]}>Etiqueta</Text>
-          <TextInput
-            placeholder="UI, Backend, Bug… (no se envía)"
-            placeholderTextColor={PLACEHOLDER}
-            value={tag}
-            onChangeText={setTag}
-            style={[
-              styles.input,
-              { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-            ]}
-          />
+        <Text style={[styles.label, { color: TEXT }]}>Etiqueta</Text>
+        <View style={styles.tagRow}>
+          {tags.length === 0 ? (
+            <Text style={{ color: SUBTEXT, fontStyle: "italic" }}>No hay etiquetas disponibles</Text>
+          ) : (
+            tags.map((t) => {
+              const active = selectedTagId === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  onPress={() => setSelectedTagId(active ? null : t.id)}
+                  style={[
+                    styles.tagChip,
+                    { borderColor: BRAND, backgroundColor: active ? BRAND : "transparent" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      { color: active ? "#fff" : BRAND },
+                    ]}
+                  >
+                    {t.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+
+
 
           <TouchableOpacity
             style={[styles.primaryBtn, { backgroundColor: BRAND }, !canSave && { opacity: 0.5 }]}
@@ -301,4 +370,24 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   primaryBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  tagRow: {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 8,
+  marginTop: 4,
+  marginBottom: 8,
+},
+
+tagChip: {
+  borderWidth: 1,
+  borderRadius: 999,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+},
+
+tagText: {
+  fontWeight: "600",
+  fontSize: 14,
+},
+
 });

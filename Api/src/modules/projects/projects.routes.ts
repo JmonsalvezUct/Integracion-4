@@ -146,7 +146,7 @@ router.get('/', getProjects);
 
 /**
  * @swagger
- * /projects/{id}:
+ * /projects/{projectId}:
  *   get:
  *     summary: Obtener proyecto por ID
  *     description: Obtiene los detalles completos de un proyecto específico.
@@ -213,10 +213,10 @@ router.get('/:projectId', authMiddleware, rbacMiddleware(['admin', 'developer', 
 
 /**
  * @swagger
- * /projects/{id}:
+ * /projects/{projectId}:
  *   put:
  *     summary: Actualizar proyecto
- *     description: Permite actualizar los detalles de un proyecto existente.
+ *     description: Permite actualizar los detalles de un proyecto existente (solo admin).
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -288,10 +288,10 @@ router.put('/:projectId', authMiddleware, rbacMiddleware(['admin']), updateProje
 
 /**
  * @swagger
- * /projects/{id}:
+ * /projects/{projectId}:
  *   patch:
  *     summary: Actualización parcial de proyecto
- *     description: Permite actualizar campos específicos de un proyecto sin necesidad de enviar todos los datos.
+ *     description: Permite actualizar campos específicos de un proyecto sin necesidad de enviar todos los datos (solo admin).
  *     tags: [Projects]
  *     security:
  *       - bearerAuth: []
@@ -371,8 +371,8 @@ router.patch('/:projectId', authMiddleware, rbacMiddleware(['admin']), patchProj
 
 /**
  * @swagger
-
-/**delete:
+ * /projects/{projectId}:    
+ *   delete:
  *     summary: Eliminar proyecto
  *     description: Permite a los administradores eliminar un proyecto y todos sus recursos asociados.
  *     tags: [Projects]
@@ -407,7 +407,8 @@ router.delete('/:projectId', authMiddleware, rbacMiddleware(['admin']), deletePr
  * @swagger
  * /projects/user/{userId}:
  *   get:
- *     summary: Get projects by user ID
+ *     summary: Obtener proyectos por ID de usuario
+ *     description: Retorna todos los proyectos asociados a un usuario específico.
  *     tags: [Projects]
  *     parameters:
  *       - in: path
@@ -452,8 +453,8 @@ router.get('/user/:userId', authMiddleware, getProjectsByUserId);
  *                 description: ID del usuario a agregar
  *               role:
  *                 type: string
- *                 enum: [admin, member, viewer]
- *                 example: "member"
+ *                 enum: [admin, developer, guest]
+ *                 example: "guest"
  *                 description: Rol inicial del usuario en el proyecto
  *     responses:
  *       200:
@@ -505,22 +506,17 @@ router.post('/member', authMiddleware, rbacMiddleware(['admin']), addUserToProje
  *           schema:
  *             type: object
  *             required:
- *               - projectId
- *               - userId
+ *               - userProjectId
  *               - role
  *             properties:
- *               projectId:
+ *               userProjectId:
  *                 type: integer
  *                 example: 1
- *                 description: ID del proyecto
- *               userId:
- *                 type: integer
- *                 example: 2
- *                 description: ID del usuario a modificar
+ *                 description: ID del registro de usuario en el proyecto (userProject)
  *               role:
  *                 type: string
- *                 enum: [admin, member, viewer]
- *                 example: "member"
+ *                 enum: [admin, developer, guest]
+ *                 example: "guest"
  *                 description: Nuevo rol para el usuario
  *     responses:
  *       200:
@@ -570,17 +566,12 @@ router.put('/members/role', authMiddleware, rbacMiddleware(['admin']), updateUse
  *           schema:
  *             type: object
  *             required:
- *               - projectId
- *               - userId
+ *               - userProjectId
  *             properties:
- *               projectId:
+ *               userProjectId:
  *                 type: integer
  *                 example: 1
- *                 description: ID del proyecto
- *               userId:
- *                 type: integer
- *                 example: 2
- *                 description: ID del usuario a remover
+ *                 description: ID del registro de usuario en el proyecto (userProject)
  *     responses:
  *       200:
  *         description: User removed from project
@@ -592,7 +583,7 @@ router.delete('/member', authMiddleware, rbacMiddleware(['admin']), removeUserFr
 
 /**
  * @swagger
- * /projects/{id}/members:
+ * /projects/{projectId}/members:
  *   get:
  *     summary: Obtener miembros del proyecto
  *     description: Permite a los administradores obtener la lista completa de miembros de un proyecto con sus roles y detalles.
@@ -665,6 +656,6 @@ router.delete('/member', authMiddleware, rbacMiddleware(['admin']), removeUserFr
  *       - rbacMiddleware
  */
 
-router.get('/:projectId/members', authMiddleware, rbacMiddleware(['admin']), getProjectMembers);
+router.get('/:projectId/members', authMiddleware, rbacMiddleware(['admin', 'developer', 'guest']), getProjectMembers);
 
 export default router;
