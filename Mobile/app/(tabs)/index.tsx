@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  StyleSheet,
 } from "react-native";
 
 import { MaterialIcons } from "@expo/vector-icons";
@@ -141,13 +142,7 @@ export default function HomeScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            onPress={() => router.push("/features/project/CreateProject")}
-            style={{ padding: 6 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <MaterialIcons name="add-circle-outline" size={26} color="#ffffff" />
-          </TouchableOpacity>
+
 
           {/* Perfil */}
           <TouchableOpacity
@@ -201,9 +196,39 @@ export default function HomeScreen() {
                 </Text>
               ) : null}
             </TouchableOpacity>
+
+            
           )}
         />
       )}
+
+    <TouchableOpacity
+      style={styles.fab}
+      onPress={() => router.push("/features/project/CreateProject")}
+    >
+      <MaterialIcons name="add" size={28} color="#fff" />
+    </TouchableOpacity>
+
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 25,
+    backgroundColor: "#3B34FF", // tu color de marca
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6, // sombra Android
+    shadowColor: "#000", // sombra iOS
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+});
+
