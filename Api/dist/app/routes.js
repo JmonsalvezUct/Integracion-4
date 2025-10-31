@@ -14,11 +14,12 @@ router.use('/health', healthRoutes);
 router.use('/auth', authRoutes);
 router.use('/tasks', tasksRoutes);
 router.use('/projects', projectsRoutes);
+router.use("/projects/:projectId/sprints", sprintsRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/tags', tagsRoutes);
 router.use('/docs', swaggerUI.serve, swaggerUI.setup(specs));
 router.use("/history", changeHistoryRoutes);
-router.use("/projects/:projectId/sprints", sprintsRoutes);
+
 
 export default router;
 //# sourceMappingURL=routes.js.map
