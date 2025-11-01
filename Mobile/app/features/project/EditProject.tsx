@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Alert, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, Alert, StyleSheet} from "react-native";
 import { useRouter } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
-
-// 🎨 Hook de colores centralizado
-import { useThemedColors } from "@/hooks/use-theme-color";
-// 🧱 Layout y márgenes globales
-import LayoutContainer from "@/components/layout/layout_container";
+import { useThemedColors } from "@/hooks/use-theme-color"; 
+import LayoutContainer from "@/components/layout/layout_container"; //Layout y márgenes globales
 import { CONTAINER } from "@/constants/spacing";
+import Loader from "@/components/ui/Loader";
 
-// ✅ Componentes reutilizables
+//Componentes reutilizables
 import Input from "@/components/ui/input";
 import Button from "@/components/ui/button";
 
@@ -24,7 +22,7 @@ export default function EditProjectScreen({ projectId }: { projectId: string }) 
   const [projectTitle, setProjectTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Tokens del tema (no hardcode)
+  // Tokens del tema
   const { BG, TEXT, BRAND, PLACEHOLDER, SUBTEXT } = useThemedColors();
 
   useEffect(() => {
@@ -96,14 +94,12 @@ export default function EditProjectScreen({ projectId }: { projectId: string }) 
   };
 
   if (loading) {
-    return (
-      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={BRAND} />
-        </View>
-      </LayoutContainer>
-    );
-  }
+  return (
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+      <Loader />
+    </LayoutContainer>
+  );
+}
 
   return (
     <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>

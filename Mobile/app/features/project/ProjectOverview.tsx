@@ -3,8 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
+  StyleSheet
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -23,6 +22,7 @@ import FullBleed from "@/components/layout/FullBleed";
 import { useGutter } from "../../../hooks/use-gutter";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import Loader from "@/components/ui/Loader";
 import StatsProjectScreen from "../stats/screens/StatsProjectScreen";
 
 export default function ProjectOverview() {
@@ -65,14 +65,13 @@ export default function ProjectOverview() {
   }, [projectId]);
 
   if (loading) {
-    return (
-      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={BRAND} />
-        </View>
-      </LayoutContainer>
-    );
-  }
+  return (
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+      <Loader />
+    </LayoutContainer>
+  );
+}
+
 
   return (
     <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>

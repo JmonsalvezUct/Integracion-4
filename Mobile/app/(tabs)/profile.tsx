@@ -9,7 +9,6 @@ import {
   SafeAreaView,
   Platform,
   Alert,
-  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +19,7 @@ import { getSavedUser, type LoginResponse } from '@/services/auth';
 import { useThemeMode } from '@/app/theme-context';
 import { Colors } from '@/constants/theme';
 import Button from '@/components/ui/button';
+import Loader from "@/components/ui/Loader";
 
 type User = LoginResponse['user'];
 
@@ -46,15 +46,12 @@ export default function ProfileScreen() {
   }, []);
 
   if (loading) {
-    return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}>
-        <View style={[styles.centered, { backgroundColor: Colors[theme].background }]}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 8, color: Colors[theme].text }}>Cargando perfil...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: Colors[theme].background }]}>
+      <Loader />
+    </SafeAreaView>
+  );
+}
 
   const displayName = user?.name?.trim() || 'Usuario';
   const displayEmail = user?.email || '—';
