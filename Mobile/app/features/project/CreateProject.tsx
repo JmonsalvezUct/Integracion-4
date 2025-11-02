@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  Alert,
   StyleSheet,
   ScrollView,
 } from "react-native";
@@ -14,6 +13,8 @@ import { apiFetch } from "@/lib/api-fetch";
 
 // 🎨 Hook de colores centralizado
 import { useThemedColors } from "@/hooks/use-theme-color";
+
+import { showToast } from "@/components/ui/toast";
 
 export default function CreateProject() {
   const [name, setName] = useState("");
@@ -38,57 +39,58 @@ export default function CreateProject() {
   } = useThemedColors();
 
   const handleCreate = async () => {
-    if (name.trim().length < 2) {
-      Alert.alert("Nombre inválido", "Debe tener al menos 2 caracteres.");
-      return;
-    }
+  if (name.trim().length < 2) {
+    showToast("El nombre debe tener al menos 2 caracteres", "warning");
+    return;
+  }
 
-    const token = await getAccessToken();
-    const userId = await getUserId();
+  const token = await getAccessToken();
+  const userId = await getUserId();
 
-    if (!token) {
-      Alert.alert("Error", "No se encontró token de autenticación.");
-      return;
-    }
-    if (!userId) {
-      Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
-      return;
-    }
+  if (!token) {
+    showToast("No se encontró token de autenticación", "error");
+    return;
+  }
+  if (!userId) {
+    showToast("No se encontró el ID del usuario autenticado", "error");
+    return;
+  }
 
-    const projectPayload = {
-      name,
-      description: description || undefined,
-      startDate: startDate ? new Date(startDate).toISOString() : undefined,
-      endDate: endDate ? new Date(endDate).toISOString() : undefined,
-      status: status || undefined,
-      userId: Number(userId),
-    };
-
-    setLoading(true);
-    try {
-      const res = await apiFetch(`/projects`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(projectPayload),
-      });
-
-      if (res.ok) {
-        Alert.alert("Proyecto creado exitosamente");
-        router.back();
-      } else {
-        const error = await res.text();
-        Alert.alert("Error al crear proyecto", error || "Error desconocido");
-      }
-    } catch (error) {
-      Alert.alert("Error", "No se pudo conectar con el servidor.");
-      console.error("Error creando proyecto:", error);
-    } finally {
-      setLoading(false);
-    }
+  const projectPayload = {
+    name,
+    description: description || undefined,
+    startDate: startDate ? new Date(startDate).toISOString() : undefined,
+    endDate: endDate ? new Date(endDate).toISOString() : undefined,
+    status: status || undefined,
+    userId: Number(userId),
   };
+
+  setLoading(true);
+  try {
+    const res = await apiFetch(`/projects`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(projectPayload),
+    });
+
+    if (res.ok) {
+      showToast("Proyecto creado exitosamente", "success");
+      router.back();
+    } else {
+      const error = await res.text();
+      showToast(error || "Error al crear proyecto", "error");
+    }
+  } catch (error) {
+    console.error("Error creando proyecto:", error);
+    showToast("No se pudo conectar con el servidor", "error");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <ScrollView

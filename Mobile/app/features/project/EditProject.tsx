@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Alert, StyleSheet} from "react-native";
+import { View, Text, StyleSheet} from "react-native";
 import { useRouter } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
@@ -7,6 +7,7 @@ import { useThemedColors } from "@/hooks/use-theme-color";
 import LayoutContainer from "@/components/layout/layout_container"; //Layout y márgenes globales
 import { CONTAINER } from "@/constants/spacing";
 import Loader from "@/components/ui/Loader";
+import { showToast } from "@/components/ui/toast";
 
 //Componentes reutilizables
 import Input from "@/components/ui/input";
@@ -26,72 +27,74 @@ export default function EditProjectScreen({ projectId }: { projectId: string }) 
   const { BG, TEXT, BRAND, PLACEHOLDER, SUBTEXT } = useThemedColors();
 
   useEffect(() => {
-    const loadProject = async () => {
-      try {
-        const token = await getAccessToken();
-        if (!token) {
-          Alert.alert("No autorizado", "Debes iniciar sesión nuevamente.");
-          return;
-        }
-
-        const res = await apiFetch(`/projects/${id}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || "Error al obtener proyecto");
-        }
-
-        const data = await res.json();
-        setName(data.name);
-        setDescription(data.description || "");
-        setStatus(data.status || "active");
-        setProjectTitle(data.name);
-      } catch (error) {
-        console.error("Error al cargar proyecto:", error);
-        Alert.alert("Error", "No se pudo cargar el proyecto.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (id) loadProject();
-  }, [id]);
-
-  const handleSave = async () => {
+  const loadProject = async () => {
     try {
       const token = await getAccessToken();
       if (!token) {
-        Alert.alert("No autorizado", "Debes iniciar sesión nuevamente.");
+        showToast("No autorizado. Debes iniciar sesión nuevamente.", "error");
         return;
       }
 
-      const body = {
-        ...(name && { name }),
-        ...(description && { description }),
-        ...(status && { status }),
-      };
-
       const res = await apiFetch(`/projects/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      await res.text();
-      if (!res.ok) throw new Error(`Error HTTP (${res.status})`);
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Error al obtener proyecto");
+      }
 
-      Alert.alert("Éxito", "Proyecto actualizado correctamente");
-      router.back();
+      const data = await res.json();
+      setName(data.name);
+      setDescription(data.description || "");
+      setStatus(data.status || "active");
+      setProjectTitle(data.name);
     } catch (error) {
-      console.error("Error al guardar proyecto:", error);
-      Alert.alert("Error", "No se pudo actualizar el proyecto.");
+      console.error("Error al cargar proyecto:", error);
+      showToast("No se pudo cargar el proyecto.", "error");
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (id) loadProject();
+}, [id]);
+
+
+  const handleSave = async () => {
+  try {
+    const token = await getAccessToken();
+    if (!token) {
+      showToast("No autorizado. Debes iniciar sesión nuevamente.", "error");
+      return;
+    }
+
+    const body = {
+      ...(name && { name }),
+      ...(description && { description }),
+      ...(status && { status }),
+    };
+
+    const res = await apiFetch(`/projects/${id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    await res.text();
+    if (!res.ok) throw new Error(`Error HTTP (${res.status})`);
+
+    showToast("Proyecto actualizado correctamente", "info"); // Azul: actualización
+    router.back();
+  } catch (error) {
+    console.error("Error al guardar proyecto:", error);
+    showToast("No se pudo actualizar el proyecto.", "error");
+  }
+};
+
 
   if (loading) {
   return (

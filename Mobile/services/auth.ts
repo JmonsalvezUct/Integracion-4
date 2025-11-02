@@ -2,13 +2,50 @@
 import { API_URL } from "@/constants/api";
 import { saveAuth } from "@/lib/secure-store";
 import { getAccessToken, getRefreshToken, getUserId, clearAuth } from "@/lib/secure-store";
-import * as SecureStore from "expo-secure-store"; 
+import * as SecureStore from "expo-secure-store";
 
 const USER_KEY = "fp.user";
 
-async function saveUserToStore(user: LoginResponse["user"]) {
-  try { await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user)); } catch {}
+// ---------- Helper: mensajes legibles para errores ----------
+type ZodErrorShape = {
+  formErrors?: string[];
+  fieldErrors?: Record<string, string[] | undefined>;
+};
+
+function mapAuthError(status: number, data?: any): string {
+  if (status === 401 || status === 403) return "Credenciales inválidas";
+  if (status === 429) return "Demasiados intentos. Inténtalo más tarde";
+  if (status >= 500) return "Error del servidor. Inténtalo más tarde";
+
+  const fe: ZodErrorShape["fieldErrors"] | undefined =
+    data?.details?.fieldErrors ?? data?.fieldErrors;
+
+  if (fe) {
+    const emailBad = Array.isArray(fe.email) && fe.email.length > 0;
+    const passBad = Array.isArray(fe.password) && fe.password.length > 0;
+
+    if (emailBad && passBad) return "Correo y contraseña inválidos";
+    if (emailBad) return "Correo inválido";
+    if (passBad) {
+      const msg = ((fe.password?.[0] as string) || "").toLowerCase();
+      if (msg.includes("too small") || msg.includes(">=8")) {
+        return "La contraseña debe tener al menos 8 caracteres";
+      }
+      return "Contraseña inválida";
+    }
+    return "Datos inválidos";
+  }
+
+  return data?.message || data?.error || "No se pudo iniciar sesión";
 }
+
+// ---------- User store ----------
+async function saveUserToStore(user: LoginResponse["user"]) {
+  try {
+    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
+  } catch {}
+}
+
 export async function getSavedUser(): Promise<LoginResponse["user"] | null> {
   try {
     const raw = await SecureStore.getItemAsync(USER_KEY);
@@ -17,8 +54,11 @@ export async function getSavedUser(): Promise<LoginResponse["user"] | null> {
     return null;
   }
 }
+
 async function clearSavedUser() {
-  try { await SecureStore.deleteItemAsync(USER_KEY); } catch {}
+  try {
+    await SecureStore.deleteItemAsync(USER_KEY);
+  } catch {}
 }
 
 // ---------- Types ----------
@@ -42,8 +82,13 @@ export async function login(email: string, password: string): Promise<LoginRespo
   });
 
   if (!res.ok) {
-    const msg = await res.text();
-    throw new Error(msg || `HTTP ${res.status}`);
+    let data: any = null;
+    try {
+      data = await res.json();
+    } catch {
+      // el backend no devolvió JSON válido
+    }
+    throw new Error(mapAuthError(res.status, data));
   }
 
   const data = (await res.json()) as LoginResponse;
@@ -81,7 +126,11 @@ export async function registerUser(payload: RegisterPayload) {
   }
 
   let data: any = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
 
   if (data?.accessToken && data?.refreshToken && data?.user?.id) {
     await saveAuth({
@@ -89,7 +138,6 @@ export async function registerUser(payload: RegisterPayload) {
       refreshToken: data.refreshToken,
       userId: data.user.id,
     });
-    // si el backend devuelve user en /register, también se guarda
     if (data.user) {
       await saveUserToStore(data.user);
     }
@@ -120,7 +168,7 @@ export async function refreshTokens() {
   try {
     data = text ? JSON.parse(text) : {};
   } catch (err) {
-    console.error("auth.refreshTokens:  error al convertir la respuesta JSON::", err, text);
+    console.error("auth.refreshTokens: error al convertir la respuesta JSON:", err, text);
     throw new Error("El endpoint de refresh devolvió un JSON inválido");
   }
 
@@ -134,7 +182,6 @@ export async function refreshTokens() {
   }
 
   if (userId === undefined || userId === null) {
-    //conservar el userId que ya se tenía guardado
     userId = await getUserId();
     if (!userId) {
       console.warn("auth.refreshTokens: el servidor no devolvió userId, se guarda vacío");
@@ -148,14 +195,10 @@ export async function refreshTokens() {
     userId,
   });
 
-  // Si el refresh devolvió user, se actualiza; si no, se conserva el guardado
   if (data?.user && data.user.email) {
     await saveUserToStore(data.user);
-  } else {
-    // nada: mantiene el usuario ya persistido
   }
 
-  // Para quien llame a refreshTokens, se devuelve un "user" consistente
   const storedUser = await getSavedUser();
   const user = data?.user ?? storedUser ?? null;
 
@@ -166,5 +209,5 @@ export async function refreshTokens() {
 // ---------- Logout ----------
 export async function logout() {
   await clearAuth();
-  await clearSavedUser(); //también se borra el usuario persistido
+  await clearSavedUser();
 }

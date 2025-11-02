@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Image, ScrollView, View, Text, TouchableOpacity } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, Image, ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { API_URL } from "@/constants/api";
 import { login, refreshTokens } from "@/services/auth";
 import { clearAuth, getRefreshToken } from "@/lib/secure-store";
+import { showToast } from "@/components/ui/toast";
 
 // 🎨 Tema (usamos solo la paleta clara aquí)
 import { Colors } from "@/constants/theme";
@@ -53,30 +54,32 @@ export default function LoginScreen() {
     };
   }, []);
 
-  // dentro del componente:
+  // Manejar submit del formulario
   const onSubmit = async () => {
-    try {
-      console.log("[Login] Intentando login contra:", `${API_URL}/auth/login`);
-      const emailOk = email.trim();
-      const passOk = pass;
+  try {
+    console.log("[Login] Intentando login contra:", `${API_URL}/auth/login`);
+    const emailOk = email.trim();
+    const passOk = pass;
 
-      if (!emailOk || !passOk) {
-        Alert.alert("Faltan datos", "Ingresa email y contraseña.");
-        return;
-      }
-
-      setLoading(true); // activar loading
-
-      await login(emailOk, passOk); // hace fetch y guarda tokens
-      console.log("[Login] Exitoso, navegando a tabs");
-      router.replace("/(tabs)");
-    } catch (e: any) {
-      console.log("[Login] Error:", e?.message, e);
-      Alert.alert("No se pudo iniciar sesión", e?.message ?? "Revisa tus credenciales o conexión.");
-    } finally {
-      setLoading(false); // desactivar loading
+    if (!emailOk || !passOk) {
+      showToast("Ingresa email y contraseña.", "warning");
+      return;
     }
-  };
+
+    setLoading(true);
+
+    await login(emailOk, passOk);
+    console.log("[Login] Exitoso, navegando a tabs");
+    showToast("Inicio de sesión exitoso", "success"); // 🟢
+    router.replace("/(tabs)");
+  } catch (e: any) {
+    console.log("[Login] Error:", e?.message, e);
+    showToast(e?.message ?? "No se pudo iniciar sesión", "error"); // 🔴
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <KeyboardAvoidingView

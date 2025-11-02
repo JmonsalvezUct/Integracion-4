@@ -5,6 +5,7 @@ import React from "react";
 import { StatusBar } from "expo-status-bar";
 import { ThemeProvider } from "@/app/theme-context"; // tu provider
 import { useColorScheme } from "@/hooks/use-color-scheme"; // 'light' | 'dark'
+import { ToastHost } from "@/components/ui/toast";
 
 // Tema de React Navigation para que headers/gestos tomen dark-mode
 import {
@@ -34,6 +35,8 @@ export default function RootLayout() {
             }}
           />
         </NavThemeProvider>
+        {/* Host global de Toasts */}
+         <ToastHost position="bottom" />
       </GestureHandlerRootView>
     </ThemeProvider>
   );

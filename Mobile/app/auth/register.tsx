@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, ScrollView, View, Text, TouchableOpacity } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { registerUser, login } from "@/services/auth";
+import { showToast } from "@/components/ui/toast";
 
 // 🎨 Paleta
 import { Colors } from "@/constants/theme";
@@ -24,10 +25,26 @@ export default function RegisterScreen() {
 
   const onSubmit = async () => {
     try {
-      if (!name || !email || !pass) {
-        Alert.alert("Completa los campos", "Nombre, correo y contraseña.");
+      if (!name && !email && !pass) {
+        showToast("Por favor, completa todos los campos para registrarte", "warning");
         return;
       }
+
+      if (!name || !email || !pass) {
+        showToast("Faltan campos por completar", "warning");
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast("El correo debe tener un formato válido (ejemplo@correo.com)", "warning");
+        return;
+      }
+
+      if (pass.length < 8) {
+        showToast("La contraseña debe tener al menos 8 caracteres", "warning");
+        return;
+  }
 
       setLoading(true);
       const data = await registerUser({ name, email, password: pass });
@@ -37,9 +54,10 @@ export default function RegisterScreen() {
         await login(email, pass);
       }
 
+      showToast("Cuenta creada con éxito", "success");
       router.replace("/(tabs)");
     } catch (e: any) {
-      Alert.alert("No se pudo registrar", e?.message ?? "Intenta de nuevo.");
+      showToast(e?.message ?? "No se pudo crear la cuenta. Intenta de nuevo.", "error");
     } finally {
       setLoading(false);
     }
@@ -47,7 +65,7 @@ export default function RegisterScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: PRIMARY }} // franja superior con color de marca
+      style={{ flex: 1, backgroundColor: PRIMARY }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -61,7 +79,7 @@ export default function RegisterScreen() {
             value={name}
             onChangeText={setName}
             variant="surface"
-            backgroundOverride="#FFFFFF" // siempre blanco en esta pantalla
+            backgroundOverride="#FFFFFF"
             leftIcon={<Ionicons name="person-outline" size={18} color={MUTED} />}
             containerStyle={{ marginTop: 4 }}
             fieldStyle={{
