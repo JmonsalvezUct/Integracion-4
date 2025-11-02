@@ -77,7 +77,7 @@ export default function NewTaskScreen() {
     BG,
     TEXT,
     SUBTEXT,
-    BRAND,           // usa #0a7ea4 como fallback
+    BRAND,         
     CARD_BG,
     CARD_BORDER,
     INPUT_BG,
