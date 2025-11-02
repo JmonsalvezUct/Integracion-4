@@ -5,7 +5,7 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  ScrollView, // 👈 Importar ScrollView
   Alert,
   TextInput,
 } from "react-native";
@@ -23,13 +23,13 @@ import type { Task } from "../types";
 import { getUserId } from "@/lib/secure-store";
 import { useFocusEffect } from "@react-navigation/native";
 
-// 🎨 tokens de tema centralizados
+// 🎨 tokens de tema centralizados (de 'develop')
 import { useThemedColors } from "@/hooks/use-theme-color";
 
 export function TaskScreen({ projectId }: { projectId?: string }) {
   const router = useRouter();
 
-  // Colores del tema
+  // Colores del tema (de 'develop')
   const {
     BG,
     TEXT,
@@ -41,10 +41,9 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     INPUT_BORDER,
   } = useThemedColors();
 
-
-
   const {
-    tasks,
+    tasks, // Tareas filtradas y ordenadas para la LISTA
+    allTasksForCalendar, // 🔥 Tareas COMPLETAS para el CALENDARIO
     projectName,
     filters,
     setFilters,
@@ -60,6 +59,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     setSelectedDate,
     tasksForSelectedDate,
     fetchTasks,
+    updateTaskDate, // 🔥 Función importada de 'javier'
   } = useTasks(projectId);
 
   useFocusEffect(
@@ -81,15 +81,19 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
   const [toastMsg, setToastMsg] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
 
-  const [viewMode, setViewMode] = useState<"list" | "calendar" | "kanban">("list");
+  const [viewMode, setViewMode] = useState<"list" | "calendar" | "kanban">(
+    "list"
+  );
 
   type ColumnKey = "status" | "assignee" | "dueDate" | "priority";
   type SortKey = "title" | "priority" | "dueDate";
 
-  const toggleCol = (key: ColumnKey) => setColumns((c) => ({ ...c, [key]: !c[key] }));
+  const toggleCol = (key: ColumnKey) =>
+    setColumns((c) => ({ ...c, [key]: !c[key] }));
 
   const handleSort = (key: SortKey) => {
-    if (sortBy === key) setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    if (sortBy === key)
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     else {
       setSortBy(key);
       setSortDirection("asc");
@@ -112,41 +116,37 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     });
   };
 
+  // 🔥 ESTA ES LA FUNCIÓN CRÍTICA QUE DEBE PASARSE (de 'javier')
+  const handleTaskDateUpdate = async (taskId: number, newDate: Date) => {
+    console.log("🔥 TaskScreen: handleTaskDateUpdate llamado", {
+      taskId,
+      newDate,
+    });
+    try {
+      await updateTaskDate(taskId, newDate);
+      showToast(
+        `Fecha actualizada al ${newDate.toLocaleDateString("es-ES")}`,
+        "success"
+      );
+    } catch (error) {
+      console.error("❌ Error en TaskScreen:", error);
+      showToast("Error al actualizar la fecha", "error");
+    }
+  };
+
   const displayTasks =
     viewMode === "calendar" && selectedDate ? tasksForSelectedDate : tasks;
 
-  const filteredTasks = React.useMemo(() => {
-    if (!displayTasks || displayTasks.length === 0) return [];
-    return displayTasks.filter((t) => {
-      const title = (t.title ?? "").toLowerCase();
-      const status = (t.status ?? "").toLowerCase();
-      const assignee = (t.assignee?.name ?? "").toLowerCase();
-      const dueDate = (t.dueDate ?? "").slice(0, 10);
-      const tags = (t.tags ?? [])
-        .map((tt) => tt.tag?.name?.toLowerCase?.() ?? "")
-        .join(" ");
-      
-      const f = {
-        status: filters.status.toLowerCase(),
-        assignee: filters.assignee.toLowerCase(),
-        dueDate: filters.dueDate,
-        search: filters.search?.toLowerCase?.() ?? "",
-      };
-
-      const matchStatus = f.status ? status.includes(f.status) : true;
-      const matchAssignee = f.assignee ? assignee.includes(f.assignee) : true;
-      const matchDate = f.dueDate ? dueDate.startsWith(f.dueDate) : true;
-      const matchSearch = f.search ? title.includes(f.search) || tags.includes(f.search) : true;
-
-      return matchStatus && matchAssignee && matchDate && matchSearch;
-    });
-  }, [displayTasks, filters]);
   if (!projectId) {
     return (
       <SafeAreaView
         style={[
           styles.container,
-          { justifyContent: "center", alignItems: "center", backgroundColor: BG },
+          {
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: BG,
+          },
         ]}
       >
         <Text style={{ color: TEXT, fontSize: 16 }}>Cargando proyecto...</Text>
@@ -168,23 +168,30 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
         onHide={() => setToastVisible(false)}
       />
 
-      {/* 🔍 Búsqueda */}
+      {/* 🔍 Búsqueda (de 'develop') */}
       <View
         style={[
           styles.searchContainer,
           { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER },
         ]}
       >
-        <Ionicons name="search-outline" size={18} color={SUBTEXT} style={{ marginRight: 6 }} />
+        <Ionicons
+          name="search-outline"
+          size={18}
+          color={SUBTEXT}
+          style={{ marginRight: 6 }}
+        />
         <TextInput
           style={[styles.searchInput, { color: TEXT }]}
-          placeholder="Buscar tarea por título..."
+          placeholder="Buscar tarea por título o tag..."
           placeholderTextColor={SUBTEXT}
           value={filters.search}
           onChangeText={(t: string) => setFilters({ ...filters, search: t })}
         />
         {filters.search.length > 0 && (
-          <TouchableOpacity onPress={() => setFilters({ ...filters, search: "" })}>
+          <TouchableOpacity
+            onPress={() => setFilters({ ...filters, search: "" })}
+          >
             <Ionicons name="close-circle" size={18} color={SUBTEXT} />
           </TouchableOpacity>
         )}
@@ -209,7 +216,10 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={[styles.kanbanBtn, { backgroundColor: BRAND }]} onPress={nextView}>
+        <TouchableOpacity
+          style={[styles.kanbanBtn, { backgroundColor: BRAND }]}
+          onPress={nextView}
+        >
           <Ionicons
             name={
               viewMode === "list"
@@ -222,15 +232,26 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
             color="#fff"
           />
           <Text style={styles.navText}>
-            {viewMode === "list" ? "Kanban" : viewMode === "kanban" ? "Calendario" : "Lista"}
+            {viewMode === "list"
+              ? "Kanban"
+              : viewMode === "kanban"
+              ? "Calendario"
+              : "Lista"}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Contenido */}
+      {/* ✅ ARREGLO: 
+        Cambiamos 'View' por 'ScrollView' cuando viewMode es 'calendar'
+        para permitir que el TaskCalendar (grid + lista) pueda escrolear.
+        Quitamos el padding de 'styles.content' y lo ponemos dentro
+        de las vistas de 'list' y 'kanban' para que el calendario
+        pueda usar todo el ancho.
+      */}
       <View style={[styles.content, { backgroundColor: CARD_BG }]}>
         {viewMode === "list" && (
-          <>
+          <View style={{ flex: 1, padding: 16 }}>
             <TaskFilters
               filters={filters}
               setFilters={setFilters}
@@ -240,43 +261,50 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
               setShowFilters={setShowFilters}
             />
 
-            {filteredTasks.length === 0 ? (
+            {tasks.length === 0 ? (
               <View style={styles.emptyState}>
                 <Text style={[styles.emptyStateText, { color: SUBTEXT }]}>
-                  No hay tareas en este proyecto.
+                  No se encontraron tareas.
                 </Text>
                 <Text style={[styles.emptyStateSubtext, { color: SUBTEXT }]}>
-                  Crea la primera tarea usando el botón +
+                  Intenta ajustar los filtros o crea una nueva tarea.
                 </Text>
               </View>
             ) : (
-          <TaskList
-            tasks={filteredTasks}
-            sortBy={sortBy}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            onAssign={(id) => {
-              setSelectedTaskId(id);
-              setAssignModalVisible(true);
-            }}
-            onTaskPress={handleTaskPress}
-            columns={columns} 
-          />
-
+              <TaskList
+                tasks={tasks}
+                sortBy={sortBy}
+                sortDirection={sortDirection}
+                onSort={handleSort}
+                onAssign={(id) => {
+                  setSelectedTaskId(id);
+                  setAssignModalVisible(true);
+                }}
+                onTaskPress={handleTaskPress}
+                columns={columns}
+              />
             )}
-          </>
+          </View>
         )}
 
-        {viewMode === "kanban" && <TaskKanban tasks={tasks} />}
+        {viewMode === "kanban" && (
+          <View style={{ flex: 1, padding: 16 }}>
+            <TaskKanban tasks={allTasksForCalendar} />
+          </View>
+        )}
 
+        {/* ✅ ARREGLO: Envolvemos TaskCalendar en un ScrollView */}
         {viewMode === "calendar" && (
-          <TaskCalendar
-            tasks={tasks}
-            currentStartDate={currentStartDate}
-            setCurrentStartDate={setCurrentStartDate}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
-          />
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
+            <TaskCalendar
+              tasks={allTasksForCalendar}
+              currentStartDate={currentStartDate}
+              setCurrentStartDate={setCurrentStartDate}
+              selectedDate={selectedDate}
+              setSelectedDate={setSelectedDate}
+              onTaskDateUpdate={handleTaskDateUpdate}
+            />
+          </ScrollView>
         )}
       </View>
 
@@ -286,7 +314,10 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
         onPress={async () => {
           const userId = await getUserId();
           if (!userId) {
-            Alert.alert("Error", "No se encontró el ID del usuario autenticado.");
+            Alert.alert(
+              "Error",
+              "No se encontró el ID del usuario autenticado."
+            );
             return;
           }
           if (!projectId) {
@@ -321,6 +352,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
   );
 }
 
+// Estilos de 'develop'
 const styles = StyleSheet.create({
   container: { flex: 1 },
 
@@ -346,7 +378,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
-    marginRight: 90,
+    marginRight: "auto",
     height: 36,
   },
 
@@ -358,7 +390,7 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-    padding: 16,
+    // padding: 16, // <-- ✅ ARREGLO: quitamos padding de aquí
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
@@ -375,8 +407,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  emptyState: { alignItems: "center", justifyContent: "center", padding: 40 },
-  emptyStateText: { fontSize: 16, marginBottom: 8 },
+  emptyState: { alignItems: "center", justifyContent: "center", padding: 40, flex: 1 },
+  emptyStateText: { fontSize: 16, marginBottom: 8, fontWeight: "600" },
   emptyStateSubtext: { fontSize: 14, textAlign: "center" },
 
   // Search bar
@@ -401,3 +433,4 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
 });
+

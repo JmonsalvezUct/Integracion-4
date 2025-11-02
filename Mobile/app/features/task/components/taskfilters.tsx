@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, Switch, TextInput, StyleSheet } from "react-native";
 import { useThemedColors } from "@/hooks/use-theme-color";
 
+// ✅ Interfaz actualizada para coincidir con useTasks
 interface Filters {
   status: string;
   assignee: string;
@@ -10,7 +11,6 @@ interface Filters {
   search: string;
   tag: string;
 }
-
 
 interface Columns {
   status: boolean;
@@ -32,6 +32,7 @@ interface ColSwitchProps {
   label: string;
   value: boolean;
   onChange: () => void;
+  textColor: string; // Añadido para pasar el color del tema
 }
 
 export function TaskFilters({
@@ -52,114 +53,154 @@ export function TaskFilters({
     PLACEHOLDER,
   } = useThemedColors();
 
+  // No mostramos nada si showFilters es falso
+  if (!showFilters) {
+    return null;
+  }
+
   return (
     <View style={[styles.wrapper, { backgroundColor: BG }]}>
-      {showFilters && (
-        <View
-          style={[
-            styles.container,
-            { backgroundColor: CARD_BG, borderColor: CARD_BORDER },
-          ]}
-        >
-          {/* 🔹 Mostrar/ocultar columnas */}
-          <View style={styles.switchMatrix}>
-            <View style={styles.switchRow}>
-              <ColSwitch
-                label="Estado"
-                value={columns.status}
-                onChange={() => toggleCol("status")}
-                textColor={TEXT}
-              />
-              <ColSwitch
-                label="Responsable"
-                value={columns.assignee}
-                onChange={() => toggleCol("assignee")}
-                textColor={TEXT}
-              />
-            </View>
-
-            <View style={styles.switchRow}>
-              <ColSwitch
-                label="Fecha límite"
-                value={columns.dueDate}
-                onChange={() => toggleCol("dueDate")}
-                textColor={TEXT}
-              />
-              <ColSwitch
-                label="Prioridad"
-                value={columns.priority}
-                onChange={() => toggleCol("priority")}
-                textColor={TEXT}
-              />
-            </View>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: CARD_BG, borderColor: CARD_BORDER },
+        ]}
+      >
+        {/* 🔹 Mostrar/ocultar columnas */}
+        <View style={styles.switchMatrix}>
+          <View style={styles.switchRow}>
+            <ColSwitch
+              label="Estado"
+              value={columns.status}
+              onChange={() => toggleCol("status")}
+              textColor={TEXT}
+            />
+            <ColSwitch
+              label="Responsable"
+              value={columns.assignee}
+              onChange={() => toggleCol("assignee")}
+              textColor={TEXT}
+            />
           </View>
 
-          {/* 🔹 Campos de filtro */}
-          <View style={styles.filtersSection}>
-            <Text style={[styles.sectionTitle, { color: TEXT }]}>Filtros:</Text>
-
-            {/* Filtro Estado */}
-            <Text style={[styles.label, { color: SUBTEXT }]}>Estado:</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-              ]}
-              placeholder="Ej. en_progreso / completed"
-              placeholderTextColor={PLACEHOLDER}
-              value={filters.status}
-              onChangeText={(t) =>
-                setFilters((prev) => ({ ...prev, status: t.trim() }))
-              }
+          <View style={styles.switchRow}>
+            <ColSwitch
+              label="Fecha límite"
+              value={columns.dueDate}
+              onChange={() => toggleCol("dueDate")}
+              textColor={TEXT}
             />
-
-            {/* Filtro Responsable */}
-            <Text style={[styles.label, { color: SUBTEXT }]}>Responsable:</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-              ]}
-              placeholder="Ej. Juan"
-              placeholderTextColor={PLACEHOLDER}
-              value={filters.assignee}
-              onChangeText={(t) =>
-                setFilters((prev) => ({ ...prev, assignee: t.trim() }))
-              }
-            />
-
-            {/* Filtro Fecha límite */}
-            <Text style={[styles.label, { color: SUBTEXT }]}>Fecha (YYYY-MM-DD):</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-              ]}
-              placeholder="Ej. 2025-11-01"
-              placeholderTextColor={PLACEHOLDER}
-              value={filters.dueDate}
-              onChangeText={(t) =>
-                setFilters((prev) => ({ ...prev, dueDate: t.trim() }))
-              }
-            />
-
-            {/* Filtro Prioridad */}
-            <Text style={[styles.label, { color: SUBTEXT }]}>Prioridad:</Text>
-            <TextInput
-              style={[
-                styles.input,
-                { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-              ]}
-              placeholder="Ej. high / medium / low"
-              placeholderTextColor={PLACEHOLDER}
-              value={filters.priority}
-              onChangeText={(t) =>
-                setFilters((prev) => ({ ...prev, priority: t.trim() }))
-              }
+            <ColSwitch
+              label="Prioridad"
+              value={columns.priority}
+              onChange={() => toggleCol("priority")}
+              textColor={TEXT}
             />
           </View>
         </View>
-      )}
+
+        {/* 🔹 Campos de filtro */}
+        <View style={styles.filtersSection}>
+          <Text style={[styles.sectionTitle, { color: TEXT }]}>Filtros:</Text>
+
+          {/* Filtro Estado */}
+          <Text style={[styles.label, { color: SUBTEXT }]}>Estado:</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: INPUT_BG,
+                borderColor: INPUT_BORDER,
+                color: TEXT,
+              },
+            ]}
+            placeholder="Ej. en_progreso / completed"
+            placeholderTextColor={PLACEHOLDER}
+            value={filters.status}
+            onChangeText={(t) =>
+              setFilters((prev) => ({ ...prev, status: t }))
+            }
+          />
+
+          {/* Filtro Responsable */}
+          <Text style={[styles.label, { color: SUBTEXT }]}>Responsable:</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: INPUT_BG,
+                borderColor: INPUT_BORDER,
+                color: TEXT,
+              },
+            ]}
+            placeholder="Ej. Juan"
+            placeholderTextColor={PLACEHOLDER}
+            value={filters.assignee}
+            onChangeText={(t) =>
+              setFilters((prev) => ({ ...prev, assignee: t }))
+            }
+          />
+
+          {/* Filtro Fecha límite */}
+          <Text style={[styles.label, { color: SUBTEXT }]}>
+            Fecha (YYYY-MM-DD):
+          </Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: INPUT_BG,
+                borderColor: INPUT_BORDER,
+                color: TEXT,
+              },
+            ]}
+            placeholder="Ej. 2025-11-01"
+            placeholderTextColor={PLACEHOLDER}
+            value={filters.dueDate}
+            onChangeText={(t) =>
+              setFilters((prev) => ({ ...prev, dueDate: t }))
+            }
+          />
+
+          {/* Filtro Prioridad */}
+          <Text style={[styles.label, { color: SUBTEXT }]}>Prioridad:</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: INPUT_BG,
+                borderColor: INPUT_BORDER,
+                color: TEXT,
+              },
+            ]}
+            placeholder="Ej. high / medium / low"
+            placeholderTextColor={PLACEHOLDER}
+            value={filters.priority}
+            onChangeText={(t) =>
+              setFilters((prev) => ({ ...prev, priority: t.toLowerCase() }))
+            }
+          />
+
+          {/* Filtro Tag */}
+          <Text style={[styles.label, { color: SUBTEXT }]}>Tag:</Text>
+          <TextInput
+            style={[
+              styles.input,
+              {
+                backgroundColor: INPUT_BG,
+                borderColor: INPUT_BORDER,
+                color: TEXT,
+              },
+            ]}
+            placeholder="Ej. frontend / bug"
+            placeholderTextColor={PLACEHOLDER}
+            value={filters.tag}
+            onChangeText={(t) =>
+              setFilters((prev) => ({ ...prev, tag: t.toLowerCase() }))
+            }
+          />
+        </View>
+      </View>
     </View>
   );
 }
@@ -169,7 +210,7 @@ function ColSwitch({
   value,
   onChange,
   textColor,
-}: ColSwitchProps & { textColor: string }) {
+}: ColSwitchProps) {
   const { CARD_BG, CARD_BORDER } = useThemedColors();
 
   return (
@@ -230,6 +271,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     marginBottom: 4,
+    marginTop: 4,
   },
   input: {
     borderWidth: 1,
