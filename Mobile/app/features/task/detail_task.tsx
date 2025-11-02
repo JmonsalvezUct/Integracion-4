@@ -1053,7 +1053,7 @@ useEffect(() => {
                 title="Ver historial"
                 onPress={() =>
                   router.push({
-                    pathname: '/features/task/components/sprintscreen',
+                    pathname: '/features/task/components/taskhistory',
                     params: { projectId: task.projectId, taskId },
                   })
                 }
