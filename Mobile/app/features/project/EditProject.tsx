@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  Text,
-  Alert,
-  StyleSheet,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, Alert, StyleSheet, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
 
 // 🎨 Hook de colores centralizado
 import { useThemedColors } from "@/hooks/use-theme-color";
+// 🧱 Layout y márgenes globales
+import LayoutContainer from "@/components/layout/layout_container";
+import { CONTAINER } from "@/constants/spacing";
+
+// ✅ Componentes reutilizables
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 
 export default function EditProjectScreen({ projectId }: { projectId: string }) {
   const id = projectId;
@@ -25,16 +24,8 @@ export default function EditProjectScreen({ projectId }: { projectId: string }) 
   const [projectTitle, setProjectTitle] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Tokens del tema (igual que en tasklist)
-  const {
-    BG,
-    TEXT,
-    BRAND,
-    INPUT_BG,
-    INPUT_BORDER,
-    PLACEHOLDER,
-    SUBTEXT,
-  } = useThemedColors();
+  // Tokens del tema (no hardcode)
+  const { BG, TEXT, BRAND, PLACEHOLDER, SUBTEXT } = useThemedColors();
 
   useEffect(() => {
     const loadProject = async () => {
@@ -106,59 +97,59 @@ export default function EditProjectScreen({ projectId }: { projectId: string }) 
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: BG }]}>
-        <ActivityIndicator size="large" color={BRAND} />
-      </View>
+      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={BRAND} />
+        </View>
+      </LayoutContainer>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: BG }]}>
-      <Text style={[styles.title, { color: TEXT }]}>Editar Proyecto</Text>
-
-      <Text style={[styles.projectName, { color: SUBTEXT }]}>{projectTitle}</Text>
-
-      <TextInput
-        placeholder="Nuevo nombre"
-        placeholderTextColor={PLACEHOLDER}
-        value={name}
-        onChangeText={setName}
-        style={[
-          styles.input,
-          { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-        ]}
-      />
-
-      <TextInput
-        placeholder="Descripción"
-        placeholderTextColor={PLACEHOLDER}
-        value={description}
-        onChangeText={setDescription}
-        style={[
-          styles.input,
-          styles.textArea,
-          { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-        ]}
-        multiline
-      />
-
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: BRAND }]}
-        onPress={handleSave}
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+      <View
+        style={{
+          flex: 1,
+          width: "100%",
+          paddingHorizontal: CONTAINER.horizontal,
+          paddingTop: CONTAINER.top,
+          paddingBottom: CONTAINER.bottom,
+          alignItems: "center",
+        }}
       >
-        <Text style={styles.buttonText}>GUARDAR CAMBIOS</Text>
-      </TouchableOpacity>
-    </View>
+        <Text style={[styles.title, { color: TEXT }]}>Editar Proyecto</Text>
+        <Text style={[styles.projectName, { color: SUBTEXT }]}>{projectTitle}</Text>
+
+        {/* Inputs con relleno gris del tema (Colors.card) y borde que usa Colors.primary al foco */}
+        <Input
+          placeholder="Nuevo nombre"
+          placeholderTextColor={PLACEHOLDER}
+          value={name}
+          onChangeText={setName}
+          variant="surface"
+          containerStyle={{ width: "100%", marginBottom: 16 }}
+          autoCapitalize="sentences"
+          returnKeyType="next"
+        />
+
+        <Input
+          placeholder="Descripción"
+          placeholderTextColor={PLACEHOLDER}
+          value={description}
+          onChangeText={setDescription}
+          multiline
+          variant="surface"
+          containerStyle={{ width: "100%", marginBottom: 24 }}
+          inputStyle={{ height: 100, textAlignVertical: "top" }}
+        />
+
+        <Button title="GUARDAR CAMBIOS" onPress={handleSave} fullWidth />
+      </View>
+    </LayoutContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -174,30 +165,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 24,
     textAlign: "center",
-  },
-  input: {
-    width: "100%",
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: "top",
-  },
-  button: {
-    width: "100%",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
   },
 });

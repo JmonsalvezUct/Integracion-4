@@ -2,3 +2,7 @@ Youtrack/**/*.csv
 Youtrack/**/*.pdf
 Youtrack/**/*.png
 .github
+src/generated/
+.dist
+node_modules/
+.env
