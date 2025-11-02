@@ -7,33 +7,28 @@
     import { useSprints } from "../hooks/useSprints";
     import { useSprintForm } from "../hooks/useSprintForm";
 
-    export default function SprintsScreen() {
-    const params = useLocalSearchParams();
-    const projectId = Number(Array.isArray(params.projectId) ? params.projectId[0] : params.projectId);
+ 
+
+
+    export default function SprintsScreen({ projectId }: { projectId: string }) {
     const router = useRouter();
-    const { sprints, loading, fetchSprints, deleteSprint, finalizeSprint } = useSprints(projectId);
+    const { sprints, loading, fetchSprints, deleteSprint, finalizeSprint } = useSprints(Number(projectId));
     const {
-    newSprint,
-    setNewSprint,
-    dateErrors,
-    setDateErrors, 
-    formatDateInput,
-    validateDate,
-    createSprint,
-    } = useSprintForm(projectId, fetchSprints);
+        newSprint,
+        setNewSprint,
+        dateErrors,
+        setDateErrors,
+        formatDateInput,
+        validateDate,
+        createSprint,
+    } = useSprintForm(Number(projectId), fetchSprints);
 
 
     const [modalVisible, setModalVisible] = useState(false);
 
     return (
         <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <Text style={styles.headerText}>Sprints del Proyecto</Text>
-        </View>
+
 
         {/* Encabezado */}
         <View style={styles.topRow}>
@@ -47,41 +42,47 @@
         {loading ? (
             <ActivityIndicator size="large" color="#3B34FF" style={{ marginTop: 20 }} />
         ) : (
-            <FlatList
-            data={sprints}
-            keyExtractor={(item) => item.id.toString()}
-            contentContainerStyle={{ padding: 16 }}
-            renderItem={({ item }) => (
-                <View style={styles.card}>
+        <FlatList
+        data={sprints}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={{ padding: 16 }}
+        renderItem={({ item }) => (
+            <TouchableOpacity
+            onPress={() =>
+                router.push({
+                pathname: "/features/task/components/sprint-detail", 
+                params: { projectId, sprintId: item.id },
+                })
+            }
+            activeOpacity={0.8}
+            >
+            <View style={styles.card}>
                 <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle}>{item.name}</Text>
-                    <View style={styles.cardActions}>
-                    <TouchableOpacity onPress={() => finalizeSprint(item.id)}>
-                        <Ionicons
-                        name="checkmark-circle"
-                        size={22}
-                        color={item.isActive ? "#009688" : "#999"}
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteSprint(item.id)}>
-                        <Ionicons name="trash-outline" size={22} color="#FF4D4D" />
-                    </TouchableOpacity>
-                    </View>
-                </View>
-                <Text style={styles.cardDesc}>{item.description || "Sin descripción"}</Text>
-                <Text style={styles.cardDate}>
-                    {new Date(item.startDate).toLocaleDateString()} →{" "}
-                    {item.endDate ? new Date(item.endDate).toLocaleDateString() : "En curso"}
+                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text
+                    style={{
+                    color: item.isActive ? "#009688" : "#999",
+                    fontWeight: "600",
+                    }}
+                >
+                    {item.isActive ? "Activo" : "Finalizado"}
                 </Text>
                 </View>
-            )}
-            />
+
+                <Text style={styles.cardDesc}>{item.description || "Sin descripción"}</Text>
+
+                <Text style={styles.cardDate}>
+                {new Date(item.startDate).toLocaleDateString()} →{" "}
+                {item.endDate ? new Date(item.endDate).toLocaleDateString() : "En curso"}
+                </Text>
+            </View>
+            </TouchableOpacity>
+        )}
+        />
+
         )}
 
-        {/* Botón flotante */}
-        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-            <Ionicons name="add" size={28} color="#fff" />
-        </TouchableOpacity>
+
 
         {/* Modal del formulario */}
         <Modal visible={modalVisible} transparent animationType="slide">
@@ -147,7 +148,7 @@
     );
     }
     const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#F8F9FF" },
+    container: { flex: 1, backgroundColor: "#fff" },
     header: {
         flexDirection: "row",
         alignItems: "center",
@@ -163,7 +164,7 @@
     },
     sectionTitle: { fontSize: 20, fontWeight: "700", color: "#1A1A1A" },
     newButton: {
-        backgroundColor: "#3B34FF",
+        backgroundColor: "#0097A7",
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 8,
@@ -186,7 +187,7 @@
         position: "absolute",
         right: 24,
         bottom: 24,
-        backgroundColor: "#3B34FF",
+        backgroundColor: "#0097A7",
         width: 56,
         height: 56,
         borderRadius: 28,
@@ -239,4 +240,20 @@
         borderRadius: 10,
     },
     createText: { color: "#fff", fontWeight: "600" },
+
+    stateButton: {
+    backgroundColor: "#E3F2FD",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    alignSelf: "flex-start",
+    },
+
+    stateButtonText: {
+    color: "#1565C0",
+    fontWeight: "600",
+    fontSize: 13,
+    },
+
+    
     });

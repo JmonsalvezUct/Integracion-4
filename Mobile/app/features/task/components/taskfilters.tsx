@@ -7,7 +7,10 @@ interface Filters {
   assignee: string;
   dueDate: string;
   priority: string;
+  search: string;
+  tag: string;
 }
+
 
 interface Columns {
   status: boolean;
