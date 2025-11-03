@@ -13,6 +13,7 @@ import swaggerUI from 'swagger-ui-express'
 import specs from '../swagger/swagger.js';
 import statsRoutes from '../modules/stats/stats.routes.js';
 import sprintsRoutes from "../modules/sprints/sprints.routes.js";
+
 const router = Router();
 
 router.use('/health', healthRoutes);      
