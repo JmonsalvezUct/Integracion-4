@@ -12,6 +12,7 @@ import { getAccessToken } from "@/lib/secure-store";
 import DetailProject from "../project/DetailProject";
 import EditProject from "../project/EditProject";
 import { TaskScreen } from "../task/screens/taskscreen";
+import SprintsScreen  from "../task/components/sprintscreen";
 import { apiFetch } from "@/lib/api-fetch";
 
 // 🎨 Tema + layout global
@@ -30,7 +31,8 @@ export default function ProjectOverview() {
   const params = useLocalSearchParams();
   const projectId = (params.projectId || params.id) as string;
 
-  const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit" | "stats">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit" | "stats" | "sprints">("details");
+
   const [projectName, setProjectName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -147,6 +149,20 @@ export default function ProjectOverview() {
             Estadísticas
           </Text>
         </TouchableOpacity>
+          
+        <TouchableOpacity
+          style={[
+            styles.tabBtn,
+            activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+          ]}
+          onPress={() => setActiveTab("sprints")}
+        >
+          <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
+            Sprints
+          </Text>
+        </TouchableOpacity>
+
+        
       </View>
     </FullBleed>
 
@@ -165,6 +181,8 @@ export default function ProjectOverview() {
       {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
       {activeTab === "edit" && <EditProject projectId={projectId} />}
       {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
+      {activeTab === "sprints" && <SprintsScreen projectId={projectId} />}
+
     </View>
   </LayoutContainer>
   );

@@ -78,7 +78,7 @@ export default function NewTaskScreen() {
     BG,
     TEXT,
     SUBTEXT,
-    BRAND,           // usa #0a7ea4 como fallback
+    BRAND,         
     CARD_BG,
     CARD_BORDER,
     INPUT_BG,
@@ -164,7 +164,7 @@ export default function NewTaskScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!tagRes.ok) {
-        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+        console.warn(" No se pudo asignar la etiqueta:", await tagRes.text());
       }
     }
 
@@ -175,7 +175,7 @@ export default function NewTaskScreen() {
       });
 
       if (!tagRes.ok) {
-        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+        console.warn(" No se pudo asignar la etiqueta:", await tagRes.text());
       }
     }
 
