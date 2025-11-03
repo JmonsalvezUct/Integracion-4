@@ -15,6 +15,10 @@ export const register = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Error en el registro' });
   }
 };
+export const me = async (req: AuthRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: "No autenticado" });
+  return res.json({ user: req.user });
+};
 
 export const login = async (req: Request, res: Response) => {
   const parse = LoginSchema.safeParse(req.body);
@@ -79,4 +83,6 @@ export const recoverPassword = async (req: Request, res: Response) => {
     console.error(error);
     return res.status(500).json({ message: "Error interno del servidor" });
 };
+
+
 };
