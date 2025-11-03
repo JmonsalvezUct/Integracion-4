@@ -30,7 +30,7 @@ export default function ProjectOverview() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const projectId = (params.projectId || params.id) as string;
-
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit" | "stats" | "sprints">("details");
 
   const [projectName, setProjectName] = useState<string>("");
@@ -43,7 +43,25 @@ export default function ProjectOverview() {
 
   const insets = useSafeAreaInsets();
   const gutter = useGutter();
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
 
+        const res = await apiFetch("/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setUserRole(data.role || "user"); // 👈 Asignamos rol (por defecto "user")
+      } catch (err) {
+        console.error("Error al cargar rol del usuario:", err);
+        setUserRole("user"); // fallback
+      }
+    };
+
+  loadUserRole();
+}, []);
   useEffect(() => {
     const loadProjectName = async () => {
       try {
@@ -150,6 +168,7 @@ export default function ProjectOverview() {
           </Text>
         </TouchableOpacity>
           
+      {userRole === "admin" && (
         <TouchableOpacity
           style={[
             styles.tabBtn,
@@ -161,6 +180,8 @@ export default function ProjectOverview() {
             Sprints
           </Text>
         </TouchableOpacity>
+      )}
+
 
         
       </View>
@@ -181,7 +202,18 @@ export default function ProjectOverview() {
       {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
       {activeTab === "edit" && <EditProject projectId={projectId} />}
       {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
-      {activeTab === "sprints" && <SprintsScreen projectId={projectId} />}
+      {activeTab === "sprints" && (
+      userRole === "admin" ? (
+        <SprintsScreen projectId={projectId} />
+      ) : (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
+          <Text style={{ color: "red", fontWeight: "600" }}>
+            ❌ No tienes permisos para acceder a esta sección.
+          </Text>
+        </View>
+      )
+    )}
+
 
     </View>
   </LayoutContainer>

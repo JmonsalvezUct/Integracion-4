@@ -1,10 +1,18 @@
 import {type Request, type Response, type NextFunction } from 'express';
-import jwt from 'jsonwebtoken'
+
 import { env } from '../config/env.js';
 import { body, validationResult } from "express-validator";
+import jwt from "jsonwebtoken";
+import type { Secret, JwtPayload } from "jsonwebtoken";
 
+export interface AuthUser {
+  id: number;
+  email?: string;
+  name?: string;
+  role?: string;
+}
 export interface AuthRequest extends Request {
-  user?: { id: number };
+  user?: AuthUser;
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -12,14 +20,33 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
   if (!header?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'No autorizado: falta token' });
   }
-  const token = header.split(' ')[1];
+  const parts = header.split(" ");
+  const token = parts[1];
+  if (!token) {
+    return res.status(401).json({ error: "No autorizado: token mal formado" });
+  }
 
   try {
-    const decoded = jwt.verify(token!, env.JWT_SECRET)  as { id: number }; 
-    req.user = { id: decoded.id };
+    const secret = env.JWT_SECRET as string;
+
+    const decoded = jwt.verify(token, secret) as JwtPayload | string;
+
+    if (typeof decoded === "string" || !decoded) {
+      return res.status(401).json({ error: "Token inválido o mal formado" });
+    }
+
+    const { id, email, name, role } = decoded as {
+      id: number;
+      email?: string;
+      name?: string;
+      role?: string;
+    };
+
+    req.user = { id, email, name, role: role || "user" };
     next();
-  } catch (error) { 
-    return res.status(401).json({ error: 'Token inválido o expirado' });
+  } catch (error) {
+    console.error("Error en authMiddleware:", error);
+    return res.status(401).json({ error: "Token inválido o expirado" });
   }
 };
 
