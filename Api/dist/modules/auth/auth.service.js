@@ -1,0 +1,118 @@
+import bcrypt from 'bcrypt';
+import { addDays } from 'date-fns';
+import { PASSWORD, TOKEN } from '../../config/constants.js';
+import { authRepository } from './auth.repository.js';
+import { sendRecoveryEmail } from '../services/email.js';
+import { signAccessToken, generateRefreshTokenValue, generateResetToken } from '../../utils/token.js';
+export const authService = {
+    async register(payload) {
+        const exists = await authRepository.findUserByEmail(payload.email);
+        if (exists)
+            throw new Error('EMAIL_TAKEN');
+        const hashed = await bcrypt.hash(payload.password, PASSWORD.SALT_ROUNDS);
+        const user = await authRepository.createUser({
+            name: payload.name,
+            email: payload.email,
+            password: hashed,
+            profilePicture: payload.profilePicture,
+        });
+        const accessToken = signAccessToken(user);
+        const refreshToken = generateRefreshTokenValue();
+        const expiresAt = addDays(new Date(), TOKEN.REFRESH_EXPIRES_IN_DAYS);
+        await authRepository.createRefreshToken({
+        token: refreshToken,
+        userId: user.id,
+        expiresAt,
+        userAgent: 'registration', 
+        });
+
+        return {
+        accessToken,
+        refreshToken,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role || "user",
+            profilePicture: user.profilePicture,
+        },
+        };
+
+    },
+    async login(payload, userAgent) {
+        const user = await authRepository.findUserByEmail(payload.email);
+        if (!user)
+            throw new Error('INVALID_CREDENTIALS');
+        const ok = await bcrypt.compare(payload.password, user.password);
+        if (!ok)
+            throw new Error('INVALID_CREDENTIALS');
+        const accessToken = signAccessToken(user);
+        const refreshToken = generateRefreshTokenValue();
+        const expiresAt = addDays(new Date(), TOKEN.REFRESH_EXPIRES_IN_DAYS);
+        await authRepository.createRefreshToken({
+            token: refreshToken,
+            userId: user.id,
+            expiresAt,
+            userAgent,
+        });
+        return {
+            accessToken,
+            refreshToken,
+            user: { id: user.id, name: user.name, email: user.email, profilePicture: user.profilePicture },
+        };
+    },
+    async refresh(refreshToken, userAgent) {
+        const record = await authRepository.findRefreshToken(refreshToken);
+        if (!record)
+            throw new Error('REFRESH_NOT_FOUND');
+        if (record.expiresAt < new Date()) {
+            await authRepository.deleteRefreshToken(refreshToken);
+            throw new Error('REFRESH_EXPIRED');
+        }
+        const accessToken = signAccessToken(user);;
+        const newRefresh = generateRefreshTokenValue();
+        const expiresAt = addDays(new Date(), TOKEN.REFRESH_EXPIRES_IN_DAYS);
+        await authRepository.deleteRefreshToken(refreshToken);
+        await authRepository.createRefreshToken({
+            token: newRefresh,
+            userId: record.userId,
+            expiresAt,
+            userAgent,
+        });
+        return { accessToken, refreshToken: newRefresh };
+    },
+    async logout(refreshToken) {
+        const record = await authRepository.findRefreshToken(refreshToken);
+        if (!record)
+            throw new Error('REFRESH_NOT_FOUND');
+        try {
+            await authRepository.deleteRefreshToken(refreshToken);
+        }
+        catch (error) {
+            console.error('Error al intentar cerrar la sesión', error);
+            throw new Error('LOGOUT_ERROR');
+        }
+    },
+    async recoverPassword(email) {
+        const user = await authRepository.findUserByEmail(email);
+        if (!user) {
+            // Respuesta genérica para no revelar información
+            return { message: "Si el correo existe, enviaremos un enlace de recuperación." };
+        }
+        const { token, expires } = generateResetToken();
+        await authRepository.saveResetToken(email, token, expires);
+        const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+        await sendRecoveryEmail(email, resetLink);
+        return { message: "Si el correo existe, enviaremos un enlace de recuperación." };
+    },
+    async resetPassword(token, newPassword) {
+        const user = await authRepository.findUserByResetToken(token);
+        if (!user) {
+            throw new Error("Token inválido o expirado");
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await authRepository.updatePassword(user.id, hashedPassword);
+        return { message: "Contraseña actualizada correctamente" };
+    }
+};
+//# sourceMappingURL=auth.service.js.map
