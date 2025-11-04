@@ -2,6 +2,12 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { env } from '../config/env.js';
 import { TOKEN } from '../config/constants.js';
+interface UserPayload {
+  id: number;
+  email?: string;
+  name?: string;
+  role?: string;
+}
 
 export function generateResetToken() {
   const token = crypto.randomBytes(32).toString("hex");
@@ -9,9 +15,24 @@ export function generateResetToken() {
   return { token, expires };
 }
 
-export function signAccessToken(userId: number) {
-  return jwt.sign({ id: userId }, env.JWT_SECRET, { expiresIn: TOKEN.ACCESS_EXPIRES_IN });
+
+
+// 🔹 Token de acceso (JWT principal)
+export function signAccessToken(user: UserPayload) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role || "user",
+    },
+    env.JWT_SECRET as string, // ⚠️ asegúrate que sea string
+    { expiresIn: TOKEN.ACCESS_EXPIRES_IN }
+  );
 }
+
+
+
 
 export function generateRefreshTokenValue() {
   return crypto.randomBytes(48).toString('hex');

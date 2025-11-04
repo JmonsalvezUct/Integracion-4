@@ -53,7 +53,8 @@ export default function ProjectOverview() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
-        setUserRole(data.role || "user"); // 👈 Asignamos rol (por defecto "user")
+        setUserRole(data.user?.role || "user");
+
       } catch (err) {
         console.error("Error al cargar rol del usuario:", err);
         setUserRole("user"); // fallback
