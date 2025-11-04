@@ -21,7 +21,7 @@ model User {
   refreshTokens     RefreshToken[]
   assignedTasks     Task[]          @relation("AssignedTasks")
   createdTasks      Task[]          @relation("CreatedTasks")
-  projects          UserProject[]
+  projects          UserProject[]   @relation("UserProjects")
   times             TaskTime[]
 }
 
@@ -47,7 +47,7 @@ model UserProject {
   projectId Int
   role      ProjectRoleType @default(developer)
   project   Project         @relation(fields: [projectId], references: [id])
-  user      User            @relation(fields: [userId], references: [id])
+  user      User            @relation("UserProjects", fields: [userId], references: [id])
 }
 
 model Task {

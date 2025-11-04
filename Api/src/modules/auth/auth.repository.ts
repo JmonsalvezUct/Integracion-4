@@ -3,6 +3,24 @@ import { prisma } from '../../app/loaders/prisma.js';
 export const authRepository = {
   findUserByEmail: (email: string) =>
     prisma.user.findUnique({ where: { email } }),
+  
+  findUserWithProjects: (userId: number) =>
+    prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        projects: {
+          include: {
+            project: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+
 
   createUser: (data: { name: string; email: string; password: string; profilePicture?: string }) =>
     prisma.user.create({ data }),
