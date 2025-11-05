@@ -29,7 +29,31 @@ export const ChangeStatusSchema = z.object({
   status: z.string(),
 });
 
+// --- NUEVO CÓDIGO AÑADIDO ---
+
+const TaskFiltersSchema = z.object({
+  status: z.nativeEnum(StatusType).optional(),
+  priority: z.nativeEnum(PriorityType).optional(),
+  assigneeId: z.number().int().optional(),
+  sprintId: z.number().int().optional(),
+});
+
+export const ExportTasksSchema = z.object({
+  format: z.enum(['csv', 'pdf']),
+  taskIds: z.array(z.number().int()).optional(), // Para selección manual
+  filters: TaskFiltersSchema.optional(), // Para selección por filtros
+});
+
+
+// --- FIN DE CÓDIGO AÑADIDO ---
+
+
 export type CreateTaskDTO = z.infer<typeof CreateTaskSchema>;
 export type UpdateTaskDTO = z.infer<typeof UpdateTaskSchema>;
 export type AssignTaskDTO = z.infer<typeof AssignTaskSchema>;
 export type ChangeStatusDTO = z.infer<typeof ChangeStatusSchema>;
+
+// --- NUEVO CÓDIGO AÑADIDO ---
+export type ExportTasksDTO = z.infer<typeof ExportTasksSchema>;
+export type TaskFiltersDTO = z.infer<typeof TaskFiltersSchema>;
+// --- FIN DE CÓDIGO AÑADIDO ---
