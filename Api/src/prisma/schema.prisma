@@ -8,21 +8,23 @@ datasource db {
 }
 
 model User {
-  id                Int             @id @default(autoincrement())
-  name              String
-  email             String          @unique
-  password          String
-  profilePicture    String?
-  resetToken        String?         @db.VarChar(255)
-  resetTokenExpires DateTime?
-  createdAt         DateTime        @default(now())
-  history           ChangeHistory[]
-  notifications     Notification[]
-  refreshTokens     RefreshToken[]
-  assignedTasks     Task[]          @relation("AssignedTasks")
-  createdTasks      Task[]          @relation("CreatedTasks")
-  projects          UserProject[]   @relation("UserProjects")
-  times             TaskTime[]
+  id                  Int             @id @default(autoincrement())
+  name                String
+  email               String          @unique
+  password            String
+  profilePicture      String?
+  resetToken          String?         @db.VarChar(255)
+  resetTokenExpires   DateTime?
+  createdAt           DateTime        @default(now())
+  history             ChangeHistory[]
+  notifications       Notification[]
+  refreshTokens       RefreshToken[]
+  assignedTasks       Task[]          @relation("AssignedTasks")
+  createdTasks        Task[]          @relation("CreatedTasks")
+  projects            UserProject[]   @relation("UserProjects")
+  times               TaskTime[]
+  invitationsReceived Invitation[]    @relation("InvitedUser")
+  invitationsSent     Invitation[]    @relation("InvitedBy")
 }
 
 model Project {
@@ -35,11 +37,11 @@ model Project {
   status      String          @default("active")
   history     ChangeHistory[]
   tasks       Task[]
+  invitations Invitation[]
   users       UserProject[]
   tags        Tag[]
   sprints     Sprint[]
 }
-
 
 model UserProject {
   id        Int             @id @default(autoincrement())
@@ -71,22 +73,24 @@ model Task {
   priority    PriorityType    @default(medium)
   tags        TaskTag[]
 }
+
 model Sprint {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
   startDate   DateTime
   endDate     DateTime
-  isActive    Boolean   @default(true)
+  isActive    Boolean  @default(true)
 
-  projectId   Int
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  tasks       Task[]
+  tasks Task[]
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
+
 model Attachment {
   id           Int      @id @default(autoincrement())
   taskId       Int
@@ -117,17 +121,17 @@ model NotificationType {
 }
 
 model ChangeHistory {
-  id          Int      @id @default(autoincrement())
-  date        DateTime @default(now())
+  id          Int        @id @default(autoincrement())
+  date        DateTime   @default(now())
   description String
   userId      Int
   taskId      Int?
   projectId   Int?
-  action      ActionType 
-  createdAt   DateTime @default(now())
-  project     Project? @relation(fields: [projectId], references: [id])
-  task        Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id])
+  action      ActionType
+  createdAt   DateTime   @default(now())
+  project     Project?   @relation(fields: [projectId], references: [id])
+  task        Task?      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user        User       @relation(fields: [userId], references: [id])
 }
 
 enum ActionType {
@@ -172,22 +176,54 @@ enum StatusType {
   archived
 }
 
- 
-
-model Tag {
-  id         Int        @id @default(autoincrement())
-  name       String
-  color      String? 
-  projectId  Int        
-  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  tasks      TaskTag[]   
-  @@unique([name, projectId]) 
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
+model Invitation {
+  id    Int    @id @default(autoincrement())
+  email String
+
+  invitedUserId Int?
+  invitedUser   User? @relation("InvitedUser", fields: [invitedUserId], references: [id])
+
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id])
+
+  invitedById Int
+  invitedBy   User @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  role   ProjectRoleType  @default(developer)
+  status InvitationStatus @default(PENDING)
+
+  token     String    @unique
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([projectId, email], map: "uniq_project_email")
+  @@index([email])
+  @@index([projectId])
+}
+
+model Tag {
+  id        Int     @id @default(autoincrement())
+  name      String
+  color     String?
+  projectId Int
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks TaskTag[]
+
+  @@unique([name, projectId])
+}
 
 model TaskTag {
-  id     Int   @id @default(autoincrement())
+  id     Int @id @default(autoincrement())
   taskId Int
   tagId  Int
 
@@ -201,15 +237,14 @@ model TaskTime {
   id              Int      @id @default(autoincrement())
   taskId          Int
   userId          Int
-  durationMinutes Int      // duration in minutes
+  durationMinutes Int
   date            DateTime @default(now())
   description     String?
   createdAt       DateTime @default(now())
 
-  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([taskId])
   @@index([userId])
 }
-
