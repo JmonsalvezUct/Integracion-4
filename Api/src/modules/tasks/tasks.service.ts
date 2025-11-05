@@ -65,7 +65,7 @@ updateTask: async (taskId: number, data: UpdateTaskDTO & { userId: number }) => 
   };
 
   for (const field of Object.keys(taskData) as (keyof UpdateTaskDTO)[]) {
-    const oldValue = oldTask[field];
+    const oldValue = (oldTask as any)[field];
     const newValue = taskData[field];
 
     const oldValStr = formatDate(oldValue);
