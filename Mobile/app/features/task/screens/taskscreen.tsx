@@ -1,3 +1,5 @@
+// REEMPLAZA TODO EL taskscreen.tsx con ESTE CÓDIGO:
+
 import React, { useState } from "react";
 import {
   SafeAreaView,
@@ -61,6 +63,12 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
     fetchTasks,
     updateTaskDate, // 🔥 Función importada de 'javier'
   } = useTasks(projectId);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTasks();
+    }, [fetchTasks])
+  );
 
   useFocusEffect(
     React.useCallback(() => {
@@ -222,21 +230,15 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
         >
           <Ionicons
             name={
-              viewMode === "list"
-                ? "albums-outline"
-                : viewMode === "kanban"
-                ? "calendar-outline"
-                : "list-outline"
+              viewMode === "list" ? "albums-outline" :
+              viewMode === "kanban" ? "calendar-outline" : "list-outline"
             }
             size={20}
             color="#fff"
           />
           <Text style={styles.navText}>
-            {viewMode === "list"
-              ? "Kanban"
-              : viewMode === "kanban"
-              ? "Calendario"
-              : "Lista"}
+            {viewMode === "list" ? "Kanban" :
+             viewMode === "kanban" ? "Calendario" : "Lista"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -364,7 +366,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 1,
   },
-
   kanbanBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -381,20 +382,17 @@ const styles = StyleSheet.create({
     marginRight: "auto",
     height: 36,
   },
-
   navText: {
     color: "#fff",
     marginLeft: 6,
     fontWeight: "600",
   },
-
   content: {
     flex: 1,
     // padding: 16, // <-- ✅ ARREGLO: quitamos padding de aquí
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },
-
   fab: {
     position: "absolute",
     right: 20,

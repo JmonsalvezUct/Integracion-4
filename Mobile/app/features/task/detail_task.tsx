@@ -500,6 +500,7 @@ useEffect(() => {
 
   const uploadFile = async () => {
     if (!selectedFile || !taskId || !task?.projectId) return;
+    if (!selectedFile || !taskId || !task?.projectId) return;
 
     setUploading(true);
     try {
@@ -510,6 +511,8 @@ useEffect(() => {
         name: selectedFile.name,
       } as any);
 
+      // ✅ RUTA CORREGIDA: usar projectId + taskId
+      const res = await apiFetchWithFormData(`/attachments/projects/${task.projectId}/tasks/${taskId}`, {
       // ✅ RUTA CORREGIDA: usar projectId + taskId
       const res = await apiFetchWithFormData(`/attachments/projects/${task.projectId}/tasks/${taskId}`, {
         method: 'POST',
@@ -542,6 +545,8 @@ useEffect(() => {
   const deleteAttachment = async (attachmentId: number) => {
     if (!task?.projectId) return;
     
+    if (!task?.projectId) return;
+    
     try {
       Alert.alert(
         'Eliminar archivo',
@@ -552,6 +557,8 @@ useEffect(() => {
             text: 'Eliminar',
             style: 'destructive' as const,
             onPress: async () => {
+              // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+              const res = await apiFetch(`/attachments/projects/${task.projectId}/attachments/${attachmentId}`, {
               // ✅ RUTA CORREGIDA: usar projectId + attachmentId
               const res = await apiFetch(`/attachments/projects/${task.projectId}/attachments/${attachmentId}`, {
                 method: 'DELETE',
@@ -596,7 +603,11 @@ useEffect(() => {
   const downloadAttachment = async (attachment: any) => {
     if (!task?.projectId) return;
     
+    if (!task?.projectId) return;
+    
     try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       // ✅ RUTA CORREGIDA: usar projectId + attachmentId
       const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       
@@ -613,7 +624,11 @@ useEffect(() => {
   const previewPdf = async (attachment: any) => {
     if (!task?.projectId) return;
     
+    if (!task?.projectId) return;
+    
     try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       // ✅ RUTA CORREGIDA: usar projectId + attachmentId
       const pdfUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       
@@ -634,7 +649,11 @@ useEffect(() => {
   const previewImage = async (attachment: any) => {
     if (!task?.projectId) return;
     
+    if (!task?.projectId) return;
+    
     try {
+      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
+      const imageUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       // ✅ RUTA CORREGIDA: usar projectId + attachmentId
       const imageUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
       

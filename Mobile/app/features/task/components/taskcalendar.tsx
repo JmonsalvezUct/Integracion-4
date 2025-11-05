@@ -37,6 +37,7 @@ export function TaskCalendar({
   selectedDate,
   setSelectedDate,
   onTaskDateUpdate,
+  onTaskDateUpdate,
 }: TaskCalendarProps) {
   const router = useRouter();
   const today = new Date();
@@ -150,6 +151,7 @@ export function TaskCalendar({
   };
 
   const handleTaskPress = (task: Task) => {
+    if (isDragging) return;
     if (isDragging) return;
     router.push({
       pathname: "/features/task/detail_task",
@@ -275,6 +277,7 @@ export function TaskCalendar({
     setCurrentStartDate(newDate);
     setSelectedDate(null);
     cancelDrag();
+    cancelDrag();
   };
 
   const goToNextMonth = () => {
@@ -282,6 +285,7 @@ export function TaskCalendar({
     newDate.setMonth(currentStartDate.getMonth() + 1);
     setCurrentStartDate(newDate);
     setSelectedDate(null);
+    cancelDrag();
     cancelDrag();
   };
 
@@ -557,6 +561,12 @@ export function TaskCalendar({
                     style={[styles.taskDot, { backgroundColor: "#fff" }]}
                   />
                 )}
+              {dayIsDragOver && (
+                <View style={styles.dropIndicator}>
+                  <Ionicons name="download-outline" size={16} color="white" />
+                </View>
+              )}
+
               {dayIsDragOver && (
                 <View style={styles.dropIndicator}>
                   <Ionicons name="download-outline" size={16} color="white" />

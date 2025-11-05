@@ -4,6 +4,7 @@
   "main": "index.js",
   "type": "module",
   "prisma": {
+  "prisma": {
     "schema": "./src/prisma/schema.prisma"
   },
 
@@ -64,13 +65,14 @@
     "@types/helmet": "^0.0.48",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.3.3",
+    "@types/node": "^24.3.3",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.10",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "tsx": "^4.20.5",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.2"
   }
 }
