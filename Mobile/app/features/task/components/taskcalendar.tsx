@@ -37,7 +37,6 @@ export function TaskCalendar({
   selectedDate,
   setSelectedDate,
   onTaskDateUpdate,
-  onTaskDateUpdate,
 }: TaskCalendarProps) {
   const router = useRouter();
   const today = new Date();

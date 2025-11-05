@@ -91,7 +91,6 @@ export function useTasks(projectId?: string | number) {
   const [users, setUsers] = useState<User[]>([]);
 
   const CL_TZ = "America/Santiago";
-  const CL_TZ = "America/Santiago";
 
   const fetchTasks = async () => {
     try {
@@ -102,16 +101,11 @@ export function useTasks(projectId?: string | number) {
 
       const token = await getAccessToken();
       const res = await apiFetch(`/tasks/projects/${projectId}/tasks`);
-      const token = await getAccessToken();
-      const res = await apiFetch(`/tasks/projects/${projectId}/tasks`);
 
-      if (!res.ok) throw new Error(await res.text());
       if (!res.ok) throw new Error(await res.text());
 
       const data = await res.json();
-      const data = await res.json();
 
-      const taskList = Array.isArray(data) ? data : data.tasks ?? [];
       const taskList = Array.isArray(data) ? data : data.tasks ?? [];
 
       setTasks(taskList);
@@ -266,7 +260,7 @@ export function useTasks(projectId?: string | number) {
       );
     });
 
-  if (!sortBy) return filtered;
+    if (!sortBy) return filtered;
 
     const sorted = [...filtered].sort((a, b) => {
       let valA: any, valB: any;
@@ -307,9 +301,7 @@ export function useTasks(projectId?: string | number) {
       });
 
       if (!res.ok) throw new Error(await res.text());
-      if (!res.ok) throw new Error(await res.text());
 
-      const data = await res.json();
       const data = await res.json();
 
       const list = Array.isArray(data)
