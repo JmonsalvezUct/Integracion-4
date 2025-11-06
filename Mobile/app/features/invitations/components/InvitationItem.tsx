@@ -4,7 +4,7 @@ export function InvitationItem({ item, onAccept, onReject }: any) {
   return (
     <View style={styles.card}>
       <Text style={styles.email}>{item.email}</Text>
-      <Text style={styles.project}>Proyecto: {item.projectId}</Text>
+      <Text>Proyecto: {item.project?.name ?? item.projectId}</Text>
       <Text style={styles.role}>Rol: {item.role}</Text>
       <Text style={styles.status}>Estado: {item.status}</Text>
 

@@ -10,7 +10,7 @@ export async function createInvitation(projectId: number, body: { email: string;
 
 export async function listProjectInvitations(projectId: number, status?: string) {
   const qs = status ? `?status=${status}` : "";
-  const res = await apiFetch(`/invitations/projects/${projectId}${qs}`);
+  const res = await apiFetch(`/projects/${projectId}${qs}`);
   return res.json();
 }
 
@@ -20,11 +20,11 @@ export async function listMyInvitations() {
 }
 
 export async function acceptInvitation(id: number) {
-  const res = await apiFetch(`/invitations/${id}/accept`, { method: "POST" });
+  const res = await apiFetch(`/${id}/accept`, { method: "POST" });
   return res.json();
 }
 
 export async function rejectInvitation(id: number) {
-  const res = await apiFetch(`/invitations/${id}/reject`, { method: "POST" });
+  const res = await apiFetch(`/${id}/reject`, { method: "POST" });
   return res.json();
 }

@@ -26,21 +26,21 @@ router.get(
 
 
 router.get(
-  "/invitations/me",
+  "/me",
   authMiddleware,
   listMyInvitations
 );
 
 
 router.post(
-  "/invitations/:id/accept",
+  "/:id/accept",
   authMiddleware,
   acceptInvitation
 );
 
 
 router.post(
-  "/invitations/:id/reject",
+  "/:id/reject",
   authMiddleware,
   rejectInvitation
 );

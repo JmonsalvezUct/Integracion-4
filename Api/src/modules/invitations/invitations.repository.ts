@@ -27,16 +27,36 @@ export const invitationsRepository = {
     prisma.invitation.findUnique({ where: { id } }),
 
   listByProject: (projectId: number, status?: string) =>
-    prisma.invitation.findMany({
-      where: { projectId, ...(status ? { status: status as any } : {}) },
-      orderBy: { createdAt: "desc" }
-    }),
+  prisma.invitation.findMany({
+    where: { projectId, ...(status ? { status: status as any } : {}) },
+    include: {
+      project: {
+        select: { id: true, name: true },
+      },
+      invitedBy: {
+        select: { id: true, name: true, email: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  }),
+
 
   listForUser: (userId: number, email: string) =>
-    prisma.invitation.findMany({
-      where: { OR: [{ invitedUserId: userId }, { email }] },
-      orderBy: { createdAt: "desc" }
-    }),
+  prisma.invitation.findMany({
+    where: {
+      OR: [
+        { invitedUserId: userId },
+        { email }
+      ],
+    },
+    include: {
+      project: {
+        select: { id: true, name: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  }),
+
 
   markStatus: (id: number, status: "ACCEPTED"|"REJECTED"|"EXPIRED") =>
     prisma.invitation.update({ where: { id }, data: { status } }),
