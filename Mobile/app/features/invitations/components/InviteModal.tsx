@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Modal } from "react-native";
 import { createInvitation } from "../invitations.api";
 
+
 interface InviteModalProps {
   visible: boolean;
   onClose: () => void;
@@ -19,10 +20,15 @@ export function InviteModal({
   const [role, setRole] = useState("developer");
 
   async function handleSend() {
-    await createInvitation(projectId, { email, role });
-    onCreated?.();
-    onClose();
+    try {
+      await createInvitation(projectId, { email, role });
+      onCreated?.();
+      onClose();
+    } catch (error: any) {
+      alert(error.message ?? "No se pudo enviar la invitación");
+    }
   }
+
 
   return (
     <Modal visible={visible} transparent animationType="fade">

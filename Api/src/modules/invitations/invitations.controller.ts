@@ -2,27 +2,69 @@ import type { Response } from "express";
 import type { AuthRequest } from "../../middlewares/auth.middleware.js";  
 import { invitationsService } from "./invitations.service.js";
 import { CreateInvitationDTO } from "./invitations.validators.js";
+import { prisma } from "../../app/loaders/prisma.js";
+import crypto from "crypto";
 
 /**
  * Crear invitación a un proyecto
  */
 export const createInvitation = async (req: AuthRequest, res: Response) => {
   try {
-    const projectId = Number(req.params.projectId);
-    const dto = CreateInvitationDTO.parse(req.body);
-
     if (!req.user) {
       return res.status(401).json({ message: "No autorizado" });
     }
 
-    const userId = req.user.id;
+    const projectId = Number(req.params.projectId);
 
-    const inv = await invitationsService.create(projectId, dto, userId);
-    res.status(201).json(inv);
-  } catch (e: any) {
-    res.status(400).json({ message: e.message });
+   
+    const dto = CreateInvitationDTO.parse(req.body);
+    const { email, role } = dto;
+
+    
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message: "No existe un usuario registrado con ese correo.",
+      });
+    }
+
+    const exists = await prisma.invitation.findFirst({
+      where: {
+        email,
+        projectId,
+        status: "PENDING",
+      },
+    });
+
+    if (exists) {
+      return res.status(400).json({
+        message: "Ya existe una invitación pendiente para este usuario.",
+      });
+    }
+
+  
+  const invitation = await prisma.invitation.create({
+    data: {
+      email,
+      role,
+      projectId,
+      invitedById: req.user.id,      
+      token: crypto.randomUUID(),      
+      
+    },
+  });
+
+
+    return res.status(201).json(invitation);
+
+  } catch (error: any) {
+    return res.status(400).json({ message: error.message });
   }
 };
+
 
 
 /**
