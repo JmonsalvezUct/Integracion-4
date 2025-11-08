@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, refresh, logout, recoverPassword, resetPassword} from './auth.controller.js';
+import { register, login, refresh, logout, recoverPassword, resetPassword, me} from './auth.controller.js';
 import { authMiddleware, validateRecoverPassword, validateResetPassword} from '../../middlewares/auth.middleware.js';
 import { authLimiter } from '../../middlewares/ratelimit.middleware.js';
 
@@ -269,5 +269,5 @@ router.post("/recover-password", authLimiter, validateRecoverPassword, recoverPa
  *       - validateResetPassword
  */
 router.post("/reset-password", authLimiter, validateResetPassword, resetPassword);
-
+router.get("/me", authMiddleware, me);
 export default router;

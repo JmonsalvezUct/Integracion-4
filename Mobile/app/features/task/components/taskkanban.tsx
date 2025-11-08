@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -16,9 +15,8 @@ import type { Task } from "../types";
 import { DeviceEventEmitter } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
-
-// 🎨 Hook de colores centralizado
 import { useThemedColors } from "@/hooks/use-theme-color";
+import Loader from "@/components/ui/Loader";
 
 const TASK_UPDATED = "TASK_UPDATED";
 
@@ -260,15 +258,12 @@ export function TaskKanban({ tasks: externalTasks }: { tasks?: Task[] } = {}) {
   }, [dragging, dragPos, handleDrop]);
 
   if (loading) {
-    return (
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>
-        <View style={styles.center}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 8, color: TEXT }}>Cargando tareas…</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>
+      <Loader />
+    </SafeAreaView>
+  );
+}
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: BG }]}>

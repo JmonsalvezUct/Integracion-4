@@ -19,7 +19,7 @@ export const authService = {
       profilePicture: payload.profilePicture,
     });
 
-    const accessToken = signAccessToken(user.id);
+    const accessToken = signAccessToken(user);
     const refreshToken = generateRefreshTokenValue();
     const expiresAt = addDays(new Date(), TOKEN.REFRESH_EXPIRES_IN_DAYS);
 
@@ -44,7 +44,7 @@ export const authService = {
     const ok = await bcrypt.compare(payload.password, user.password);
     if (!ok) throw new Error('INVALID_CREDENTIALS');
 
-    const accessToken = signAccessToken(user.id);
+    const accessToken = signAccessToken(user);
     const refreshToken = generateRefreshTokenValue();
     const expiresAt = addDays(new Date(), TOKEN.REFRESH_EXPIRES_IN_DAYS);
 
@@ -69,8 +69,12 @@ export const authService = {
       await authRepository.deleteRefreshToken(refreshToken);
       throw new Error('REFRESH_EXPIRED');
     }
-
-    const accessToken = signAccessToken(record.userId);
+    const user = await authRepository.findUserById(record.userId);
+    
+    if (!user) {
+      throw new Error("USER_NOT_FOUND");
+    }
+    const accessToken = signAccessToken(user);
 
     const newRefresh = generateRefreshTokenValue();
     const expiresAt = addDays(new Date(), TOKEN.REFRESH_EXPIRES_IN_DAYS);

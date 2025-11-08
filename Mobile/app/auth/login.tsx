@@ -1,24 +1,17 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Link, useRouter } from "expo-router";
-import { Alert } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, Image, ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { API_URL } from "@/constants/api";
-import { login, refreshTokens} from "@/services/auth";
+import { login, refreshTokens } from "@/services/auth";
 import { clearAuth, getRefreshToken } from "@/lib/secure-store";
+import { showToast } from "@/components/ui/toast";
 
-
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Image,
-  ScrollView,
-} from "react-native";
-
+// 🎨 Tema (usamos solo la paleta clara aquí)
+import { Colors } from "@/constants/theme";
+// 🧩 Componentes reutilizables
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -27,6 +20,10 @@ export default function LoginScreen() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+
+  const PRIMARY = Colors.light.tint; // #0a7ea4
+  const TEXT_DARK = "#111827";
+  const MUTED = "#6B7280";
 
   // Al momento de abrir el login comprueba si hay refresh token y permite entrar sin volver a loguearse
   React.useEffect(() => {
@@ -46,7 +43,7 @@ export default function LoginScreen() {
             await clearAuth();
           }
         }
-      } catch (e) {
+      } catch {
         // ignore
       } finally {
         if (mounted) setChecking(false);
@@ -57,100 +54,111 @@ export default function LoginScreen() {
     };
   }, []);
 
-  // dentro del componente:
-const onSubmit = async () => {
+  // Manejar submit del formulario
+  const onSubmit = async () => {
   try {
     console.log("[Login] Intentando login contra:", `${API_URL}/auth/login`);
     const emailOk = email.trim();
     const passOk = pass;
 
     if (!emailOk || !passOk) {
-      Alert.alert("Faltan datos", "Ingresa email y contraseña.");
+      showToast("Ingresa email y contraseña.", "warning");
       return;
     }
 
-    setLoading(true); // activar loading
+    setLoading(true);
 
-    await login(emailOk, passOk); // hace fetch y guarda tokens
+    await login(emailOk, passOk);
     console.log("[Login] Exitoso, navegando a tabs");
+    showToast("Inicio de sesión exitoso", "success"); // 🟢
     router.replace("/(tabs)");
   } catch (e: any) {
     console.log("[Login] Error:", e?.message, e);
-    Alert.alert("No se pudo iniciar sesión", e?.message ?? "Revisa tus credenciales o conexión.");
+    showToast(e?.message ?? "No se pudo iniciar sesión", "error"); // 🔴
   } finally {
-    setLoading(false); // desactivar loading 
+    setLoading(false);
   }
 };
 
 
-
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#1E2BFF" }} 
+      style={{ flex: 1, backgroundColor: PRIMARY }} // fondo superior de marca
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
-          {/* Logo*/}
+          {/* Logo */}
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            {/*logo en assets */}
             <Image source={require("@/assets/images/fastplanner-logo.png")} style={styles.logo} />
           </View>
 
-          <Text style={styles.title}>{checking ? "Comprobando sesión..." : "Inicia sesión"}</Text>
+          <Text style={[styles.title, { color: TEXT_DARK }]}>
+            {checking ? "Comprobando sesión..." : "Inicia sesión"}
+          </Text>
 
           {/* Input correo */}
-          <View style={styles.inputWrap}>
-            <Ionicons name="person-outline" size={18} color="#6B7280" style={styles.leftIcon} />
-            <TextInput
-              placeholder="Correo"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={styles.input}
-            />
-          </View>
+          <Input
+            placeholder="Correo"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            variant="surface"
+            // forzamos blanco porque aquí no usamos dark mode
+            backgroundOverride="#FFFFFF"
+            leftIcon={<Ionicons name="person-outline" size={18} color={MUTED} />}
+            containerStyle={{ marginTop: 8 }}
+            fieldStyle={{
+              height: 50,
+              borderRadius: 25,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+            inputStyle={{ fontSize: 16, color: TEXT_DARK, paddingHorizontal: 8 }}
+          />
 
           {/* Input contraseña */}
-          <View style={[styles.inputWrap, { marginTop: 12 }]}>
-            <Ionicons name="lock-closed-outline" size={18} color="#6B7280" style={styles.leftIcon} />
-            <TextInput
-              placeholder="Contraseña"
-              placeholderTextColor="#9CA3AF"
-              value={pass}
-              onChangeText={setPass}
-              secureTextEntry={!show}
-              style={styles.input}
-            />
-            <TouchableOpacity onPress={() => setShow((s) => !s)}>
-              <Ionicons
-                name={show ? "eye-off-outline" : "eye-outline"}
-                size={20}
-                color="#6B7280"
-                style={{ marginRight: 8 }}
-              />
-            </TouchableOpacity>
-          </View>
+          <Input
+            placeholder="Contraseña"
+            placeholderTextColor="#9CA3AF"
+            value={pass}
+            onChangeText={setPass}
+            secureTextEntry={!show}
+            secureToggle={false} 
+            variant="surface"
+            backgroundOverride="#FFFFFF"
+            leftIcon={<Ionicons name="lock-closed-outline" size={18} color={MUTED} />}
+            rightIcon={
+                <TouchableOpacity onPress={() => setShow((s) => !s)}>
+                  <Ionicons name={show ? "eye-outline" : "eye-off-outline"} size={20} color={MUTED} />
+                </TouchableOpacity>
+            }
+            containerStyle={{ marginTop: 12 }}
+            fieldStyle={{
+              height: 50,
+              borderRadius: 25,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+            inputStyle={{ fontSize: 16, color: TEXT_DARK, paddingHorizontal: 8 }}
+          />
 
           {/* Botón Entrar */}
-          <TouchableOpacity
-            style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
-            activeOpacity={0.9}
+          <Button
+            title={loading ? "Entrando..." : "Entrar"}
             onPress={onSubmit}
             disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? "Entrando..." : "Entrar"}
-            </Text>
-          </TouchableOpacity>
-
+            fullWidth
+            style={{ height: 50, borderRadius: 25, marginTop: 16, opacity: loading ? 0.6 : 1 }}
+            textStyle={{ fontWeight: "700", fontSize: 16 }}
+          />
 
           {/* Link registro */}
           <Text style={styles.registerText}>
             ¿No tienes cuenta?{" "}
-            <Link href="/auth/register" style={styles.registerLink}>
+            <Link href="/auth/register" style={[styles.registerLink, { color: PRIMARY }]}>
               Regístrate
             </Link>
           </Text>
@@ -176,40 +184,12 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   logo: { width: 160, height: 80, resizeMode: "contain", marginBottom: 6 },
-  brand: { fontWeight: "800", fontSize: 16, color: "#111827" },
   title: {
     fontSize: 22,
     fontWeight: "800",
     textAlign: "center",
-    color: "#111827",
     marginVertical: 10,
   },
-  inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-    marginTop: 8,
-  },
-  leftIcon: { marginLeft: 14, marginRight: 6 },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: "#111827",
-    paddingHorizontal: 8,
-  },
-  button: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#3F48FF", 
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 16,
-  },
-  buttonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
   registerText: { textAlign: "center", marginTop: 14, color: "#6B7280" },
-  registerLink: { color: "#3F48FF", fontWeight: "700" },
+  registerLink: { fontWeight: "700" },
 });

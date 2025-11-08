@@ -16,6 +16,8 @@
     assignee?: { name?: string | null } | null;
     project?: { name?: string };
     tags?: { tag: Tag }[];
+    sprintId?: number | null;
+
     }
 
     export interface User {

@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   FlatList,
-  ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
   StyleSheet,
@@ -20,6 +19,12 @@ import { useFocusEffect } from "@react-navigation/native";
 //Tema global y paleta
 import { useThemeMode } from "@/app/theme-context";
 import { Colors } from "@/constants/theme";
+
+import Loader from "@/components/ui/Loader";
+import { LogBox } from "react-native"; // Ignora el warning del loader 
+LogBox.ignoreLogs([
+  'A props object containing a "key" prop is being spread into JSX',
+]);
 
 type Project = { id: number; name: string; activitiesCount?: number };
 
@@ -157,11 +162,8 @@ export default function HomeScreen() {
 
       {/* Contenido */}
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 8, color: TEXT }}>Cargando proyectos…</Text>
-        </View>
-      ) : (
+          <Loader/>
+        ) : (
         <FlatList
           contentContainerStyle={{ padding: 16, flexGrow: 1 }}
           data={filtered}

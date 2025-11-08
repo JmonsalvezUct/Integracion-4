@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
+import { showToast } from "@/components/ui/toast";
 
 // 🎨 Hook de colores centralizado (dark mode)
 import { useThemedColors } from "@/hooks/use-theme-color";
@@ -77,7 +78,7 @@ export default function NewTaskScreen() {
     BG,
     TEXT,
     SUBTEXT,
-    BRAND,           // usa #0a7ea4 como fallback
+    BRAND,         
     CARD_BG,
     CARD_BORDER,
     INPUT_BG,
@@ -106,20 +107,21 @@ export default function NewTaskScreen() {
 
   const submit = async () => {
     if (!canSave) {
-      return Alert.alert("Falta título", "El título es obligatorio.");
+      showToast("El título es obligatorio", "warning");
+    return;
     }
 
     const token = await getAccessToken();
     if (!token) {
-      Alert.alert("Error", "No hay token de acceso. Inicia sesión nuevamente.");
-      return;
+      showToast("No hay token de acceso. Inicia sesión nuevamente.", "error");
+    return;
     }
 
     const projectId = Number(params.projectId);
     const creatorId = Number(params.creatorId);
 
     if (!projectId || !creatorId) {
-      Alert.alert("Error", "Faltan los IDs de proyecto o usuario.");
+       showToast("Faltan los IDs de proyecto o usuario.", "error");
       return;
     }
 
@@ -134,7 +136,7 @@ export default function NewTaskScreen() {
     });
 
     if (!isValidDate(date)) {
-      Alert.alert("Fecha inválida", "Usa el formato YYYY-MM-DD.");
+      showToast("Fecha inválida. Usa el formato YYYY-MM-DD.", "warning");
       return;
     }
 
@@ -162,7 +164,7 @@ export default function NewTaskScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!tagRes.ok) {
-        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+        console.warn(" No se pudo asignar la etiqueta:", await tagRes.text());
       }
     }
 
@@ -173,15 +175,15 @@ export default function NewTaskScreen() {
       });
 
       if (!tagRes.ok) {
-        console.warn("⚠️ No se pudo asignar la etiqueta:", await tagRes.text());
+        console.warn(" No se pudo asignar la etiqueta:", await tagRes.text());
       }
     }
 
-      Alert.alert("Éxito", "Tarea creada correctamente.");
+      showToast("Tarea creada correctamente", "success");
       router.back();
     } catch (err) {
       console.error("❌ Error al crear tarea:", err);
-      Alert.alert("Error", "No se pudo crear la tarea. Verifica los datos o el token.");
+      showToast("No se pudo crear la tarea. Verifica los datos o el token.", "error");
     }
   };
 

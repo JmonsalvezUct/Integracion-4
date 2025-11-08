@@ -2,7 +2,7 @@ import { type Request, type Response } from 'express';
 import { authService } from './auth.service.js';
 import { RegisterSchema, LoginSchema, RefreshSchema } from './auth.validators.js';
 import type { AuthRequest } from '../../middlewares/auth.middleware.js';
-
+import { authRepository } from "./auth.repository.js";
 export const register = async (req: Request, res: Response) => {
   const parse = RegisterSchema.safeParse(req.body);
   if (!parse.success) return res.status(400).json({ error: 'VALIDATION_ERROR', details: parse.error.flatten() });
@@ -15,6 +15,31 @@ export const register = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Error en el registro' });
   }
 };
+export const me = async (req: AuthRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: "No autenticado" });
+
+  try {
+    const userWithProjects = await authRepository.findUserWithProjects(req.user.id);
+
+    return res.json({
+      user: {
+        id: userWithProjects?.id,
+        name: userWithProjects?.name,
+        email: userWithProjects?.email,
+        profilePicture: userWithProjects?.profilePicture,
+        projects: userWithProjects?.projects.map((p) => ({
+          projectId: p.project.id,
+          projectName: p.project.name,
+          role: p.role,
+        })),
+      },
+    });
+  } catch (err) {
+    console.error("Error al obtener datos de usuario:", err);
+    return res.status(500).json({ error: "Error interno al obtener usuario" });
+  }
+};
+
 
 export const login = async (req: Request, res: Response) => {
   const parse = LoginSchema.safeParse(req.body);
@@ -79,4 +104,6 @@ export const recoverPassword = async (req: Request, res: Response) => {
     console.error(error);
     return res.status(500).json({ message: "Error interno del servidor" });
 };
+
+
 };

@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
   Modal,
   Alert,
@@ -21,11 +20,15 @@ import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from '@/lib/api-fetch';
 import { AssignModal } from './components/assignmodal';
 
-// 🎨 Hook de colores centralizado
+// 🎨 Colores
 import { useThemedColors } from '@/hooks/use-theme-color';
-// 🧱 Layout y spacing global
+// 🧱 Layout y spacing
 import LayoutContainer from '@/components/layout/layout_container';
 import { CONTAINER } from '@/constants/spacing';
+
+// ✅ Componentes reutilizables
+import Input from '@/components/ui/input';
+import Button from '@/components/ui/button';
 
 const TASK_UPDATED = 'TASK_UPDATED';
 
@@ -40,7 +43,7 @@ export default function DetailTask() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Modo edición local (la UI edita y al confirmar se persiste)
+  // Modo edición local
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState<any>({});
   const [newComment, setNewComment] = useState('');
@@ -50,11 +53,11 @@ export default function DetailTask() {
   const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
-  // Refs para enfocar inputs al tocar el texto
-  const titleRef = useRef<TextInput>(null);
-  const descRef = useRef<TextInput>(null);
+  // Refs (enfoque)
+  const titleRef = useRef<any>(null);
+  const descRef = useRef<any>(null);
 
-  // Modales para pickers
+  // Modales
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
 
@@ -62,10 +65,12 @@ export default function DetailTask() {
   const [attachModalVisible, setAttachModalVisible] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<any>(null);
-  // Assign modal / members
+
+  // Asignación
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [projectMembers, setProjectMembers] = useState<Array<{ id: number; name: string }>>([]);
-  // Mantiene el mismo formato mostrado mientras se edita la fecha
+
+  // Edición de fecha (formato mostrado)
   const [dueDateEditingValue, setDueDateEditingValue] = useState<string | null>(null);
 
     // --- Etiquetas ---
@@ -144,9 +149,9 @@ useEffect(() => {
     BRAND,
     CARD_BG,
     CARD_BORDER,
-    INPUT_BG,
     INPUT_BORDER,
     MUTED_BG,
+    PLACEHOLDER,
   } = useThemedColors();
 
   // Traducciones y helpers
@@ -271,10 +276,8 @@ useEffect(() => {
   const normalize = (v: any) => String(v ?? '').toLowerCase().trim().replace(/\s+/g, '_');
   const t = (map: Record<string, string>, v: any) => map[normalize(v)] ?? (v ?? '—');
 
-
   const STATUS_OPTIONS = ['created', 'in_progress', 'completed', 'archived'];
   const PRIORITY_OPTIONS = ['high', 'medium', 'low'];
-
 
   const apiFetchWithFormData = async (url: string, options: any = {}) => {
     const token = await getAccessToken();
@@ -282,13 +285,11 @@ useEffect(() => {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     };
-
     if (options.body instanceof FormData) delete (headers as any)['Content-Type'];
     return apiFetch(url, { ...options, headers });
-
   };
 
-
+  // Cargar datos iniciales
   useEffect(() => {
     if (!taskDataParam) return;
     setLoading(true);
@@ -318,21 +319,15 @@ useEffect(() => {
     }
   }, [taskDataParam]);
 
-  // 🔔 Si Kanban cambió el estado de ESTA misma tarea, sincroniza la vista de detalle
+  // 🔔 Sincroniza status desde Kanban
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener(TASK_UPDATED, ({ task: updated }: any) => {
-      if (!updated) return;
-
-      // Compara contra el id de la tarea abierta en esta pantalla
       const idActual = Number(taskId);
-      if (Number(updated.id) === idActual) {
-        // Actualiza el objeto task mostrado
+      if (updated && Number(updated.id) === idActual) {
         setTask((prev: any) => (prev ? { ...prev, status: updated.status } : prev));
-        // Si tienes estado de edición activo/controlado, sincronízalo también
         setEditState((prev: any) => ({ ...(prev ?? {}), status: updated.status }));
       }
     });
-
     return () => sub.remove();
   }, [taskId]);
 
@@ -350,13 +345,11 @@ useEffect(() => {
     }
   };
 
-  // Emitir evento global
   function emitTaskUpdated(updated: any) {
     DeviceEventEmitter.emit(TASK_UPDATED, { task: updated });
   }
 
-  //-----------------------------------------------------------------------------
-  //Cambiar SOLO el estado usando el endpoint especializado /status
+  // Cambiar SOLO status
   async function updateTaskStatusOnly(id: string | number, newStatus: string) {
     try {
       const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
@@ -386,17 +379,14 @@ useEffect(() => {
     }
   }
 
-  // Persistencia con PUT /tasks/:projectId/:id
+  // Persistencia PUT
   async function persistTaskPatch(id: string | number, patch: Partial<any>) {
-    // Optimistic UI local: refleja inmediatamente
     setTask((prev: any) => (prev ? { ...prev, ...patch } : prev));
     setEditState((prev: any) => ({ ...prev, ...patch }));
-
     try {
       const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
       if (!projectId) throw new Error('Falta projectId en la tarea.');
 
-      // Solo campos permitidos por el schema de actualización
       const allowed = ['title', 'description', 'dueDate', 'assigneeId', 'status', 'priority'];
       const base = { ...(task ?? {}), ...patch } as any;
       const payload: any = {};
@@ -423,22 +413,19 @@ useEffect(() => {
 
       const text = await res.text();
       if (!res.ok) {
-        if (text && /^\s*<!DOCTYPE html>/i.test(text)) {
-          throw new Error('La URL de API devolvió HTML (host incorrecto)');
-        }
+        if (text && /^\s*<!DOCTYPE html>/i.test(text)) throw new Error('La URL de API devolvió HTML');
         throw new Error(text || `HTTP ${res.status}`);
       }
 
       const serverTask = text ? JSON.parse(text) : { ...(task ?? {}), ...patch };
       setTask(serverTask);
-      emitTaskUpdated(serverTask); // 🔔 avisa a lista/kanban
+      emitTaskUpdated(serverTask);
     } catch (err: any) {
       console.error('Persist error:', err);
       Alert.alert('No se pudo guardar', err?.message ?? 'Intenta nuevamente.');
     }
   }
 
-  // Guardado manual (opcional) — guarda sólo lo que cambió
   const saveEdits = async () => {
     if (!taskId || !task) return;
     const patch: any = {};
@@ -455,9 +442,8 @@ useEffect(() => {
     });
     const editDue = normalizeDateForCompare(editState.dueDate);
     const taskDue = normalizeDateForCompare((task as any).dueDate);
-    if (editDue !== taskDue) {
-      patch.dueDate = editDue === '' ? null : editDue;
-    }
+    if (editDue !== taskDue) patch.dueDate = editDue === '' ? null : editDue;
+
     if (Object.keys(patch).length === 0) {
       setEditing(false);
       return;
@@ -475,28 +461,20 @@ useEffect(() => {
       if (patch.status !== undefined) delete patch.status;
     }
 
-    if (Object.keys(patch).length > 0) {
-      await persistTaskPatch(taskId, patch);
-    }
+    if (Object.keys(patch).length > 0) await persistTaskPatch(taskId, patch);
     setEditing(false);
   };
 
-  // Comentarios locales (no se persisten en server)
   const postComment = async () => {
     if (!taskId || !newComment.trim()) return;
-    try {
-      const comment = {
-        id: Date.now(),
-        text: newComment,
-        user: 'Usuario Actual',
-        date: new Date().toISOString(),
-      };
-      setTask((t: any) => ({ ...t, comments: [...(t?.comments || []), comment] }));
-      setNewComment('');
-    } catch (e) {
-      console.error('comment error', e);
-      setError('Error al añadir comentario');
-    }
+    const comment = {
+      id: Date.now(),
+      text: newComment,
+      user: 'Usuario Actual',
+      date: new Date().toISOString(),
+    };
+    setTask((t: any) => ({ ...t, comments: [...(t?.comments || []), comment] }));
+    setNewComment('');
   };
 
   // Adjuntos
@@ -597,6 +575,23 @@ useEffect(() => {
     }
   };
 
+  const startEditTitle = () => {
+    setEditing(true);
+    setTimeout(() => titleRef.current?.focus(), 0);
+  };
+  const startEditDescription = () => {
+    setEditing(true);
+    setTimeout(() => descRef.current?.focus(), 0);
+  };
+
+  const onTitleEndEditing = () => {
+    if (!taskId || !task) return;
+    if (editState.title !== task.title) persistTaskPatch(taskId, { title: editState.title });
+  };
+  const onDescriptionEndEditing = () => {
+    if (!taskId || !task) return;
+    if (editState.description !== task.description)
+      persistTaskPatch(taskId, { description: editState.description });
   // Función para descargar archivo
   const downloadAttachment = async (attachment: any) => {
     if (!task?.projectId) return;
@@ -653,14 +648,12 @@ useEffect(() => {
     }
   };
 
-  // Pickers: editar y guardar al instante
   const onPickStatus = (value: string) => {
     setShowStatusPicker(false);
     setEditing(true);
     setEditState((s: any) => ({ ...s, status: value }));
     if (taskId) updateTaskStatusOnly(taskId, value).catch(() => {});
   };
-
   const onPickPriority = (value: string) => {
     setShowPriorityPicker(false);
     setEditing(true);
@@ -678,16 +671,15 @@ useEffect(() => {
       </LayoutContainer>
     );
 
-  // Mostrar valores en edición si existen; si no, los del task original
   const statusValue = editState?.status ?? task?.status;
   const priorityValue = editState?.priority ?? task?.priority;
 
   return (
     <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
-      <Header title={`Tarea #${taskId}`} />
+      {/*<Header title={`Tarea #${taskId}`} />*/}
       <ScrollView
         contentContainerStyle={[
-          styles.container, // se mantiene por compatibilidad
+          styles.container,
           {
             paddingHorizontal: CONTAINER.horizontal,
             paddingTop: CONTAINER.top,
@@ -696,43 +688,37 @@ useEffect(() => {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-            style={{
-            color: TEXT,              // ← usa el color del tema
-            fontSize: 28,
-            fontWeight: "800",
-            marginBottom: 12,
-          }}
-        >
-          {`Tarea #${taskId}`}
-        </Text>
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
-          ]}
-        >
+        <View style={{ width: '100%', marginBottom: 12, alignItems: 'flex-start' }}>
+          <Button
+            variant="outline"
+            size="sm"
+            leftIcon={<Ionicons name="chevron-back" size={16} color={BRAND} />}
+            onPress={() => router.back()}
+          >
+            Volver
+          </Button>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 }]}>
           {loading ? (
             <ActivityIndicator />
           ) : error ? (
             <Text style={{ color: '#E74C3C' }}>{error}</Text>
           ) : task ? (
             <>
+              {/* Título + Estado/Prioridad */}
               <View style={styles.headerRow}>
-                {/* Título editable: guarda al salir */}
                 {editing ? (
-                  <TextInput
+                  <Input
                     ref={titleRef}
-                    style={[
-                      styles.titleInput,
-                      { color: TEXT, backgroundColor: INPUT_BG, borderColor: INPUT_BORDER },
-                    ]}
+                    placeholder="Título"
+                    placeholderTextColor={PLACEHOLDER}
                     value={editState.title}
                     onChangeText={(t) => setEditState((s: any) => ({ ...s, title: t }))}
                     onEndEditing={onTitleEndEditing}
-                    placeholder="Título"
-                    placeholderTextColor={SUBTEXT}
-                    returnKeyType="done"
+                    variant="surface"
+                    containerStyle={{ flex: 1, marginRight: 8 }}
+                    inputStyle={{ fontSize: 18, fontWeight: '800', paddingVertical: 8 }}
                   />
                 ) : (
                   <TouchableOpacity onPress={startEditTitle} style={{ flex: 1, marginRight: 8 }}>
@@ -742,61 +728,50 @@ useEffect(() => {
                   </TouchableOpacity>
                 )}
 
-                {/* Estado y Prioridad (pickers) */}
                 <View style={styles.metaRight}>
-                  <TouchableOpacity
-                    style={styles.metaGroup}
-                    onPress={() => setShowStatusPicker(true)}
-                  >
+                  <TouchableOpacity style={styles.metaGroup} onPress={() => setShowStatusPicker(true)}>
                     <Text style={[styles.metaLabel, { color: SUBTEXT }]}>Estado</Text>
-                    <Text style={[styles.metaValue, { color: TEXT }]}>
-                      {t(statusMap, statusValue)}
-                    </Text>
+                    <Text style={[styles.metaValue, { color: TEXT }]}>{t(statusMap, statusValue)}</Text>
                   </TouchableOpacity>
+
                   <TouchableOpacity
                     style={[styles.metaGroup, { marginLeft: 50 }]}
                     onPress={() => setShowPriorityPicker(true)}
                   >
                     <Text style={[styles.metaLabel, { color: SUBTEXT }]}>Prioridad</Text>
-                    <Text style={[styles.metaValue, { color: TEXT }]}>
-                      {t(priorityMap, priorityValue)}
-                    </Text>
+                    <Text style={[styles.metaValue, { color: TEXT }]}>{t(priorityMap, priorityValue)}</Text>
                   </TouchableOpacity>
                 </View>
 
                 
               </View>
 
+              {/* Descripción */}
               <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Descripción</Text>
-              {/* Descripción editable: guarda al salir */}
               {editing ? (
-                <TextInput
+                <Input
                   ref={descRef}
                   multiline
+                  placeholder="Descripción"
+                  placeholderTextColor={PLACEHOLDER}
                   value={editState.description}
                   onChangeText={(t) => setEditState((s: any) => ({ ...s, description: t }))}
                   onEndEditing={onDescriptionEndEditing}
-                  style={[
-                    styles.descInput,
-                    { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-                  ]}
-                  placeholder="Descripción"
-                  placeholderTextColor={SUBTEXT}
-                  returnKeyType="done"
+                  variant="surface"
+                  inputStyle={{ height: 120, textAlignVertical: 'top' }}
                 />
               ) : (
                 <TouchableOpacity onPress={startEditDescription}>
-                  <Text style={[styles.description, { color: TEXT }]}>
-                    {task.description || '—'}
-                  </Text>
+                  <Text style={[styles.description, { color: TEXT }]}>{task.description || '—'}</Text>
                 </TouchableOpacity>
               )}
 
+              {/* Fecha y Responsable */}
               <View style={styles.row}>
                 <View style={styles.field}>
                   <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Fecha</Text>
                   {editing ? (
-                    <TextInput
+                    <Input
                       value={
                         dueDateEditingValue ??
                         (editState.dueDate
@@ -804,19 +779,15 @@ useEffect(() => {
                           : displayDateFromISO(task.dueDate))
                       }
                       placeholder="YYYY/MM/DD"
-                      placeholderTextColor={SUBTEXT}
+                      placeholderTextColor={PLACEHOLDER}
                       onChangeText={(t) => setDueDateEditingValue(t)}
                       onEndEditing={() => {
-                        const raw =
-                          dueDateEditingValue ?? (editState.dueDate ?? task.dueDate ?? '');
+                        const raw = dueDateEditingValue ?? (editState.dueDate ?? task.dueDate ?? '');
                         const iso = parseDisplayDateToISO(String(raw));
                         setEditState((s: any) => ({ ...s, dueDate: iso }));
                         setDueDateEditingValue(null);
                       }}
-                      style={[
-                        styles.dateInput,
-                        { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-                      ]}
+                      variant="surface"
                     />
                   ) : (
                     <TouchableOpacity
@@ -841,6 +812,7 @@ useEffect(() => {
                     </TouchableOpacity>
                   )}
                 </View>
+
                 <View style={styles.field}>
                   <Text style={[styles.fieldLabel, { color: SUBTEXT }]}>Responsable</Text>
                   <TouchableOpacity
@@ -860,8 +832,7 @@ useEffect(() => {
                           }
                           await new Promise((r) => setTimeout(r, 0));
                         }
-                        const projectId =
-                          (task as any)?.projectId ?? (task as any)?.project?.id;
+                        const projectId = (task as any)?.projectId ?? (task as any)?.project?.id;
                         if (!projectId) throw new Error('Falta projectId');
                         if (projectMembers.length === 0) {
                           const res = await apiFetch(`/projects/${projectId}/members`);
@@ -871,8 +842,7 @@ useEffect(() => {
                           const list = (data.members ?? data) as any[];
                           const users = list.map((m: any) => ({
                             id: m.userId ?? m.id ?? m.user?.id,
-                            name:
-                              m.name ?? m.user?.name ?? m.email ?? String(m.userId ?? m.id),
+                            name: m.name ?? m.user?.name ?? m.email ?? String(m.userId ?? m.id),
                           }));
                           setProjectMembers(users.filter((u) => u.id));
                         }
@@ -884,8 +854,7 @@ useEffect(() => {
                   >
                     <Text style={[styles.fieldValue, { color: BRAND }]}>
                       {(() => {
-                        const selId =
-                          editState.assigneeId ?? task.assignee?.id ?? task.assigneeId;
+                        const selId = editState.assigneeId ?? task.assignee?.id ?? task.assigneeId;
                         const found = projectMembers.find((p) => p.id === selId);
                         return found ? found.name : task.assignee?.name ?? '—';
                       })()}
@@ -934,77 +903,52 @@ useEffect(() => {
               </View>
 
 
-              {/* Botón Guardar (opcional si prefieres guardar manualmente cambios múltiples) */}
+              {/* Guardar cambios (manual) */}
               {editing && (
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  <TouchableOpacity
-                    onPress={saveEdits}
-                    style={{
-                      padding: 10,
-                      backgroundColor: BRAND,
-                      borderRadius: 8,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ color: '#fff', fontWeight: '700' }}>Guardar</Text>
-                  </TouchableOpacity>
+                  <Button title="Guardar" onPress={saveEdits} />
                 </View>
               )}
 
               {/* Adjuntos */}
               <View style={styles.attachmentsHeader}>
                 <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Adjuntos</Text>
-                <TouchableOpacity
+                <Button
                   onPress={() => setAttachModalVisible(true)}
-                  style={[styles.addAttachmentButton, { backgroundColor: BRAND }]}
-                >
-                  <Ionicons name="add" size={16} color="#fff" />
-                  <Text style={styles.addAttachmentText}>Agregar</Text>
-                </TouchableOpacity>
+                  leftIcon={<Ionicons name="add" size={16} color="#fff" />}
+                  size="sm"
+                  title="Agregar"
+                />
               </View>
 
               {task.attachments && task.attachments.length > 0 ? (
                 task.attachments.map((a: any) => (
                   <View
                     key={a.id}
-                    style={[
-                      styles.attachmentItem,
-                      { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
-                    ]}
+                    style={[styles.attachmentItem, { borderBottomColor: isDark ? '#222' : '#f0f0f0' }]}
                   >
                     <TouchableOpacity
                       style={styles.attachRow}
                       onPress={() => downloadAttachment(a.id, a.originalName)}
                     >
-                      <Ionicons
-                        name="document-attach-outline"
-                        size={18}
-                        color={SUBTEXT}
-                      />
+                      <Ionicons name="document-attach-outline" size={18} color={SUBTEXT} />
                       <View style={styles.attachmentInfo}>
-                        <Text style={[styles.attachText, { color: TEXT }]}>
-                          {a.originalName}
-                        </Text>
+                        <Text style={[styles.attachText, { color: TEXT }]}>{a.originalName}</Text>
                         <Text style={[styles.attachmentSize, { color: SUBTEXT }]}>
                           {(a.size / 1024).toFixed(1)} KB
                         </Text>
                       </View>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => deleteAttachment(a.id)}
-                      style={styles.deleteAttachmentButton}
-                    >
+                    <TouchableOpacity onPress={() => deleteAttachment(a.id)} style={styles.deleteAttachmentButton}>
                       <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
                     </TouchableOpacity>
                   </View>
                 ))
               ) : (
-                <Text style={[styles.emptyText, { color: SUBTEXT }]}>
-                  No hay archivos adjuntos
-                </Text>
+                <Text style={[styles.emptyText, { color: SUBTEXT }]}>No hay archivos adjuntos</Text>
               )}
 
-              {/* Modal para Adjuntar Archivos */}
+              {/* Modal Adjuntar */}
               <Modal
                 visible={attachModalVisible}
                 animationType="slide"
@@ -1018,9 +962,7 @@ useEffect(() => {
                       { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
                     ]}
                   >
-                    <Text style={[styles.modalTitle, { color: TEXT }]}>
-                      Adjuntar Archivo
-                    </Text>
+                    <Text style={[styles.modalTitle, { color: TEXT }]}>Adjuntar Archivo</Text>
 
                     {selectedFile ? (
                       <View
@@ -1030,10 +972,8 @@ useEffect(() => {
                         ]}
                       >
                         <Ionicons name="document-outline" size={24} color={BRAND} />
-                        <View className="fileInfo" style={styles.fileInfo}>
-                          <Text style={[styles.fileName, { color: TEXT }]}>
-                            {selectedFile.name}
-                          </Text>
+                        <View style={styles.fileInfo}>
+                          <Text style={[styles.fileName, { color: TEXT }]}>{selectedFile.name}</Text>
                           <Text style={[styles.fileSize, { color: SUBTEXT }]}>
                             {(selectedFile.size / 1024).toFixed(1)} KB
                           </Text>
@@ -1043,6 +983,7 @@ useEffect(() => {
                         </TouchableOpacity>
                       </View>
                     ) : (
+                      // Conservamos este botón "dashed" como Touchable por estilo especial
                       <TouchableOpacity
                         style={[
                           styles.pickFileButton,
@@ -1051,9 +992,7 @@ useEffect(() => {
                         onPress={pickDocument}
                       >
                         <Ionicons name="cloud-upload-outline" size={32} color={BRAND} />
-                        <Text style={[styles.pickFileText, { color: TEXT }]}>
-                          Seleccionar Archivo
-                        </Text>
+                        <Text style={[styles.pickFileText, { color: TEXT }]}>Seleccionar Archivo</Text>
                         <Text style={[styles.pickFileSubtext, { color: SUBTEXT }]}>
                           Tamaño máximo: 10MB • Formatos: Todos
                         </Text>
@@ -1061,44 +1000,28 @@ useEffect(() => {
                     )}
 
                     <View style={styles.modalButtons}>
-                      <TouchableOpacity
-                        style={[
-                          styles.modalButton,
-                          styles.cancelButton,
-                          { backgroundColor: MUTED_BG, borderColor: CARD_BORDER },
-                        ]}
+                      <Button
+                        variant="outline"
+                        title="Cancelar"
                         onPress={() => {
                           setAttachModalVisible(false);
                           setSelectedFile(null);
                         }}
-                      >
-                        <Text style={[styles.cancelButtonText, { color: TEXT }]}>
-                          Cancelar
-                        </Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[
-                          styles.modalButton,
-                          styles.uploadButton,
-                          { backgroundColor: BRAND },
-                          (!selectedFile || uploading) && styles.disabledButton,
-                        ]}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        title={uploading ? 'Subiendo…' : 'Subir'}
                         onPress={uploadFile}
                         disabled={!selectedFile || uploading}
-                      >
-                        {uploading ? (
-                          <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                          <Text style={styles.uploadButtonText}>Subir</Text>
-                        )}
-                      </TouchableOpacity>
+                        loading={uploading}
+                        style={{ flex: 1 }}
+                      />
                     </View>
                   </View>
                 </View>
               </Modal>
 
-              {/* Comentarios / Historial (locales) */}
+              {/* Comentarios */}
               <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Comentarios</Text>
               {(task.comments || []).map((c: any) => (
                 <View key={c.id} style={styles.commentRow}>
@@ -1108,9 +1031,7 @@ useEffect(() => {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.commentUser, { color: TEXT }]}>
                       {c.user}{' '}
-                      <Text style={[styles.commentDate, { color: SUBTEXT }]}>
-                        · {c.date}
-                      </Text>
+                      <Text style={[styles.commentDate, { color: SUBTEXT }]}>· {c.date}</Text>
                     </Text>
                     <Text style={[styles.commentText, { color: TEXT }]}>{c.text}</Text>
                   </View>
@@ -1118,41 +1039,27 @@ useEffect(() => {
               ))}
 
               <View style={{ marginTop: 8 }}>
-                <TextInput
+                <Input
                   placeholder="Añadir comentario..."
-                  placeholderTextColor={SUBTEXT}
+                  placeholderTextColor={PLACEHOLDER}
                   value={newComment}
                   onChangeText={setNewComment}
-                  style={[
-                    styles.commentInput,
-                    { backgroundColor: INPUT_BG, borderColor: INPUT_BORDER, color: TEXT },
-                  ]}
+                  variant="surface"
                 />
-                <TouchableOpacity
-                  onPress={postComment}
-                  style={{ marginTop: 8, backgroundColor: BRAND, padding: 8, borderRadius: 8 }}
-                >
-                  <Text style={{ color: '#fff' }}>Comentar</Text>
-                </TouchableOpacity>
+                <Button title="Comentar" onPress={postComment} style={{ marginTop: 8 }} />
               </View>
 
-              <TouchableOpacity
+              <Button
+                title="Ver historial"
                 onPress={() =>
                   router.push({
-                    pathname: '/features/task/components/sprintscreen',
+                    pathname: '/features/task/components/taskhistory',
                     params: { projectId: task.projectId, taskId },
                   })
                 }
-                style={{
-                  backgroundColor: BRAND,
-                  paddingVertical: 10,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                  marginTop: 20,
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600' }}>Ver historial</Text>
-              </TouchableOpacity>
+                fullWidth
+                style={{ marginTop: 20 }}
+              />
             </>
           ) : (
             <Text style={{ color: TEXT }}>No se encontró la tarea.</Text>
@@ -1169,32 +1076,22 @@ useEffect(() => {
       >
         <View style={styles.sheetOverlay}>
           <View
-            style={[
-              styles.sheetCard,
-              { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
-            ]}
+            style={[styles.sheetCard, { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 }]}
           >
             <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona estado</Text>
             {STATUS_OPTIONS.map((opt) => (
               <TouchableOpacity
                 key={opt}
-                style={[
-                  styles.sheetItem,
-                  { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
-                ]}
+                style={[styles.sheetItem, { borderBottomColor: isDark ? '#222' : '#f0f0f0' }]}
                 onPress={() => onPickStatus(opt)}
               >
-                <Text style={[styles.sheetText, { color: TEXT }]}>
-                  {t(statusMap, opt)}
-                </Text>
+                <Text style={[styles.sheetText, { color: TEXT }]}>{t(statusMap, opt)}</Text>
                 {normalize(statusValue) === normalize(opt) && (
                   <Ionicons name="checkmark" size={18} color={BRAND} />
                 )}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity style={styles.sheetCancel} onPress={() => setShowStatusPicker(false)}>
-              <Text style={{ color: SUBTEXT }}>Cancelar</Text>
-            </TouchableOpacity>
+            <Button variant="ghost" title="Cancelar" onPress={() => setShowStatusPicker(false)} />
           </View>
         </View>
       </Modal>
@@ -1208,40 +1105,27 @@ useEffect(() => {
       >
         <View style={styles.sheetOverlay}>
           <View
-            style={[
-              styles.sheetCard,
-              { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
-            ]}
+            style={[styles.sheetCard, { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 }]}
           >
             <Text style={[styles.sheetTitle, { color: TEXT }]}>Selecciona prioridad</Text>
             {PRIORITY_OPTIONS.map((opt) => (
               <TouchableOpacity
                 key={opt}
-                style={[
-                  styles.sheetItem,
-                  { borderBottomColor: isDark ? '#222' : '#f0f0f0' },
-                ]}
+                style={[styles.sheetItem, { borderBottomColor: isDark ? '#222' : '#f0f0f0' }]}
                 onPress={() => onPickPriority(opt)}
               >
-                <Text style={[styles.sheetText, { color: TEXT }]}>
-                  {t(priorityMap, opt)}
-                </Text>
+                <Text style={[styles.sheetText, { color: TEXT }]}>{t(priorityMap, opt)}</Text>
                 {normalize(priorityValue) === normalize(opt) && (
                   <Ionicons name="checkmark" size={18} color={BRAND} />
                 )}
               </TouchableOpacity>
             ))}
-            <TouchableOpacity
-              style={styles.sheetCancel}
-              onPress={() => setShowPriorityPicker(false)}
-            >
-              <Text style={{ color: SUBTEXT }}>Cancelar</Text>
-            </TouchableOpacity>
+            <Button variant="ghost" title="Cancelar" onPress={() => setShowPriorityPicker(false)} />
           </View>
         </View>
       </Modal>
 
-      {/* Assign modal (selección de responsable) */}
+      {/* Assign modal */}
       <AssignModal
         visible={assignModalVisible}
         onClose={() => setAssignModalVisible(false)}
@@ -1311,7 +1195,7 @@ useEffect(() => {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 }, // se mantiene por compatibilidad; el padding real lo define CONTAINER
+  container: { padding: 16 },
   card: {
     borderRadius: 12,
     padding: 16,
@@ -1321,23 +1205,9 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { fontSize: 18, fontWeight: '800', flex: 1, marginRight: 8 },
-  titleInput: {
-    fontSize: 18,
-    fontWeight: '800',
-    flex: 1,
-    marginRight: 8,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
 
-  // Estado/Prioridad con etiqueta arriba
-  metaRight: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-end',
-  },
+  // Estado/Prioridad
+  metaRight: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'flex-end' },
   metaGroup: { alignItems: 'flex-end' },
   metaLabel: { fontSize: 11, marginBottom: 2, fontWeight: '600' },
   metaValue: { fontSize: 13, fontWeight: '700' },
@@ -1345,7 +1215,7 @@ const styles = StyleSheet.create({
   sectionLabel: { marginTop: 12, fontSize: 13, fontWeight: '700' },
   description: { marginTop: 6, lineHeight: 20 },
 
-  row: { flexDirection: 'row', marginTop: 12 },
+  row: { flexDirection: 'row', marginTop: 12, gap: 12 },
   field: { flex: 1 },
   fieldLabel: { fontSize: 12 },
   fieldValue: { fontSize: 14, fontWeight: '700' },
@@ -1357,28 +1227,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 12,
   },
-  addAttachmentButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    gap: 4,
-  },
-  addAttachmentText: { color: '#fff', fontSize: 12, fontWeight: '600' },
-  attachmentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    paddingVertical: 8,
-  },
+  attachmentItem: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, paddingVertical: 8 },
   attachRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, flex: 1 },
   attachmentInfo: { flex: 1, marginLeft: 8 },
   attachText: { marginLeft: 8 },
   attachmentSize: { fontSize: 11, marginTop: 2 },
   deleteAttachmentButton: { padding: 6, marginLeft: 8 },
 
-  // Comentarios / Historial
+  // Comentarios
   commentRow: { flexDirection: 'row', marginTop: 10, alignItems: 'flex-start' },
   avatarPlaceholder: {
     width: 36,
@@ -1391,18 +1247,11 @@ const styles = StyleSheet.create({
   commentUser: { fontWeight: '700' },
   commentDate: { fontWeight: '400', fontSize: 12 },
   commentText: {},
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8 },
-  historyText: {},
-  historyDate: { fontSize: 12 },
+
   emptyText: { fontStyle: 'italic', textAlign: 'center', marginTop: 8 },
 
   // Modal adjuntos
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { borderRadius: 12, padding: 20, width: '90%', maxWidth: 400 },
   modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 20, textAlign: 'center' },
   pickFileButton: {
@@ -1415,31 +1264,13 @@ const styles = StyleSheet.create({
   },
   pickFileText: { fontSize: 16, fontWeight: '600', marginTop: 8 },
   pickFileSubtext: { fontSize: 12, marginTop: 4, textAlign: 'center' },
-  selectedFile: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-  },
+  selectedFile: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, padding: 12, borderWidth: 1 },
   fileInfo: { flex: 1, marginLeft: 12 },
   fileName: { fontSize: 14, fontWeight: '600' },
   fileSize: { fontSize: 12 },
   modalButtons: { flexDirection: 'row', gap: 12, marginTop: 20 },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cancelButton: {},
-  uploadButton: {},
-  disabledButton: { backgroundColor: '#ccc' },
-  cancelButtonText: { fontWeight: '600' },
-  uploadButtonText: { color: '#fff', fontWeight: '600' },
 
-  // Bottom-sheet para pickers
+  // Bottom-sheet
   sheetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   sheetCard: { borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 16 },
   sheetTitle: { fontSize: 16, fontWeight: '700', marginBottom: 8 },
@@ -1451,28 +1282,5 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   sheetText: { fontSize: 15 },
-  sheetCancel: { paddingVertical: 14, alignItems: 'center' },
-
-  // ⚙️ Estilos agregados
-  descInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-  },
-  dateInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-  },
-  commentInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
-  },
 });
+}

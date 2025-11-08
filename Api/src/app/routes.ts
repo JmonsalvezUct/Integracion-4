@@ -12,13 +12,16 @@ import taskTimesRoutes from "../modules/task-times/taskTimes.routes.js";
 import swaggerUI from 'swagger-ui-express'
 import specs from '../swagger/swagger.js';
 import statsRoutes from '../modules/stats/stats.routes.js';
-
+import sprintsRoutes from "../modules/sprints/sprints.routes.js";
+import invitationsRoutes  from "../modules/invitations/invitations.routes.js";
 const router = Router();
 
 router.use('/health', healthRoutes);      
 router.use('/auth', authRoutes);
 router.use('/tasks', tasksRoutes);
 router.use('/projects', projectsRoutes);
+router.use("/invitations", invitationsRoutes);
+router.use("/projects/:projectId/sprints", sprintsRoutes);
 router.use('/attachments', attachmentRoutes);
 router.use('/tags', tagsRoutes);
 router.use('/task-times', taskTimesRoutes);

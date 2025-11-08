@@ -11,13 +11,11 @@ import {
 import * as SecureStore from "expo-secure-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
-
-import { API_URL } from "@/constants/api";
 import { getAccessToken } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
-
-// 🎨 Hook de colores centralizado
 import { useThemedColors } from "@/hooks/use-theme-color";
+import Loader from "@/components/ui/Loader";
+
 
 type ProjectDetail = {
   id: number;
@@ -359,10 +357,7 @@ export default function DetailProject() {
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       {loading ? (
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator />
-          <Text style={{ marginTop: 8, color: TEXT }}>Cargando proyecto…</Text>
-        </View>
+        <Loader />
       ) : error ? (
         <ScrollView
           contentContainerStyle={{ padding: 16, flexGrow: 1 }}

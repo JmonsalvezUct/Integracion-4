@@ -3,8 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
+  StyleSheet
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -13,20 +12,32 @@ import { getAccessToken } from "@/lib/secure-store";
 import DetailProject from "../project/DetailProject";
 import EditProject from "../project/EditProject";
 import { TaskScreen } from "../task/screens/taskscreen";
+import SprintsScreen  from "../task/components/sprintscreen";
 import { apiFetch } from "@/lib/api-fetch";
+import { ScrollView } from "react-native";
+import ProjectInvitationsScreen from "../invitations/screens/ProjectInvitationsScreen";
 
 // 🎨 Tema + layout global
 import { useThemedColors } from "@/hooks/use-theme-color";
 import LayoutContainer from "@/components/layout/layout_container";
 import { CONTAINER } from "@/constants/spacing";
+import FullBleed from "@/components/layout/FullBleed";
+import { useGutter } from "../../../hooks/use-gutter";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import Loader from "@/components/ui/Loader";
 import StatsProjectScreen from "../stats/screens/StatsProjectScreen";
 
 export default function ProjectOverview() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const projectId = (params.projectId || params.id) as string;
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<
+  "details" | "tasks" | "edit" | "stats" | "sprints" | "invitations"
+>("details");
 
-  const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit" | "stats">("details");
+
   const [projectName, setProjectName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -34,6 +45,34 @@ export default function ProjectOverview() {
   const TAB_BG = isDark ? "#141414" : "#ffffff";
   const TAB_BORDER = isDark ? "#2a2a2a" : "#E5E5E5";
   const TAB_TEXT = isDark ? "#b3b3b3" : "#555";
+
+  const insets = useSafeAreaInsets();
+  const gutter = useGutter();
+  useEffect(() => {
+    const loadUserRole = async () => {
+      try {
+        const token = await getAccessToken();
+        if (!token) return;
+
+        const res = await apiFetch("/auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+
+
+        const project = data.user?.projects?.find(
+          (p: any) => p.projectId === Number(projectId)
+        );
+
+        setUserRole(project?.role || "user");
+      } catch (err) {
+        console.error("Error al cargar rol del usuario:", err);
+        setUserRole("user");
+      }
+    };
+
+    loadUserRole();
+  }, [projectId]);
 
   useEffect(() => {
     const loadProjectName = async () => {
@@ -58,18 +97,18 @@ export default function ProjectOverview() {
   }, [projectId]);
 
   if (loading) {
-    return (
-      <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={BRAND} />
-        </View>
-      </LayoutContainer>
-    );
-  }
+  return (
+    <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
+      <Loader />
+    </LayoutContainer>
+  );
+}
+
 
   return (
     <LayoutContainer scroll={false} style={{ backgroundColor: BG }}>
-      {/* Header */}
+    {/* Header - full-bleed, con padding interno */}
+    <FullBleed>
       <View style={[styles.header, { backgroundColor: BRAND }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
@@ -78,82 +117,151 @@ export default function ProjectOverview() {
           {projectName || `Proyecto #${projectId}`}
         </Text>
       </View>
+    </FullBleed>
 
-      {/* Tabs */}
-      <View
-        style={[
-          styles.tabs,
-          { backgroundColor: TAB_BG, borderBottomColor: TAB_BORDER },
-          { paddingHorizontal: CONTAINER.horizontal }, // margen global lateral
-        ]}
+
+    <FullBleed>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{
+          backgroundColor: TAB_BG,
+          borderBottomColor: TAB_BORDER,
+          borderBottomWidth: 1,
+        }}
+        contentContainerStyle={{
+          paddingHorizontal: gutter,
+        }}
       >
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            activeTab === "details" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-          ]}
-          onPress={() => setActiveTab("details")}
-        >
-          <Text style={[styles.tabText, { color: activeTab === "details" ? BRAND : TAB_TEXT }]}>
-            Detalles
+        <View style={styles.tabsRow}>
+
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "details" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("details")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "details" ? BRAND : TAB_TEXT }]}>
+              Detalles
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "tasks" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("tasks")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "tasks" ? BRAND : TAB_TEXT }]}>
+              Tareas
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "edit" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("edit")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "edit" ? BRAND : TAB_TEXT }]}>
+              Editar
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("stats")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
+              Estadísticas
+            </Text>
+          </TouchableOpacity>
+
+          {userRole === "admin" && (
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.tabBtn,
+                  activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+                ]}
+                onPress={() => setActiveTab("sprints")}
+              >
+                <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
+                  Sprints
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.tabBtn,
+                  activeTab === "invitations" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+                ]}
+                onPress={() => setActiveTab("invitations")}
+              >
+                <Text style={[styles.tabText, { color: activeTab === "invitations" ? BRAND : TAB_TEXT }]}>
+                  Invitaciones
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+
+          
+
+        </View>
+      </ScrollView>
+    </FullBleed>
+
+
+    {/* Contenido - con gutter normal y bottom compacto según safe-area */}
+    <View
+      style={[
+        styles.content,
+        {
+          paddingHorizontal: gutter,
+          paddingTop: CONTAINER.top,
+          paddingBottom: Math.max(8, insets.bottom + 9), // menos “hueco” inferior
+        },
+      ]}
+    >
+      {activeTab === "details" && <DetailProject />}
+      {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
+      {activeTab === "edit" && <EditProject projectId={projectId} />}
+      {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
+      {activeTab === "invitations" && (
+      userRole === "admin" ? (
+        <ProjectInvitationsScreen projectId={Number(projectId)} />
+
+      ) : (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
+          <Text style={{ color: "red", fontWeight: "600" }}>
+            No tienes permisos para acceder a esta sección.
           </Text>
-        </TouchableOpacity>
+        </View>
+      )
+    )}
 
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            activeTab === "tasks" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-          ]}
-          onPress={() => setActiveTab("tasks")}
-        >
-          <Text style={[styles.tabText, { color: activeTab === "tasks" ? BRAND : TAB_TEXT }]}>
-            Tareas
+      {activeTab === "sprints" && (
+      userRole === "admin" ? (
+        <SprintsScreen projectId={projectId} />
+      ) : (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
+          <Text style={{ color: "red", fontWeight: "600" }}>
+            ❌ No tienes permisos para acceder a esta sección.
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            activeTab === "edit" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-          ]}
-          onPress={() => setActiveTab("edit")}
-        >
-          <Text style={[styles.tabText, { color: activeTab === "edit" ? BRAND : TAB_TEXT }]}>
-            Editar
-          </Text>
-        </TouchableOpacity>
+        </View>
+      )
+    )}
 
 
-        <TouchableOpacity
-          style={[
-            styles.tabBtn,
-            activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-          ]}
-          onPress={() => setActiveTab("stats")}
-        >
-          <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
-            Estadísticas
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Contenido */}
-      <View
-        style={[
-          styles.content,
-          {
-            paddingHorizontal: CONTAINER.horizontal,
-            paddingTop: CONTAINER.top,
-            paddingBottom: CONTAINER.bottom,
-          },
-        ]}
-      >
-        {activeTab === "details" && <DetailProject />}
-        {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
-        {activeTab === "edit" && <EditProject projectId={projectId} />}
-        {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
-      </View>
-    </LayoutContainer>
+    </View>
+  </LayoutContainer>
   );
 }
 
@@ -177,7 +285,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderBottomWidth: 1,
   },
-  tabBtn: { flex: 1, alignItems: "center", paddingVertical: 12 },
+
   tabText: { fontSize: 15, fontWeight: "600" },
   content: { flex: 1 },
+  tabsRow: {
+  flexDirection: "row",
+  alignItems: "center",
+},
+
+tabBtn: {
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  marginRight: 24,
+},
+
 });

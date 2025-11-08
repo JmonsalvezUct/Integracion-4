@@ -1,20 +1,15 @@
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { Alert } from "react-native";
+import { KeyboardAvoidingView, Platform, StyleSheet, ScrollView, View, Text, TouchableOpacity } from "react-native";
 import { registerUser, login } from "@/services/auth";
+import { showToast } from "@/components/ui/toast";
 
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  ScrollView,
-} from "react-native";
-
+// 🎨 Paleta
+import { Colors } from "@/constants/theme";
+// 🧩 Componentes reutilizables
+import Input from "@/components/ui/input";
+import Button from "@/components/ui/button";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -24,36 +19,53 @@ export default function RegisterScreen() {
   const [pass, setPass] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const PRIMARY = Colors.light.tint; // #0a7ea4
+  const TEXT_DARK = "#111827";
+  const MUTED = "#6B7280";
+
   const onSubmit = async () => {
-  try {
-    if (!name || !email || !pass) {
-      Alert.alert("Completa los campos", "Nombre, correo y contraseña.");
-      return;
-    }
+    try {
+      if (!name && !email && !pass) {
+        showToast("Por favor, completa todos los campos para registrarte", "warning");
+        return;
+      }
 
-    setLoading(true);
-    const data = await registerUser({
-      name,
-      email,
-      password: pass,
-    });
+      if (!name || !email || !pass) {
+        showToast("Faltan campos por completar", "warning");
+        return;
+      }
 
-    if (!data?.accessToken) {
-      await login(email, pass);
-    }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showToast("El correo debe tener un formato válido (ejemplo@correo.com)", "warning");
+        return;
+      }
 
-    router.replace("/(tabs)");
-  } catch (e: any) {
-    Alert.alert("No se pudo registrar", e?.message ?? "Intenta de nuevo.");
-  } finally {
-    setLoading(false);
+      if (pass.length < 8) {
+        showToast("La contraseña debe tener al menos 8 caracteres", "warning");
+        return;
   }
-};
 
+      setLoading(true);
+      const data = await registerUser({ name, email, password: pass });
+
+      // Si el backend no devolvió accessToken, iniciamos sesión con lo recién registrado
+      if (!data?.accessToken) {
+        await login(email, pass);
+      }
+
+      showToast("Cuenta creada con éxito", "success");
+      router.replace("/(tabs)");
+    } catch (e: any) {
+      showToast(e?.message ?? "No se pudo crear la cuenta. Intenta de nuevo.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: "#1E2BFF" }}
+      style={{ flex: 1, backgroundColor: PRIMARY }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -61,59 +73,78 @@ export default function RegisterScreen() {
           <Text style={styles.title}>Crear cuenta</Text>
 
           {/* Nombre */}
-          <View style={styles.inputWrap}>
-            <Ionicons name="person-outline" size={18} color="#6B7280" style={styles.leftIcon} />
-            <TextInput
-              placeholder="Nombre"
-              placeholderTextColor="#9CA3AF"
-              value={name}
-              onChangeText={setName}
-              style={styles.input}
-            />
-          </View>
+          <Input
+            placeholder="Nombre"
+            placeholderTextColor="#9CA3AF"
+            value={name}
+            onChangeText={setName}
+            variant="surface"
+            backgroundOverride="#FFFFFF"
+            leftIcon={<Ionicons name="person-outline" size={18} color={MUTED} />}
+            containerStyle={{ marginTop: 4 }}
+            fieldStyle={{
+              height: 50,
+              borderRadius: 25,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+            inputStyle={{ fontSize: 16, color: TEXT_DARK, paddingHorizontal: 8 }}
+          />
 
           {/* Correo */}
-          <View style={[styles.inputWrap, { marginTop: 12 }]}>
-            <Ionicons name="person-outline" size={18} color="#6B7280" style={styles.leftIcon} />
-            <TextInput
-              placeholder="Correo"
-              placeholderTextColor="#9CA3AF"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              style={styles.input}
-            />
-          </View>
+          <Input
+            placeholder="Correo"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            variant="surface"
+            backgroundOverride="#FFFFFF"
+            leftIcon={<Ionicons name="mail-outline" size={18} color={MUTED} />}
+            containerStyle={{ marginTop: 12 }}
+            fieldStyle={{
+              height: 50,
+              borderRadius: 25,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+            inputStyle={{ fontSize: 16, color: TEXT_DARK, paddingHorizontal: 8 }}
+          />
 
           {/* Contraseña */}
-          <View style={[styles.inputWrap, { marginTop: 12 }]}>
-            <Ionicons name="lock-closed-outline" size={18} color="#6B7280" style={styles.leftIcon} />
-            <TextInput
-              placeholder="Contraseña"
-              placeholderTextColor="#9CA3AF"
-              value={pass}
-              onChangeText={setPass}
-              secureTextEntry
-              style={styles.input}
-            />
-          </View>
+          <Input
+            placeholder="Contraseña"
+            placeholderTextColor="#9CA3AF"
+            value={pass}
+            onChangeText={setPass}
+            secureTextEntry
+            variant="surface"
+            backgroundOverride="#FFFFFF"
+            leftIcon={<Ionicons name="lock-closed-outline" size={18} color={MUTED} />}
+            containerStyle={{ marginTop: 12 }}
+            fieldStyle={{
+              height: 50,
+              borderRadius: 25,
+              borderWidth: 1,
+              borderColor: "#E5E7EB",
+            }}
+            inputStyle={{ fontSize: 16, color: TEXT_DARK, paddingHorizontal: 8 }}
+          />
 
-          {/* Botón */}
-          <TouchableOpacity
-            style={[styles.button, { opacity: loading ? 0.6 : 1 }]}
-            activeOpacity={0.9}
+          {/* Botón de registro */}
+          <Button
+            title={loading ? "Creando..." : "Registrarme"}
             onPress={onSubmit}
-            disabled={loading} // lo deshabilita mientras loading = true
-          >
-            <Text style={styles.buttonText}>
-              {loading ? "Creando..." : "Registrarme"} 
-            </Text>
-          </TouchableOpacity>
+            disabled={loading}
+            fullWidth
+            style={{ height: 50, borderRadius: 25, marginTop: 16, opacity: loading ? 0.6 : 1 }}
+            textStyle={{ fontWeight: "700", fontSize: 16 }}
+          />
 
           {/* Volver a login */}
           <TouchableOpacity onPress={() => router.replace("/auth/login")} style={{ marginTop: 12 }}>
-            <Text style={styles.backToLogin}>Volver a iniciar sesión</Text>
+            <Text style={[styles.backToLogin, { color: PRIMARY }]}>Volver a iniciar sesión</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -143,25 +174,5 @@ const styles = StyleSheet.create({
     color: "#111827",
     marginBottom: 12,
   },
-  inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#FFFFFF",
-  },
-  leftIcon: { marginLeft: 14, marginRight: 6 },
-  input: { flex: 1, fontSize: 16, color: "#111827", paddingHorizontal: 8 },
-  button: {
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#3F48FF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 16,
-  },
-  buttonText: { color: "#FFFFFF", fontWeight: "700", fontSize: 16 },
-  backToLogin: { textAlign: "center", color: "#3F48FF", fontWeight: "700" },
+  backToLogin: { textAlign: "center", fontWeight: "700" },
 });
