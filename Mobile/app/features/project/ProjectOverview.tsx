@@ -15,6 +15,7 @@ import { TaskScreen } from "../task/screens/taskscreen";
 import SprintsScreen  from "../task/components/sprintscreen";
 import { apiFetch } from "@/lib/api-fetch";
 import { ScrollView } from "react-native";
+import ProjectInvitationsScreen from "../invitations/screens/ProjectInvitationsScreen";
 
 // 🎨 Tema + layout global
 import { useThemedColors } from "@/hooks/use-theme-color";
@@ -32,7 +33,10 @@ export default function ProjectOverview() {
   const params = useLocalSearchParams();
   const projectId = (params.projectId || params.id) as string;
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"details" | "tasks" | "edit" | "stats" | "sprints">("details");
+  const [activeTab, setActiveTab] = useState<
+  "details" | "tasks" | "edit" | "stats" | "sprints" | "invitations"
+>("details");
+
 
   const [projectName, setProjectName] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -180,18 +184,35 @@ export default function ProjectOverview() {
           </TouchableOpacity>
 
           {userRole === "admin" && (
-            <TouchableOpacity
-              style={[
-                styles.tabBtn,
-                activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-              ]}
-              onPress={() => setActiveTab("sprints")}
-            >
-              <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
-                Sprints
-              </Text>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                style={[
+                  styles.tabBtn,
+                  activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+                ]}
+                onPress={() => setActiveTab("sprints")}
+              >
+                <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
+                  Sprints
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.tabBtn,
+                  activeTab === "invitations" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+                ]}
+                onPress={() => setActiveTab("invitations")}
+              >
+                <Text style={[styles.tabText, { color: activeTab === "invitations" ? BRAND : TAB_TEXT }]}>
+                  Invitaciones
+                </Text>
+              </TouchableOpacity>
+            </>
           )}
+
+
+          
 
         </View>
       </ScrollView>
@@ -213,6 +234,19 @@ export default function ProjectOverview() {
       {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
       {activeTab === "edit" && <EditProject projectId={projectId} />}
       {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
+      {activeTab === "invitations" && (
+      userRole === "admin" ? (
+        <ProjectInvitationsScreen projectId={Number(projectId)} />
+
+      ) : (
+        <View style={{ alignItems: "center", marginTop: 40 }}>
+          <Text style={{ color: "red", fontWeight: "600" }}>
+            No tienes permisos para acceder a esta sección.
+          </Text>
+        </View>
+      )
+    )}
+
       {activeTab === "sprints" && (
       userRole === "admin" ? (
         <SprintsScreen projectId={projectId} />

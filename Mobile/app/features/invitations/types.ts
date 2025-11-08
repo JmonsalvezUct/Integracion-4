@@ -1,11 +1,13 @@
 export interface Invitation {
   id: number;
   email: string;
-  invitedUserId?: number | null;
-  invitedById: number;
-  projectId: number;
   role: string;
-  status: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  projectId: number;
   createdAt?: string;
   updatedAt?: string;
+  project?: {
+    id: number;
+    name: string;
+  };
 }

@@ -54,6 +54,7 @@ export function InviteModal({
 
           <TouchableOpacity
             onPress={handleSend}
+            
             style={{
               backgroundColor: "#3B82F6",
               padding: 12,

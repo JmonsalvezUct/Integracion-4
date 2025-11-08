@@ -1,4 +1,4 @@
-    // hooks/useSprintForm.ts
+
     import { useState } from "react";
     import { Alert } from "react-native";
     import { apiFetch } from "@/lib/api-fetch";
@@ -31,10 +31,6 @@
     };
 
     const createSprint = async (): Promise<boolean> => {
-        if (!newSprint.name.trim()) {
-        Alert.alert("Error", "Debes ingresar un nombre.");
-        return false; // ❌ no válido
-        }
 
         const startError = validateDate(newSprint.startDate);
         const endError = validateDate(newSprint.endDate);
@@ -42,7 +38,7 @@
 
         if (startError || endError) {
         Alert.alert("Error", "Corrige las fechas antes de continuar.");
-        return false; // ❌
+        return false; 
         }
 
         const [sd, sm, sy] = newSprint.startDate.split("/").map(Number);
@@ -50,7 +46,7 @@
 
         if (new Date(ey, em - 1, ed) <= new Date(sy, sm - 1, sd)) {
         Alert.alert("Error", "La fecha de fin debe ser posterior.");
-        return false; // ❌
+        return false; 
         }
 
         const parseISO = (d: string) => {
@@ -76,10 +72,10 @@
         Alert.alert("Éxito", "Sprint creado correctamente.");
         setNewSprint({ name: "", description: "", startDate: "", endDate: "" });
         onSuccess();
-        return true; // ✅ éxito
+        return true; 
         } catch {
         Alert.alert("Error", "No se pudo crear el sprint.");
-        return false; // ❌ fallo en API
+        return false;
         }
     };
 

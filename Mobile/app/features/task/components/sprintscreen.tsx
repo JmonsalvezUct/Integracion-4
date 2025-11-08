@@ -6,13 +6,25 @@
     import { useRouter, useLocalSearchParams } from "expo-router";
     import { useSprints } from "../hooks/useSprints";
     import { useSprintForm } from "../hooks/useSprintForm";
-
+    import { useThemedColors } from "@/hooks/use-theme-color";
  
 
 
     export default function SprintsScreen({ projectId }: { projectId: string }) {
     const router = useRouter();
     const { sprints, loading, fetchSprints, deleteSprint, finalizeSprint } = useSprints(Number(projectId));
+    const {
+    BG,
+    CARD_BG,
+    CARD_BORDER,
+    TEXT,
+    SUBTEXT,
+    MODAL_BG,
+    INPUT_BG,
+    INPUT_BORDER,
+    PLACEHOLDER,
+    } = useThemedColors();
+
     const {
         newSprint,
         setNewSprint,
@@ -50,18 +62,24 @@
             <TouchableOpacity
             onPress={() =>
                 router.push({
-                pathname: "/features/task/components/sprint-detail", 
+                pathname: "/features/task/components/sprint-detail",
                 params: { projectId, sprintId: item.id },
                 })
             }
             activeOpacity={0.8}
             >
-            <View style={styles.card}>
+            <View
+                style={[
+                styles.card,
+                { backgroundColor: CARD_BG, borderColor: CARD_BORDER }
+                ]}
+            >
                 <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{item.name}</Text>
+                <Text style={[styles.cardTitle, { color: TEXT }]}>{item.name}</Text>
+
                 <Text
                     style={{
-                    color: item.isActive ? "#009688" : "#999",
+                    color: item.isActive ? "#009688" : SUBTEXT,
                     fontWeight: "600",
                     }}
                 >
@@ -69,81 +87,114 @@
                 </Text>
                 </View>
 
-                <Text style={styles.cardDesc}>{item.description || "Sin descripción"}</Text>
+                <Text style={[styles.cardDesc, { color: SUBTEXT }]}>
+                {item.description || "Sin descripción"}
+                </Text>
 
-                <Text style={styles.cardDate}>
-                {new Date(item.startDate).toLocaleDateString()} →{" "}
+                <Text style={[styles.cardDate, { color: SUBTEXT }]}>
+                {new Date(item.startDate).toLocaleDateString()} →
                 {item.endDate ? new Date(item.endDate).toLocaleDateString() : "En curso"}
                 </Text>
             </View>
             </TouchableOpacity>
         )}
         />
-
         )}
 
-
-
-        {/* Modal del formulario */}
-        <Modal visible={modalVisible} transparent animationType="slide">
+            <Modal visible={modalVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}>
-            <View style={styles.modalBox}>
-                <Text style={styles.modalTitle}>Nuevo Sprint</Text>
+                <View style={[styles.modalBox, { backgroundColor: MODAL_BG }]}>
+                <Text style={[styles.modalTitle, { color: TEXT }]}>Nuevo Sprint</Text>
 
+                {/* Nombre */}
                 <TextInput
-                placeholder="Nombre"
-                style={styles.input}
-                value={newSprint.name}
-                onChangeText={(t) => setNewSprint({ ...newSprint, name: t })}
+                    placeholder="Nombre"
+                    placeholderTextColor={PLACEHOLDER}
+                    style={[
+                    styles.input,
+                    {
+                        backgroundColor: INPUT_BG,
+                        borderColor: INPUT_BORDER,
+                        color: TEXT,
+                    },
+                    ]}
+                    value={newSprint.name}
+                    onChangeText={(t) => setNewSprint({ ...newSprint, name: t })}
                 />
+
+                {/* Descripción */}
                 <TextInput
-                placeholder="Descripción (opcional)"
-                style={styles.input}
-                value={newSprint.description}
-                onChangeText={(t) => setNewSprint({ ...newSprint, description: t })}
+                    placeholder="Descripción (opcional)"
+                    placeholderTextColor={PLACEHOLDER}
+                    style={[
+                    styles.input,
+                    {
+                        backgroundColor: INPUT_BG,
+                        borderColor: INPUT_BORDER,
+                        color: TEXT,
+                    },
+                    ]}
+                    value={newSprint.description}
+                    onChangeText={(t) => setNewSprint({ ...newSprint, description: t })}
                 />
 
-            {(["startDate", "endDate"] as const).map((field) => (
-            <View key={field}>
-                <TextInput
-                placeholder={`Fecha ${field === "startDate" ? "inicio" : "fin"} (DD/MM/YYYY)`}
-                style={[styles.input, dateErrors[field] && { borderColor: "red" }]}
-                value={newSprint[field]}
-                keyboardType="numeric"
-                maxLength={10}
-                onChangeText={(t) => {
-                    const formatted = formatDateInput(t);
-                    setNewSprint({ ...newSprint, [field]: formatted });
-                    setDateErrors((prev: { startDate: string; endDate: string }) => ({
-                    ...prev,
-                    [field]: formatted.length === 10 ? validateDate(formatted) : "",
-                    }));
+                {/* Fechas */}
+                {(["startDate", "endDate"] as const).map((field) => (
+                    <View key={field}>
+                    <TextInput
+                        placeholder={`Fecha ${
+                        field === "startDate" ? "inicio" : "fin"
+                        } (DD/MM/YYYY)`}
+                        placeholderTextColor={PLACEHOLDER}
+                        style={[
+                        styles.input,
+                        {
+                            backgroundColor: INPUT_BG,
+                            borderColor: dateErrors[field] ? "red" : INPUT_BORDER,
+                            color: TEXT,
+                        },
+                        ]}
+                        value={newSprint[field]}
+                        keyboardType="numeric"
+                        maxLength={10}
+                        onChangeText={(t) => {
+                        const formatted = formatDateInput(t);
+                        setNewSprint({ ...newSprint, [field]: formatted });
+                        setDateErrors((prev) => ({
+                            ...prev,
+                            [field]:
+                            formatted.length === 10 ? validateDate(formatted) : "",
+                        }));
+                        }}
+                    />
+                    {dateErrors[field] ? (
+                        <Text style={styles.errorText}>{dateErrors[field]}</Text>
+                    ) : null}
+                    </View>
+                ))}
 
-                }}
-                />
-                {dateErrors[field] ? <Text style={styles.errorText}>{dateErrors[field]}</Text> : null}
-            </View>
-            ))}
-
-
+                {/* Acciones */}
                 <View style={styles.modalActions}>
-                <TouchableOpacity onPress={() => setModalVisible(false)}>
-                    <Text style={styles.cancelText}>Cancelar</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                style={styles.createButton}
-                onPress={async () => {
-                    const success = await createSprint();
-                    if (success) setModalVisible(false); 
-                }}
-                >
-                <Text style={styles.createText}>Crear</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <Text style={[styles.cancelText, { color: SUBTEXT }]}>
+                        Cancelar
+                    </Text>
+                    </TouchableOpacity>
 
+                    <TouchableOpacity
+                    style={styles.createButton}
+                    onPress={async () => {
+                        const success = await createSprint();
+                        if (success) setModalVisible(false);
+                    }}
+                    >
+                    <Text style={styles.createText}>Crear</Text>
+                    </TouchableOpacity>
+                </View>
                 </View>
             </View>
-            </View>
-        </Modal>
+            </Modal>
+
         </View>
     );
     }
