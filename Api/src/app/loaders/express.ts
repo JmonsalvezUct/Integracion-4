@@ -23,6 +23,7 @@ export const createApp = () => {
 
   app.use(express.json());
   app.use(requestLogger); // logger
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use('/api', routes); 
   app.use(errorHandler); // Middleware global de errores (debe ir al final)
 
