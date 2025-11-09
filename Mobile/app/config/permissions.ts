@@ -4,6 +4,7 @@ export const Permissions = {
     edit: ["admin", "developer"],
     delete: ["admin"],
     stats: ["admin", "developer", "guest"], 
+    manageTags: ["admin"]
   },
   task: {
     view: ["admin", "developer", "guest"],
