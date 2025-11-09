@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { getAccessToken, removeAccessToken } from "@/lib/secure-store";
+import { getAccessToken, clearAuth } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
 
 interface ProjectInfo {
@@ -51,7 +51,7 @@ export function useAuth() {
   }, []);
 
   const logout = async () => {
-    await removeAccessToken();
+    await clearAuth();
     setUser(null);
   };
 
