@@ -22,6 +22,6 @@
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/config/permissions.ts", "src/utils/checkPermission.ts"],
   "exclude": ["dist", "node_modules"]
 }

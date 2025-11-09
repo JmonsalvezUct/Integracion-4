@@ -22,12 +22,14 @@ import { TaskKanban } from "../components/taskkanban";
 import type { Task } from "../types";
 import { getUserId } from "@/lib/secure-store";
 import { useFocusEffect } from "@react-navigation/native";
+import { usePermissions } from "@/app/features/invitations/hooks/usePermissions";
 
 // 🎨 tokens de tema centralizados (de 'develop')
 import { useThemedColors } from "@/hooks/use-theme-color";
 
 export function TaskScreen({ projectId }: { projectId?: string }) {
   const router = useRouter();
+  
 
   // Colores del tema (de 'develop')
   const {
@@ -87,7 +89,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
 
   type ColumnKey = "status" | "assignee" | "dueDate" | "priority";
   type SortKey = "title" | "priority" | "dueDate";
-
+  const { can } = usePermissions(Number(projectId));
   const toggleCol = (key: ColumnKey) =>
     setColumns((c) => ({ ...c, [key]: !c[key] }));
 
@@ -309,6 +311,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
       </View>
 
       {/* FAB */}
+    {can("task", "edit") && (
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: BRAND }]}
         onPress={async () => {
@@ -335,6 +338,8 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
       >
         <Ionicons name="add" size={28} color="#fff" />
       </TouchableOpacity>
+    )}
+
 
       <AssignModal
         visible={assignModalVisible}

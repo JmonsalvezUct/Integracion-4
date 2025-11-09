@@ -4,7 +4,8 @@ import { env } from '../config/env.js';
 import { body, validationResult } from "express-validator";
 import jwt from "jsonwebtoken";
 import type { Secret, JwtPayload } from "jsonwebtoken";
-
+import type { UserPayload } from "../types/UserPayload.js";
+import type { Role } from "../config/permissions.js";
 export interface AuthUser {
   id: number;
   email?: string;
@@ -12,7 +13,7 @@ export interface AuthUser {
   role?: string;
 }
 export interface AuthRequest extends Request {
-  user?: AuthUser;
+  user?: UserPayload;
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -42,7 +43,12 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
       role?: string;
     };
 
-    req.user = { id, email, name, role: role || "user" };
+    req.user = {
+  id,
+  email,
+  name,
+  role: (role as Role) ?? "guest",
+};
     next();
   } catch (error) {
     console.error("Error en authMiddleware:", error);

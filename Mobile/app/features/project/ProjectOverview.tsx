@@ -8,7 +8,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
-
+import { usePermissions } from "@/app/features/invitations/hooks/usePermissions";
 import DetailProject from "../project/DetailProject";
 import EditProject from "../project/EditProject";
 import { TaskScreen } from "../task/screens/taskscreen";
@@ -32,7 +32,8 @@ export default function ProjectOverview() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const projectId = (params.projectId || params.id) as string;
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const { role, can } = usePermissions(Number(projectId));
+
   const [activeTab, setActiveTab] = useState<
   "details" | "tasks" | "edit" | "stats" | "sprints" | "invitations"
 >("details");
@@ -48,31 +49,7 @@ export default function ProjectOverview() {
 
   const insets = useSafeAreaInsets();
   const gutter = useGutter();
-  useEffect(() => {
-    const loadUserRole = async () => {
-      try {
-        const token = await getAccessToken();
-        if (!token) return;
 
-        const res = await apiFetch("/auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await res.json();
-
-
-        const project = data.user?.projects?.find(
-          (p: any) => p.projectId === Number(projectId)
-        );
-
-        setUserRole(project?.role || "user");
-      } catch (err) {
-        console.error("Error al cargar rol del usuario:", err);
-        setUserRole("user");
-      }
-    };
-
-    loadUserRole();
-  }, [projectId]);
 
   useEffect(() => {
     const loadProjectName = async () => {
@@ -171,45 +148,53 @@ export default function ProjectOverview() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.tabBtn,
-              activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-            ]}
-            onPress={() => setActiveTab("stats")}
-          >
-            <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
-              Estadísticas
-            </Text>
-          </TouchableOpacity>
 
-          {userRole === "admin" && (
-            <>
-              <TouchableOpacity
-                style={[
-                  styles.tabBtn,
-                  activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-                ]}
-                onPress={() => setActiveTab("sprints")}
-              >
-                <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
-                  Sprints
-                </Text>
-              </TouchableOpacity>
 
-              <TouchableOpacity
-                style={[
-                  styles.tabBtn,
-                  activeTab === "invitations" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-                ]}
-                onPress={() => setActiveTab("invitations")}
-              >
-                <Text style={[styles.tabText, { color: activeTab === "invitations" ? BRAND : TAB_TEXT }]}>
-                  Invitaciones
-                </Text>
-              </TouchableOpacity>
-            </>
+          {can("project", "stats") && (
+            <TouchableOpacity
+              style={[
+                styles.tabBtn,
+                activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+              ]}
+              onPress={() => setActiveTab("stats")}
+            >
+              <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
+                Estadísticas
+              </Text>
+            </TouchableOpacity>
           )}
+
+
+
+
+        {can("project", "edit") && (
+          <>
+            <TouchableOpacity
+              style={[
+                styles.tabBtn,
+                activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+              ]}
+              onPress={() => setActiveTab("sprints")}
+            >
+              <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
+                Sprints
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.tabBtn,
+                activeTab === "invitations" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+              ]}
+              onPress={() => setActiveTab("invitations")}
+            >
+              <Text style={[styles.tabText, { color: activeTab === "invitations" ? BRAND : TAB_TEXT }]}>
+                Invitaciones
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
 
 
           
@@ -226,38 +211,44 @@ export default function ProjectOverview() {
         {
           paddingHorizontal: gutter,
           paddingTop: CONTAINER.top,
-          paddingBottom: Math.max(8, insets.bottom + 9), // menos “hueco” inferior
+          paddingBottom: Math.max(8, insets.bottom + 9), 
         },
       ]}
     >
       {activeTab === "details" && <DetailProject />}
       {activeTab === "tasks" && <TaskScreen projectId={projectId} />}
       {activeTab === "edit" && <EditProject projectId={projectId} />}
-      {activeTab === "stats" && <StatsProjectScreen projectId={projectId} />}
+      {activeTab === "stats" && (
+  <StatsProjectScreen projectId={projectId} />
+)}
+
+
+
       {activeTab === "invitations" && (
-      userRole === "admin" ? (
-        <ProjectInvitationsScreen projectId={Number(projectId)} />
+        can("project", "edit") ? (
+          <ProjectInvitationsScreen projectId={Number(projectId)} />
+        ) : (
+          <View style={{ alignItems: "center", marginTop: 40 }}>
+            <Text style={{ color: "red", fontWeight: "600" }}>
+              No tienes permisos para acceder a esta sección.
+            </Text>
+          </View>
+        )
+      )}
 
-      ) : (
-        <View style={{ alignItems: "center", marginTop: 40 }}>
-          <Text style={{ color: "red", fontWeight: "600" }}>
-            No tienes permisos para acceder a esta sección.
-          </Text>
-        </View>
-      )
-    )}
 
-      {activeTab === "sprints" && (
-      userRole === "admin" ? (
-        <SprintsScreen projectId={projectId} />
-      ) : (
-        <View style={{ alignItems: "center", marginTop: 40 }}>
-          <Text style={{ color: "red", fontWeight: "600" }}>
-            ❌ No tienes permisos para acceder a esta sección.
-          </Text>
-        </View>
-      )
-    )}
+  {activeTab === "sprints" && (
+    can("project", "edit") ? (
+      <SprintsScreen projectId={projectId} />
+    ) : (
+      <View style={{ alignItems: "center", marginTop: 40 }}>
+        <Text style={{ color: "red", fontWeight: "600" }}>
+          No tienes permisos para acceder a esta sección.
+        </Text>
+      </View>
+    )
+  )}
+
 
 
     </View>

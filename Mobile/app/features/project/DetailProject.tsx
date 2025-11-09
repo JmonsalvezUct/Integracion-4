@@ -15,6 +15,7 @@ import { getAccessToken } from "@/lib/secure-store";
 import { apiFetch } from "@/lib/api-fetch";
 import { useThemedColors } from "@/hooks/use-theme-color";
 import Loader from "@/components/ui/Loader";
+import { usePermissions } from "@/app/features/invitations/hooks/usePermissions";
 
 
 type ProjectDetail = {
@@ -77,6 +78,8 @@ export default function DetailProject() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const projectId = id ? Number(id) : null;
   const router = useRouter();
+  const { can } = usePermissions(projectId ?? undefined);
+
 
   // 🎨 tokens del tema
   const {
@@ -716,6 +719,7 @@ export default function DetailProject() {
           </Text>
 
           {/* Campo para crear nueva etiqueta */}
+        {can("project", "manageTags") && (
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
             <TextInput
               placeholder="Nueva etiqueta"
@@ -733,6 +737,7 @@ export default function DetailProject() {
                 color: TEXT,
               }}
             />
+
             <TouchableOpacity
               onPress={handleCreateTag}
               style={{
@@ -746,6 +751,8 @@ export default function DetailProject() {
               <Text style={{ color: "white", fontWeight: "600" }}>Agregar</Text>
             </TouchableOpacity>
           </View>
+        )}
+
 
           {/* Lista de etiquetas */}
           {loadingTags ? (

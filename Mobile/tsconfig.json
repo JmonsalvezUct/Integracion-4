@@ -15,5 +15,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ]
+, "../Api/src/utils/checkPermission.ts", "../Api/src/config/permissions.ts"  ]
 }
