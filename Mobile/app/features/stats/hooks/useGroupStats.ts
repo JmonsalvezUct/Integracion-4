@@ -1,0 +1,55 @@
+import { useEffect, useState } from 'react';
+import { apiFetch } from '../../../../lib/api-fetch';
+
+export interface GroupStats {
+  projectId: number;
+  totalTasks: number;
+  completedCount: number;
+  totalMinutes: number;
+  totalHours: number;
+  avgMinutesPerTask: number;
+  workedDates: string[];
+  burndown: Record<string, number>;
+  timeBurndown: Record<string, number>;
+  teamMembers: {
+    userId: number;
+    name: string;
+    minutes: number;
+    hours: number;
+    completedTasks: number;
+  }[];
+}
+
+export function useGroupStats(projectId: string, from: string, to: string) {
+  const [stats, setStats] = useState<GroupStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log("projectID en useGroupStats", projectId);
+    console.log("Rango de fechas:", { from, to });
+
+    if (!projectId) return;
+
+    setLoading(true);
+
+    apiFetch(`/stats/project/${projectId}/group-stats`, {
+      method: 'POST',
+      body: JSON.stringify({ from, to }),
+    })
+      .then((response) => response.json())
+      .then((data: GroupStats) => {
+        console.log("📊 Estadísticas grupales:", data);
+        setStats(data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error("Error en useGroupStats:", err);
+        setError('Error al cargar estadísticas grupales');
+        setStats(null);
+      })
+      .finally(() => setLoading(false));
+  }, [projectId, from, to]);
+
+  return { stats, loading, error };
+}
