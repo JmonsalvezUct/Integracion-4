@@ -1,42 +1,31 @@
-
 import { prisma } from '../../app/loaders/prisma.js';
 import { ActionType } from '@prisma/client';
 
 export const statsService = {
+
   /**
-   * Obtiene estadísticas de desempeño individual para un usuario en un periodo
-   * @param userId ID del usuario
-   * @param from fecha inicio (formato YYYY-MM-DD, opcional)
-   * @param to fecha fin (formato YYYY-MM-DD, opcional)
-   * @returns Estadísticas de desempeño individual incluyendo tareas completadas y tiempos
+   * Estadísticas de desempeño individual considerando projectId
    */
-  async getUserStats(userId: number, from?: string, to?: string) {
-    // Validación de fechas
+  async getUserStats(userId: number, projectId: number, from?: string, to?: string) {
     const dateFilter: any = {};
     if (from) {
       const fromDate = new Date(from);
-      if (isNaN(fromDate.getTime())) {
-        throw new Error('Formato de fecha "from" inválido. Use YYYY-MM-DD');
-      }
+      if (isNaN(fromDate.getTime())) throw new Error('Formato de fecha "from" inválido. Use YYYY-MM-DD');
       dateFilter.gte = fromDate;
     }
     if (to) {
       const toDate = new Date(to);
-      if (isNaN(toDate.getTime())) {
-        throw new Error('Formato de fecha "to" inválido. Use YYYY-MM-DD');
-      }
+      if (isNaN(toDate.getTime())) throw new Error('Formato de fecha "to" inválido. Use YYYY-MM-DD');
       dateFilter.lte = toDate;
-    }    
-    
-    // Buscar cambios de estado a completado en el historial
+    }
+
+    // === 1. Tareas completadas del usuario dentro del proyecto ===
     const taskCompletionHistory = await prisma.changeHistory.findMany({
       where: {
         action: ActionType.STATUS_CHANGED,
-        description: {
-          contains: 'completed',
-          mode: 'insensitive'
-        },
+        description: { contains: 'completed', mode: 'insensitive' },
         userId,
+        projectId, // 🔹 filtro por proyecto
         ...(from || to ? { createdAt: dateFilter } : {}),
       },
       select: {
@@ -46,66 +35,58 @@ export const statsService = {
           select: {
             id: true,
             title: true,
-            createdAt: true,
             status: true,
-            dueDate: true
-          }
-        }
+            dueDate: true,
+            projectId: true,
+          },
+        },
       },
-      orderBy: {
-        createdAt: 'asc'
-      }
+      orderBy: { createdAt: 'asc' },
     });
 
-    // Filtrar tareas únicas y agregar fecha de completado
     const completedTasks = taskCompletionHistory
-      .filter(h => h.task !== null)
-      .map(h => ({
-        ...h.task!,
-        completedAt: h.createdAt
-      }));
+      .filter(h => h.task?.projectId === projectId) // 🔹 redundancia de seguridad
+      .map(h => ({ ...h.task!, completedAt: h.createdAt }));
 
-    // Horas trabajadas y fechas trabajadas
-		const timeEntries = await prisma.taskTime.findMany({
-			where: {
-				userId,
-				...(from || to ? { date: dateFilter } : {}),
-			},
-			select: {
-				durationMinutes: true,
-				date: true,
-			},
-			orderBy: { date: 'asc' },
-		});
-    
-		const totalMinutes = timeEntries.reduce((sum, entry) => sum + entry.durationMinutes, 0);
-		const workedDates = [...new Set(timeEntries.map(e => e.date?.toISOString().slice(0, 10)))];
+    // === 2. Tiempo registrado por el usuario dentro del proyecto ===
+    const timeEntries = await prisma.taskTime.findMany({
+      where: {
+        userId,
+        task: { projectId }, // 🔹 solo tareas de ese proyecto
+        ...(from || to ? { date: dateFilter } : {}),
+      },
+      select: { durationMinutes: true, date: true },
+      orderBy: { date: 'asc' },
+    });
 
-    // Burndown: tareas completadas por fecha usando el momento en que se marcaron como completadas.
+    const totalMinutes = timeEntries.reduce((sum, e) => sum + e.durationMinutes, 0);
+    const workedDates = [...new Set(timeEntries.map(e => e.date.toISOString().slice(0, 10)))];
+
+    // === 3. Burndown (tareas completadas por día) ===
     const burndown = completedTasks.reduce((acc, t) => {
       const date = t.completedAt.toISOString().slice(0, 10);
       acc[date] = (acc[date] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // Burndown de tiempo empleado por fecha
-    const timeBurndown = timeEntries.reduce((acc, entry) => {
-      if (entry.date) {
-        const date = entry.date.toISOString().slice(0, 10);
-        acc[date] = (acc[date] || 0) + entry.durationMinutes;
-      }
+    // === 4. Burndown de tiempo (minutos por día) ===
+    const timeBurndown = timeEntries.reduce((acc, e) => {
+      const date = e.date.toISOString().slice(0, 10);
+      acc[date] = (acc[date] || 0) + e.durationMinutes;
       return acc;
     }, {} as Record<string, number>);
 
-    // Total de tareas asignadas al usuario en el periodo
+    // === 5. Total de tareas asignadas al usuario en el proyecto ===
     const assignedTasksCount = await prisma.task.count({
       where: {
         assigneeId: userId,
+        projectId, // 🔹 filtro obligatorio
         ...(from || to ? { createdAt: dateFilter } : {}),
       },
     });
 
     return {
+      projectId,
       completedTasks,
       completedTasksCount: completedTasks.length,
       assignedTasksCount,
@@ -115,41 +96,32 @@ export const statsService = {
       burndown,
       timeBurndown,
     };
-	},
+  },
 
 
+  /**
+   * Estadísticas grupales del proyecto
+   */
   async getGroupStats(projectId: number, from?: string, to?: string) {
     const dateFilter: any = {};
     if (from) {
       const fromDate = new Date(from);
-      if (isNaN(fromDate.getTime())) {
-        throw new Error('Formato de fecha "from" inválido');
-      }
+      if (isNaN(fromDate.getTime())) throw new Error('Formato de fecha "from" inválido');
       dateFilter.gte = fromDate;
     }
     if (to) {
       const toDate = new Date(to);
-      if (isNaN(toDate.getTime())) {
-        throw new Error('Formato de fecha "to" inválido');
-      }
+      if (isNaN(toDate.getTime())) throw new Error('Formato de fecha "to" inválido');
       dateFilter.lte = toDate;
     }
 
-    // === 1. Total de tareas del proyecto ===
-    const totalTasks = await prisma.task.count({
-      where: {
-        projectId,
-        ...(from || to ? { createdAt: dateFilter } : {})
-      }
-    });
-
-    // === 2. Tareas completadas en el período ===
+    // === 1. Tareas completadas en el proyecto ===
     const completedTasks = await prisma.changeHistory.findMany({
       where: {
         projectId,
         action: ActionType.STATUS_CHANGED,
         description: { contains: 'completed', mode: 'insensitive' },
-        ...(from || to ? { createdAt: dateFilter } : {})
+        ...(from || to ? { createdAt: dateFilter } : {}),
       },
       select: {
         createdAt: true,
@@ -158,66 +130,69 @@ export const statsService = {
           select: {
             id: true,
             title: true,
-            assignee: { select: { id: true, name: true } }
-          }
-        }
+            projectId: true,
+            status:true,
+            dueDate: true,
+            assignee: { select: { id: true, name: true } },
+          },
+        },
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
 
     const uniqueCompleted = new Map<number, { id: number; title: string; completedAt: Date; assignee?: any }>();
     for (const h of completedTasks) {
-      if (h.task) {
+      if (h.task?.projectId === projectId) {
         uniqueCompleted.set(h.task.id, {
           id: h.task.id,
           title: h.task.title,
           completedAt: h.createdAt,
-          assignee: h.task.assignee
+          assignee: h.task.assignee,
         });
       }
     }
 
-    // === 3. Tiempo total registrado por miembros ===
+    // === 2. Tiempo registrado en el proyecto ===
     const timeEntries = await prisma.taskTime.findMany({
       where: {
         task: { projectId },
-        ...(from || to ? { date: dateFilter } : {})
+        ...(from || to ? { date: dateFilter } : {}),
       },
       select: {
         durationMinutes: true,
         date: true,
-        user: { select: { id: true, name: true } }
+        user: { select: { id: true, name: true } },
       },
-      orderBy: { date: 'asc' }
+      orderBy: { date: 'asc' },
     });
 
     const totalMinutes = timeEntries.reduce((sum, t) => sum + t.durationMinutes, 0);
     const workedDates = [...new Set(timeEntries.map(t => t.date.toISOString().slice(0, 10)))];
 
-    // === 4. Burndown de tareas (completadas por día) ===
-    const burndown = completedTasks.reduce((acc, t) => {
-      const date = t.createdAt.toISOString().slice(0, 10);
+    // === 3. Burndown general del proyecto ===
+    const burndown = Array.from(uniqueCompleted.values()).reduce((acc, t) => {
+      const date = t.completedAt.toISOString().slice(0, 10);
       acc[date] = (acc[date] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // === 5. Burndown de tiempo (minutos registrados por día) ===
     const timeBurndown = timeEntries.reduce((acc, e) => {
       const date = e.date.toISOString().slice(0, 10);
       acc[date] = (acc[date] || 0) + e.durationMinutes;
       return acc;
     }, {} as Record<string, number>);
 
-    // === 6. Participación por usuario (tiempo total y tareas completadas) ===
+    // === 4. Participación por usuario ===
     const userSummary: Record<number, { name: string; minutes: number; completedTasks: number }> = {};
-    for (const entry of timeEntries) {
-      if (!entry.user) continue;
-      const uid = entry.user.id;
+    for (const e of timeEntries) {
+      if (!e.user) continue;
+      const uid = e.user.id;
       if (!userSummary[uid]) {
-        userSummary[uid] = { name: entry.user.name, minutes: 0, completedTasks: 0 };
+        userSummary[uid] = { name: e.user.name, minutes: 0, completedTasks: 0 };
       }
-      userSummary[uid].minutes += entry.durationMinutes;
+      userSummary[uid].minutes += e.durationMinutes;
     }
+
     for (const t of uniqueCompleted.values()) {
       if (t.assignee) {
         const uid = t.assignee.id;
@@ -228,14 +203,14 @@ export const statsService = {
       }
     }
 
-    // === 7. Totales ===
+    console.log(uniqueCompleted)
+
     const completedCount = uniqueCompleted.size;
     const totalHours = totalMinutes / 60;
     const avgMinutesPerTask = completedCount ? totalMinutes / completedCount : 0;
 
     return {
       projectId,
-      totalTasks,
       completedCount,
       totalMinutes,
       totalHours,
@@ -246,9 +221,8 @@ export const statsService = {
       teamMembers: Object.entries(userSummary).map(([id, data]) => ({
         userId: Number(id),
         ...data,
-        hours: data.minutes / 60
+        hours: data.minutes / 60,
       })),
     };
   },
-
 };

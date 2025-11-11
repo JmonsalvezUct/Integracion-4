@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../../../../lib/api-fetch';
 
 export interface GroupStats {
-  projectId: number;
-  totalTasks: number;
   completedCount: number;
   totalMinutes: number;
   totalHours: number;
@@ -21,7 +19,7 @@ export interface GroupStats {
 }
 
 export function useGroupStats(projectId: string, from: string, to: string) {
-  const [stats, setStats] = useState<GroupStats | null>(null);
+  const [statsGroup, setStats] = useState<GroupStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -51,5 +49,5 @@ export function useGroupStats(projectId: string, from: string, to: string) {
       .finally(() => setLoading(false));
   }, [projectId, from, to]);
 
-  return { stats, loading, error };
+  return { statsGroup, loading, error };
 }

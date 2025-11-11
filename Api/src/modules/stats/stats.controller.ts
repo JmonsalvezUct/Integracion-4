@@ -13,6 +13,13 @@ const StatsRequestSchema = z.object({
 
 export const getUserStats = async (req: Request, res: Response) => {
   try {
+    const projectId = Number(req.params.projectId);
+    if (isNaN(projectId)) {
+      return res.status(400).json({ 
+        error: 'VALIDATION_ERROR', 
+        details: { projectId: 'projectId debe ser un número válido' } 
+      });
+    }
     const validation = StatsRequestSchema.safeParse({
       ...req.body,
       userId: Number(req.body.userId)
@@ -27,7 +34,7 @@ export const getUserStats = async (req: Request, res: Response) => {
 
     const { userId, from, to } = validation.data;
 
-    const stats = await statsService.getUserStats(userId, from, to);
+    const stats = await statsService.getUserStats(userId, projectId, from, to);
     return res.json(stats);
   } catch (error: any) {
     console.error('Error al obtener estadísticas:', error);
