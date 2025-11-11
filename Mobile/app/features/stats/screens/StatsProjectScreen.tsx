@@ -134,15 +134,6 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
                 {isGroupView ? groupStats!.totalHours.toFixed(2) : userStats!.totalHours.toFixed(2)} h
               </Text>
             </View>
-
-            {isGroupView && (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 16 }}>Promedio min/tarea:</Text>
-                <Text style={{ fontSize: 16, fontWeight: '500' }}>
-                  {groupStats!.avgMinutesPerTask.toFixed(1)} min
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Tabla de miembros si es vista grupal */}
