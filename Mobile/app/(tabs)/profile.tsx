@@ -14,12 +14,14 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import performLogout from '@/app/features/profile/components/logout';
 import { getSavedUser, type LoginResponse } from '@/services/auth';
-
+import { useFocusEffect } from "@react-navigation/native";
+import { apiFetch } from "@/lib/api-fetch";
 // 🎨 Tema y componentes
 import { useThemeMode } from '@/app/theme-context';
 import { Colors } from '@/constants/theme';
 import Button from '@/components/ui/button';
 import Loader from "@/components/ui/Loader";
+import * as SecureStore from "expo-secure-store";
 
 type User = LoginResponse['user'];
 
@@ -30,20 +32,35 @@ export default function ProfileScreen() {
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
-  React.useEffect(() => {
-    let mounted = true;
-    (async () => {
+useFocusEffect(
+  React.useCallback(() => {
+    const fetchUser = async () => {
       try {
-        const u = await getSavedUser();
-        if (mounted) setUser(u);
+        const res = await apiFetch("/user/me");
+        const text = await res.text();
+    
+
+
+        try {
+          const data = JSON.parse(text);
+          setUser(data);
+          await SecureStore.setItemAsync("user", JSON.stringify(data));
+        } catch (parseErr) {
+          console.error("⚠️ No es JSON válido:", parseErr);
+        }
+
+      } catch (err) {
+        console.error("Error cargando usuario:", err);
       } finally {
-        if (mounted) setLoading(false);
+        setLoading(false);
       }
-    })();
-    return () => {
-      mounted = false;
     };
-  }, []);
+
+    fetchUser();
+  }, [])
+);
+
+
 
   if (loading) {
   return (
@@ -115,12 +132,19 @@ export default function ProfileScreen() {
           <View style={styles.userInfo}>
             <View style={styles.inline}>
               <Text style={[styles.name, { color: TEXT }]}>{displayName}</Text>
-              <Ionicons name="pencil" size={18} color={BRAND} style={{ marginLeft: 8 }} />
+              <Ionicons
+                name="pencil"
+                size={18}
+                color={BRAND}
+                style={{ marginLeft: 8 }}
+                onPress={() => router.push("/features/profile/components/edit-profile")}
+              />
+
             </View>
 
             <View style={[styles.inline, { marginTop: 6 }]}>
               <Text style={[styles.email, { color: theme === 'dark' ? '#bbb' : '#888' }]}>{displayEmail}</Text>
-              <Ionicons name="pencil" size={14} color={BRAND} style={{ marginLeft: 8 }} />
+
             </View>
           </View>
         </View>

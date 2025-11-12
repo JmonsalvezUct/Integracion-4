@@ -14,10 +14,12 @@ import specs from '../swagger/swagger.js';
 import statsRoutes from '../modules/stats/stats.routes.js';
 import sprintsRoutes from "../modules/sprints/sprints.routes.js";
 import invitationsRoutes  from "../modules/invitations/invitations.routes.js";
+import UserRoutes  from "../modules/users/users.routes.js";
 const router = Router();
 
 router.use('/health', healthRoutes);      
 router.use('/auth', authRoutes);
+router.use('/user', UserRoutes);
 router.use('/tasks', tasksRoutes);
 router.use('/projects', projectsRoutes);
 router.use("/invitations", invitationsRoutes);
