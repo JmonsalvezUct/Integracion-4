@@ -135,7 +135,6 @@ export function TaskCalendar({
   // --- LÓGICA DRAG & DROP ---
 
   const startDrag = (task: Task, x: number, y: number) => {
-    console.log("🧩 Iniciando drag de tarea:", task.title);
     Vibration.vibrate(50);
     setDraggingTask(task);
     setDragPosition({ x, y });
@@ -169,12 +168,10 @@ export function TaskCalendar({
       day
     );
 
-    console.log(`🧩 Moviendo tarea "${draggingTask.title}" a día ${day}`);
 
     if (onTaskDateUpdate) {
       try {
         await onTaskDateUpdate(draggingTask.id, newDate);
-        console.log("✅ Tarea movida exitosamente");
       } catch (error) {
         console.error("❌ Error moviendo tarea:", error);
       }

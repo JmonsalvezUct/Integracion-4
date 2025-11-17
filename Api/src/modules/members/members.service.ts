@@ -54,16 +54,13 @@ export const membersService = {
   },
 
   async remove(projectId: number, userId: number, requesterId: number) {
-    console.log("DEBUG remove():", { projectId, userId, requesterId });
 
     const requester = await prisma.userProject.findFirst({
       where: { projectId, userId: requesterId },
     });
 
-    console.log("DEBUG requester:", requester);
 
     if (!requester || requester.role !== "admin") {
-      console.log("DEBUG: requester NO es admin");
       throw new Error("No autorizado");
     }
 
@@ -71,12 +68,10 @@ export const membersService = {
       where: { projectId, userId },
     });
 
-    console.log("DEBUG target:", target);
 
     if (!target) throw new Error("Miembro no encontrado");
 
     if (target.role === "admin" && requesterId !== userId) {
-      console.log("DEBUG: intentando borrar a otro admin");
       throw new Error("No puedes eliminar a otro admin");
     }
 

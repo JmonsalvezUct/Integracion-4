@@ -121,10 +121,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
 
   // 🔥 ESTA ES LA FUNCIÓN CRÍTICA QUE DEBE PASARSE (de 'javier')
   const handleTaskDateUpdate = async (taskId: number, newDate: Date) => {
-    console.log("🔥 TaskScreen: handleTaskDateUpdate llamado", {
-      taskId,
-      newDate,
-    });
+
     try {
       await updateTaskDate(taskId, newDate);
       showToast(

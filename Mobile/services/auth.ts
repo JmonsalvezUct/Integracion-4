@@ -151,7 +151,6 @@ export async function refreshTokens() {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) throw new Error("No existe un refresh token");
 
-  console.log("auth.refreshTokens: solicitando /auth/refresh");
   const res = await fetch(`${API_URL}/auth/refresh`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -202,7 +201,6 @@ export async function refreshTokens() {
   const storedUser = await getSavedUser();
   const user = data?.user ?? storedUser ?? null;
 
-  console.log("auth.refreshTokens: tokens actualizados (userId=", userId, ")");
   return { accessToken: newAccess, refreshToken: newRefresh, user } as LoginResponse;
 }
 

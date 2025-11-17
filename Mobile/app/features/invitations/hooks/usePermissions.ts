@@ -20,11 +20,7 @@ export function usePermissions(projectId?: number) {
 
   const role = normalizeRole(rawRole);
 
-  console.log("====== usePermissions DEBUG ======");
-  console.log("User projects:", user?.projects);
-  console.log("Requested projectId:", normalizedId);
-  console.log("Detected role:", role);
-  console.log("==================================");
+
 
   return {
     role,

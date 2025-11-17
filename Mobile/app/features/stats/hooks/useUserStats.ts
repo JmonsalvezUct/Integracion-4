@@ -17,9 +17,7 @@ export function useUserStats(projectId: string, userId: number, from: string, to
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("userID en useuserstats", userId);
-    console.log("projectID en useuserstats", projectId);
-    console.log("JSON.stringify({ userId, from, to })", JSON.stringify({ userId, from, to }));
+
     if (!projectId || !userId) return;
     setLoading(true);
     apiFetch(`/stats/project/${projectId}/user-stats`, {
@@ -28,7 +26,6 @@ export function useUserStats(projectId: string, userId: number, from: string, to
     })
       .then((response) => response.json())
       .then((data: UserStats) => {
-        console.log("EStadisticas 😀 ", data)
         setStats(data);
         setError(null);
       })

@@ -24,8 +24,7 @@ export function useGroupStats(projectId: string, from: string, to: string) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("projectID en useGroupStats", projectId);
-    console.log("Rango de fechas:", { from, to });
+
 
     if (!projectId) return;
 
@@ -37,7 +36,7 @@ export function useGroupStats(projectId: string, from: string, to: string) {
     })
       .then((response) => response.json())
       .then((data: GroupStats) => {
-        console.log("📊 Estadísticas grupales:", data);
+
         setStats(data);
         setError(null);
       })

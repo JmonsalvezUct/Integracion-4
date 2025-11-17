@@ -120,9 +120,7 @@ export function useTasks(projectId?: string | number) {
   // 🔥 FUNCIÓN AÑADIDA DE LA RAMA 'javier'
   const updateTaskDate = async (taskId: number, newDate: Date) => {
     try {
-      console.log(
-        `🔄 Actualizando tarea ${taskId} a fecha: ${newDate.toISOString()}`
-      );
+
 
       const token = await getAccessToken();
 
@@ -147,7 +145,6 @@ export function useTasks(projectId?: string | number) {
       }
 
       const updatedTask = await res.json();
-      console.log("✅ Tarea actualizada:", updatedTask);
 
       // Actualizar el estado local
       setTasks((prevTasks) =>

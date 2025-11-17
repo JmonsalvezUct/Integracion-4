@@ -17,9 +17,7 @@ export function useProjectMembers(projectId: number) {
 
       const data = await res.json(); 
       setMembers(data);
-    } catch (err) {
-      console.log("Error cargando miembros", err);
-    } finally {
+    }  finally {
       setLoading(false);
     }
   };
