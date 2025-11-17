@@ -1,20 +1,23 @@
 export const Permissions = {
   project: {
     view: ["admin", "developer", "guest"],
-    edit: ["admin", "developer"],
-    delete: ["admin"],
-    stats: ["admin", "developer", "guest"], 
-    manageTags: ["admin"],
-    viewMembers: ["admin", "developer"],
-    manageMembers: ["admin"],
+    edit: ["admin"],          // Editar proyecto
+    stats: ["admin"],         // Ver estadísticas
+    manageTags: ["admin"],    // Tags
+    viewMembers: ["admin", "developer", "guest"], // TODOS ven miembros
+    manageMembers: ["admin"], // SOLO admin puede invitar / cambiar roles
   },
+
+  sprint: {
+    view: ["admin"], // TODOS ven sprints
+    create: ["admin"],                     // SOLO admin crea sprints
+    edit: ["admin"],                       // SOLO admin edita sprints
+    delete: ["admin"],                     // SOLO admin elimina sprints
+  },
+
   task: {
     view: ["admin", "developer", "guest"],
     edit: ["admin", "developer"],
     delete: ["admin"],
-  },
+  }
 } as const;
-
-export type Resource = keyof typeof Permissions;
-export type Action<R extends Resource> = keyof (typeof Permissions)[R];
-export type Role = (typeof Permissions)[Resource][Action<Resource>][number];

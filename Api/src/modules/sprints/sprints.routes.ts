@@ -9,6 +9,7 @@ import {
 } from "./sprints.controller.js";
 import { authMiddleware } from "../../middlewares/auth.middleware.js";
 import { roleMiddleware } from "../../middlewares/role.middleware.js";
+import { projectRoleMiddleware } from "../../middlewares/projectRoleMiddleware.js";
 
 const router = Router({ mergeParams: true });
 router.use(authMiddleware);
@@ -58,7 +59,12 @@ router.use(authMiddleware);
  *       401:
  *         description: No autorizado
  */
-router.post("/", roleMiddleware(["admin"]), createSprint);
+router.post(
+  "/",
+  authMiddleware,
+  projectRoleMiddleware(["admin"]),
+  createSprint
+);
 
 /**
  * @swagger

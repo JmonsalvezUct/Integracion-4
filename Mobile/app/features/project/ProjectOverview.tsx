@@ -112,32 +112,36 @@ export default function ProjectOverview() {
           paddingHorizontal: gutter,
         }}
       >
-        <View style={styles.tabsRow}>
+      <View style={styles.tabsRow}>
 
-          <TouchableOpacity
-            style={[
-              styles.tabBtn,
-              activeTab === "details" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-            ]}
-            onPress={() => setActiveTab("details")}
-          >
-            <Text style={[styles.tabText, { color: activeTab === "details" ? BRAND : TAB_TEXT }]}>
-              Detalles
-            </Text>
-          </TouchableOpacity>
+        {/* Detalles */}
+        <TouchableOpacity
+          style={[
+            styles.tabBtn,
+            activeTab === "details" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+          ]}
+          onPress={() => setActiveTab("details")}
+        >
+          <Text style={[styles.tabText, { color: activeTab === "details" ? BRAND : TAB_TEXT }]}>
+            Detalles
+          </Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.tabBtn,
-              activeTab === "tasks" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-            ]}
-            onPress={() => setActiveTab("tasks")}
-          >
-            <Text style={[styles.tabText, { color: activeTab === "tasks" ? BRAND : TAB_TEXT }]}>
-              Tareas
-            </Text>
-          </TouchableOpacity>
+        {/* Tareas */}
+        <TouchableOpacity
+          style={[
+            styles.tabBtn,
+            activeTab === "tasks" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+          ]}
+          onPress={() => setActiveTab("tasks")}
+        >
+          <Text style={[styles.tabText, { color: activeTab === "tasks" ? BRAND : TAB_TEXT }]}>
+            Tareas
+          </Text>
+        </TouchableOpacity>
 
+        {/* Editar (SOLO ADMIN) */}
+        {can("project", "edit") && (
           <TouchableOpacity
             style={[
               styles.tabBtn,
@@ -149,73 +153,70 @@ export default function ProjectOverview() {
               Editar
             </Text>
           </TouchableOpacity>
-
-
-
-          {can("project", "stats") && (
-            <TouchableOpacity
-              style={[
-                styles.tabBtn,
-                activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-              ]}
-              onPress={() => setActiveTab("stats")}
-            >
-              <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
-                Estadísticas
-              </Text>
-            </TouchableOpacity>
-          )}
-
-
-
-
-        {can("project", "edit") && (
-          <>
-            <TouchableOpacity
-              style={[
-                styles.tabBtn,
-                activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-              ]}
-              onPress={() => setActiveTab("sprints")}
-            >
-              <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
-                Sprints
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tabBtn,
-                activeTab === "invitations" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-              ]}
-              onPress={() => setActiveTab("invitations")}
-            >
-              <Text style={[styles.tabText, { color: activeTab === "invitations" ? BRAND : TAB_TEXT }]}>
-                Invitaciones
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tabBtn,
-                activeTab === "members" && { borderBottomWidth: 3, borderBottomColor: BRAND },
-              ]}
-              onPress={() => setActiveTab("members")}
-            >
-              <Text style={[styles.tabText, { color: activeTab === "members" ? BRAND : TAB_TEXT }]}>
-                Miembros
-              </Text>
-            </TouchableOpacity>
-
-
-          </>
         )}
 
+        {/* Estadísticas (SOLO ADMIN) */}
+        {can("project", "stats") && (
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "stats" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("stats")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "stats" ? BRAND : TAB_TEXT }]}>
+              Estadísticas
+            </Text>
+          </TouchableOpacity>
+        )}
 
+        {/* Sprints (TODOS LOS ROLES PUEDEN VER) */}
+        {can("sprint", "view") && (
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "sprints" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("sprints")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "sprints" ? BRAND : TAB_TEXT }]}>
+              Sprints
+            </Text>
+          </TouchableOpacity>
+        )}
 
-          
+        {/* Invitaciones (SOLO ADMIN) */}
+        {can("project", "manageMembers") && (
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "invitations" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("invitations")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "invitations" ? BRAND : TAB_TEXT }]}>
+              Invitaciones
+            </Text>
+          </TouchableOpacity>
+        )}
 
-        </View>
+        {/* Miembros (TODOS LOS ROLES PUEDEN VER) */}
+        {can("project", "viewMembers") && (
+          <TouchableOpacity
+            style={[
+              styles.tabBtn,
+              activeTab === "members" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+            ]}
+            onPress={() => setActiveTab("members")}
+          >
+            <Text style={[styles.tabText, { color: activeTab === "members" ? BRAND : TAB_TEXT }]}>
+              Miembros
+            </Text>
+          </TouchableOpacity>
+        )}
+
+      </View>
+
       </ScrollView>
     </FullBleed>
 
@@ -253,17 +254,10 @@ export default function ProjectOverview() {
       )}
 
 
-  {activeTab === "sprints" && (
-    can("project", "edit") ? (
-      <SprintsScreen projectId={projectId} />
-    ) : (
-      <View style={{ alignItems: "center", marginTop: 40 }}>
-        <Text style={{ color: "red", fontWeight: "600" }}>
-          No tienes permisos para acceder a esta sección.
-        </Text>       
-      </View>
-    )
-  )}
+{activeTab === "sprints" && (
+  <SprintsScreen projectId={projectId} />
+)}
+
 
 
   {activeTab === "members" && (
