@@ -3,7 +3,10 @@ export const Permissions = {
     view: ["admin", "developer", "guest"],
     edit: ["admin", "developer"],
     delete: ["admin"],
-    manageTags: ["admin"]
+    manageTags: ["admin"],
+
+    viewMembers: ["admin", "developer"],
+    manageMembers: ["admin"],
   },
   task: {
     view: ["admin", "developer", "guest"],

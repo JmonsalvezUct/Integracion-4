@@ -24,6 +24,7 @@ import { CONTAINER } from "@/constants/spacing";
 import FullBleed from "@/components/layout/FullBleed";
 import { useGutter } from "../../../hooks/use-gutter";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import MembersScreen from "../members/screens/MembersScreen"; 
 
 import Loader from "@/components/ui/Loader";
 import StatsProjectScreen from "../stats/screens/StatsProjectScreen";
@@ -35,8 +36,9 @@ export default function ProjectOverview() {
   const { role, can } = usePermissions(Number(projectId));
 
   const [activeTab, setActiveTab] = useState<
-  "details" | "tasks" | "edit" | "stats" | "sprints" | "invitations"
+  "details" | "tasks" | "edit" | "stats" | "sprints" | "invitations" | "members"
 >("details");
+
 
 
   const [projectName, setProjectName] = useState<string>("");
@@ -192,6 +194,20 @@ export default function ProjectOverview() {
                 Invitaciones
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.tabBtn,
+                activeTab === "members" && { borderBottomWidth: 3, borderBottomColor: BRAND },
+              ]}
+              onPress={() => setActiveTab("members")}
+            >
+              <Text style={[styles.tabText, { color: activeTab === "members" ? BRAND : TAB_TEXT }]}>
+                Miembros
+              </Text>
+            </TouchableOpacity>
+
+
           </>
         )}
 
@@ -244,12 +260,23 @@ export default function ProjectOverview() {
       <View style={{ alignItems: "center", marginTop: 40 }}>
         <Text style={{ color: "red", fontWeight: "600" }}>
           No tienes permisos para acceder a esta sección.
-        </Text>
+        </Text>       
       </View>
     )
   )}
 
 
+  {activeTab === "members" && (
+    can("project", "viewMembers") ? (
+      <MembersScreen projectId={Number(projectId)} />
+    ) : (
+      <View style={{ marginTop: 40, alignItems: "center" }}>
+        <Text style={{ color: "red", fontWeight: "600" }}>
+          No tienes permisos para ver los miembros.
+        </Text>
+      </View>
+    )
+  )}
 
     </View>
   </LayoutContainer>
