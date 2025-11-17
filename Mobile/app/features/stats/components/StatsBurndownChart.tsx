@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Dimensions } from "react-native";
 import { CartesianChart, useChartTransformState, Line, useChartPressState } from "victory-native";
-import { useFont } from "@shopify/react-native-skia";
+import { useFont , Skia} from "@shopify/react-native-skia";
 // Importamos la librería 'date-fns' o similar para un buen formato de fechas
 import { format } from "date-fns"; 
 
@@ -15,7 +15,12 @@ export function StatsBurndownChart({ data, color = "#1976d2", label }: BurndownC
   const screenWidth = Dimensions.get('window').width;
   const { state, isActive } = useChartPressState({ x: '', y: { y: 0 } });
   
-  const font = useFont(require("../../../../assets/fonts/GoogleSansCode-VariableFont_wght.ttf"), 12); //necesario para que se muestren los ejes
+  // Cargar fuente del sistema o fallback
+
+  const font = useFont(require("../../../../assets/fonts/GoogleSansCode-VariableFont_wght.ttf"),12);
+  // si quieres una fuente específica, usa un archivo en assets/font.ttf y el método siguiente ↓
+  
+
   const {state: transformState} = useChartTransformState({
     scaleX: 1, // Initial X-axis scale
     scaleY: 0.9, // Initial Y-axis scale
