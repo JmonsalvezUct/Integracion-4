@@ -89,7 +89,8 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
 
   type ColumnKey = "status" | "assignee" | "dueDate" | "priority";
   type SortKey = "title" | "priority" | "dueDate";
-  const { can } = usePermissions(Number(projectId));
+  const { role, can } = usePermissions(Number(projectId));
+
   const toggleCol = (key: ColumnKey) =>
     setColumns((c) => ({ ...c, [key]: !c[key] }));
 
@@ -311,34 +312,35 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
       </View>
 
       {/* FAB */}
-    {can("task", "edit") && (
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: BRAND }]}
-        onPress={async () => {
-          const userId = await getUserId();
-          if (!userId) {
-            Alert.alert(
-              "Error",
-              "No se encontró el ID del usuario autenticado."
-            );
-            return;
-          }
-          if (!projectId) {
-            Alert.alert("Error", "No se encontró el ID del proyecto.");
-            return;
-          }
-          router.push({
-            pathname: "/features/task/components/CreateTask",
-            params: {
-              projectId: projectId.toString(),
-              creatorId: userId.toString(),
-            },
-          });
-        }}
-      >
-        <Ionicons name="add" size={28} color="#fff" />
-      </TouchableOpacity>
-    )}
+{role === "admin" && (
+  <TouchableOpacity
+    style={[styles.fab, { backgroundColor: BRAND }]}
+    onPress={async () => {
+      const userId = await getUserId();
+      if (!userId) {
+        Alert.alert(
+          "Error",
+          "No se encontró el ID del usuario autenticado."
+        );
+        return;
+      }
+      if (!projectId) {
+        Alert.alert("Error", "No se encontró el ID del proyecto.");
+        return;
+      }
+      router.push({
+        pathname: "/features/task/components/CreateTask",
+        params: {
+          projectId: projectId.toString(),
+          creatorId: userId.toString(),
+        },
+      });
+    }}
+  >
+    <Ionicons name="add" size={28} color="#fff" />
+  </TouchableOpacity>
+)}
+
 
 
       <AssignModal
@@ -395,7 +397,7 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
-    // padding: 16, // <-- ✅ ARREGLO: quitamos padding de aquí
+    // padding: 16, //
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
   },

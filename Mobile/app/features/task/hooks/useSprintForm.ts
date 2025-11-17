@@ -2,7 +2,7 @@
     import { useState } from "react";
     import { Alert } from "react-native";
     import { apiFetch } from "@/lib/api-fetch";
-
+    import { getAccessToken } from "@/lib/secure-store";
     export function useSprintForm(projectId: string | number | undefined, onSuccess: () => void) {
     const [newSprint, setNewSprint] = useState({
         name: "",
@@ -34,48 +34,48 @@
 
         const startError = validateDate(newSprint.startDate);
         const endError = validateDate(newSprint.endDate);
+
         setDateErrors({ startDate: startError, endDate: endError });
 
         if (startError || endError) {
-        Alert.alert("Error", "Corrige las fechas antes de continuar.");
-        return false; 
-        }
-
-        const [sd, sm, sy] = newSprint.startDate.split("/").map(Number);
-        const [ed, em, ey] = newSprint.endDate.split("/").map(Number);
-
-        if (new Date(ey, em - 1, ed) <= new Date(sy, sm - 1, sd)) {
-        Alert.alert("Error", "La fecha de fin debe ser posterior.");
-        return false; 
+            Alert.alert("Error", "Corrige las fechas antes de continuar.");
+            return false;
         }
 
         const parseISO = (d: string) => {
-        const [day, month, year] = d.split("/");
-        return `${year}-${month}-${day}`;
+            const [day, month, year] = d.split("/");
+            return `${year}-${month}-${day}`;
         };
 
         const formatted = {
-        ...newSprint,
-        startDate: parseISO(newSprint.startDate),
-        endDate: parseISO(newSprint.endDate),
+            ...newSprint,
+            startDate: parseISO(newSprint.startDate),
+            endDate: parseISO(newSprint.endDate),
         };
 
         try {
-        const res = await apiFetch(`/projects/${projectId}/sprints`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(formatted),
-        });
+            const token = await getAccessToken();
 
-        if (!res.ok) throw new Error("Error en la API");
+            const res = await apiFetch(`/projects/${projectId}/sprints`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify(formatted),
+            });
 
-        Alert.alert("Éxito", "Sprint creado correctamente.");
-        setNewSprint({ name: "", description: "", startDate: "", endDate: "" });
-        onSuccess();
-        return true; 
-        } catch {
-        Alert.alert("Error", "No se pudo crear el sprint.");
-        return false;
+            if (!res.ok) throw new Error(await res.text());
+
+            Alert.alert("Éxito", "Sprint creado correctamente.");
+            setNewSprint({ name: "", description: "", startDate: "", endDate: "" });
+            onSuccess();
+            return true;
+
+        } catch (err) {
+            console.error("❌ Error creando sprint:", err);
+            Alert.alert("Error", "No se pudo crear el sprint.");
+            return false;
         }
     };
 

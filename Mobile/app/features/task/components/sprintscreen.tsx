@@ -39,12 +39,14 @@
     const [modalVisible, setModalVisible] = useState(false);
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: BG }]}>
+
 
 
         {/* Encabezado */}
         <View style={styles.topRow}>
-            <Text style={styles.sectionTitle}>Sprints</Text>
+            <Text style={[styles.sectionTitle, { color: TEXT }]}>Sprints</Text>
+
             <TouchableOpacity style={styles.newButton} onPress={() => setModalVisible(true)}>
             <Text style={styles.newButtonText}>+ Nuevo</Text>
             </TouchableOpacity>
@@ -199,7 +201,8 @@
     );
     }
     const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#fff" },
+    container: { flex: 1 },
+
     header: {
         flexDirection: "row",
         alignItems: "center",
