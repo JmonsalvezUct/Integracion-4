@@ -11,22 +11,13 @@ import {
   DeviceEventEmitter,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import Header from '../../../components/ui/header';
 import { Ionicons } from '@expo/vector-icons';
-import * as DocumentPicker from 'expo-document-picker';
-import * as WebBrowser from 'expo-web-browser';
-
 import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from '@/lib/api-fetch';
 import { AssignModal } from './components/assignmodal';
-
-// 🎨 Colores
 import { useThemedColors } from '@/hooks/use-theme-color';
-// 🧱 Layout y spacing
 import LayoutContainer from '@/components/layout/layout_container';
 import { CONTAINER } from '@/constants/spacing';
-
-// ✅ Componentes reutilizables
 import Input from '@/components/ui/input';
 import Button from '@/components/ui/button';
 
@@ -46,12 +37,6 @@ export default function DetailTask() {
   // Modo edición local
   const [editing, setEditing] = useState(false);
   const [editState, setEditState] = useState<any>({});
-  const [newComment, setNewComment] = useState('');
-  // --- Visualizadores de archivos ---
-  const [currentFileUrl, setCurrentFileUrl] = useState<string | null>(null);
-  const [currentFileName, setCurrentFileName] = useState<string | null>(null);
-  const [pdfViewerVisible, setPdfViewerVisible] = useState(false);
-  const [imageViewerVisible, setImageViewerVisible] = useState(false);
 
   // Refs (enfoque)
   const titleRef = useRef<any>(null);
@@ -60,11 +45,6 @@ export default function DetailTask() {
   // Modales
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [showPriorityPicker, setShowPriorityPicker] = useState(false);
-
-  // Adjuntos
-  const [attachModalVisible, setAttachModalVisible] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<any>(null);
 
   // Asignación
   const [assignModalVisible, setAssignModalVisible] = useState(false);
@@ -310,7 +290,6 @@ useEffect(() => {
         dueDate: correctedTask.dueDate,
         assigneeId: correctedTask.assigneeId,
       });
-      loadAttachments(correctedTask?.id ?? taskId);
     } catch (e: any) {
       console.error('detail fetch error', e);
       setError(e.message || String(e));
@@ -331,19 +310,7 @@ useEffect(() => {
     return () => sub.remove();
   }, [taskId]);
 
-  const loadAttachments = async (id?: string | number) => {
-    const targetId = id ?? taskId;
-    if (!targetId) return;
-    try {
-      const res = await apiFetch(`/attachments/projects/${task.projectId}/tasks/${taskId}`);
-      if (res.ok) {
-        const attachments = await res.json();
-        setTask((prev: any) => ({ ...prev, attachments }));
-      }
-    } catch (err) {
-      console.error('Error loading attachments:', err);
-    }
-  };
+
 
   function emitTaskUpdated(updated: any) {
     DeviceEventEmitter.emit(TASK_UPDATED, { task: updated });
@@ -465,120 +432,12 @@ useEffect(() => {
     setEditing(false);
   };
 
-  const postComment = async () => {
-    if (!taskId || !newComment.trim()) return;
-    const comment = {
-      id: Date.now(),
-      text: newComment,
-      user: 'Usuario Actual',
-      date: new Date().toISOString(),
-    };
-    setTask((t: any) => ({ ...t, comments: [...(t?.comments || []), comment] }));
-    setNewComment('');
-  };
-
-  // Adjuntos
-  const pickDocument = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: '*/*',
-        copyToCacheDirectory: true,
-      });
-      if (result.canceled) return;
-      const file = result.assets[0];
-      setSelectedFile({
-        name: file.name,
-        uri: file.uri,
-        size: file.size,
-        type: file.mimeType || 'application/octet-stream',
-      });
-    } catch (error) {
-      console.error('Error picking document:', error);
-      Alert.alert('Error', 'No se pudo seleccionar el archivo');
-    }
-  };
-
-  const uploadFile = async () => {
-    if (!selectedFile || !taskId || !task?.projectId) return;
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', {
-        uri: selectedFile.uri,
-        type: selectedFile.type,
-        name: selectedFile.name,
-      } as any);
-
-      // ✅ RUTA CORREGIDA: usar projectId + taskId
-      const res = await apiFetchWithFormData(`/attachments/projects/${task.projectId}/tasks/${taskId}`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(`Error ${res.status}: ${errorText}`);
-      }
-
-      const result = await res.json();
-      setTask((prev: any) => ({
-        ...prev,
-        attachments: [...(prev.attachments || []), result.attachment],
-      }));
-
-      Alert.alert('Éxito', 'Archivo subido correctamente');
-      setAttachModalVisible(false);
-      setSelectedFile(null);
-      loadAttachments(taskId);
-    } catch (error: any) {
-      console.error('❌ Upload error:', error);
-      Alert.alert('Error', error.message || 'Error al subir el archivo. Verifica tu conexión.');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const deleteAttachment = async (attachmentId: number) => {
-    if (!task?.projectId) return;
-    
-    try {
-      Alert.alert(
-        'Eliminar archivo',
-        '¿Estás seguro de que quieres eliminar este archivo?',
-        [
-          { text: 'Cancelar', style: 'cancel' as const },
-          {
-            text: 'Eliminar',
-            style: 'destructive' as const,
-            onPress: async () => {
-              // ✅ RUTA CORREGIDA: usar projectId + attachmentId
-              const res = await apiFetch(`/attachments/projects/${task.projectId}/attachments/${attachmentId}`, {
-                method: 'DELETE',
-              });
-
-            if (res.ok) {
-              setTask((prev: any) => ({
-                ...prev,
-                attachments: prev.attachments.filter((a: any) => a.id !== attachmentId),
-              }));
-              Alert.alert('Éxito', 'Archivo eliminado correctamente');
-            } else {
-              throw new Error('Error al eliminar archivo');
-            }
-          },
-        },
-      ]);
-    } catch (error) {
-      console.error('Delete error:', error);
-      Alert.alert('Error', 'No se pudo eliminar el archivo');
-    }
-  };
 
   const startEditTitle = () => {
     setEditing(true);
     setTimeout(() => titleRef.current?.focus(), 0);
   };
+  
   const startEditDescription = () => {
     setEditing(true);
     setTimeout(() => descRef.current?.focus(), 0);
@@ -588,64 +447,11 @@ useEffect(() => {
     if (!taskId || !task) return;
     if (editState.title !== task.title) persistTaskPatch(taskId, { title: editState.title });
   };
+
   const onDescriptionEndEditing = () => {
     if (!taskId || !task) return;
     if (editState.description !== task.description)
-      persistTaskPatch(taskId, { description: editState.description });
-  // Función para descargar archivo
-  const downloadAttachment = async (attachment: any) => {
-    if (!task?.projectId) return;
-    
-    try {
-      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
-      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
-      
-      // Abrir en el navegador para descarga
-      await WebBrowser.openBrowserAsync(downloadUrl);
-      
-    } catch (error: any) {
-      console.error('Error en descarga:', error);
-      Alert.alert('Error', `No se pudo descargar el archivo: ${error.message}`);
-    }
-  };
-
-  // Función para previsualizar PDF usando Google Docs Viewer
-  const previewPdf = async (attachment: any) => {
-    if (!task?.projectId) return;
-    
-    try {
-      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
-      const pdfUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
-      
-      // Usar Google Docs Viewer para mostrar el PDF
-      const googleDocsViewerUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfUrl)}`;
-      
-      setCurrentFileUrl(googleDocsViewerUrl);
-      setCurrentFileName(attachment.originalName);
-      setPdfViewerVisible(true);
-      
-    } catch (error: any) {
-      console.error('Error al abrir PDF:', error);
-      Alert.alert('Error', 'No se pudo abrir el PDF para visualización');
-    }
-  };
-
-  // Función para previsualizar imágenes
-  const previewImage = async (attachment: any) => {
-    if (!task?.projectId) return;
-    
-    try {
-      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
-      const imageUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
-      
-      setCurrentFileUrl(imageUrl);
-      setCurrentFileName(attachment.originalName);
-      setImageViewerVisible(true);
-      
-    } catch (error: any) {
-      console.error('Error al abrir imagen:', error);
-      Alert.alert('Error', 'No se pudo abrir la imagen para visualización');
-    }
+    persistTaskPatch(taskId, { description: editState.description });
   };
 
   const onPickStatus = (value: string) => {
@@ -660,8 +466,6 @@ useEffect(() => {
     setEditState((s: any) => ({ ...s, priority: value }));
     if (taskId) persistTaskPatch(taskId, { priority: value });
   };
-// --- Manejadores de edición de título y descripción ---
-
 
 
   if (!taskId)
@@ -910,144 +714,6 @@ useEffect(() => {
                 </View>
               )}
 
-              {/* Adjuntos */}
-              <View style={styles.attachmentsHeader}>
-                <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Adjuntos</Text>
-                <Button
-                  onPress={() => setAttachModalVisible(true)}
-                  leftIcon={<Ionicons name="add" size={16} color="#fff" />}
-                  size="sm"
-                  title="Agregar"
-                />
-              </View>
-
-              {task.attachments && task.attachments.length > 0 ? (
-                task.attachments.map((a: any) => (
-                  <View
-                    key={a.id}
-                    style={[styles.attachmentItem, { borderBottomColor: isDark ? '#222' : '#f0f0f0' }]}
-                  >
-                    <TouchableOpacity
-                      style={styles.attachRow}
-                      onPress={() => downloadAttachment(a.id, a.originalName)}
-                    >
-                      <Ionicons name="document-attach-outline" size={18} color={SUBTEXT} />
-                      <View style={styles.attachmentInfo}>
-                        <Text style={[styles.attachText, { color: TEXT }]}>{a.originalName}</Text>
-                        <Text style={[styles.attachmentSize, { color: SUBTEXT }]}>
-                          {(a.size / 1024).toFixed(1)} KB
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteAttachment(a.id)} style={styles.deleteAttachmentButton}>
-                      <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
-                    </TouchableOpacity>
-                  </View>
-                ))
-              ) : (
-                <Text style={[styles.emptyText, { color: SUBTEXT }]}>No hay archivos adjuntos</Text>
-              )}
-
-              {/* Modal Adjuntar */}
-              <Modal
-                visible={attachModalVisible}
-                animationType="slide"
-                transparent
-                onRequestClose={() => setAttachModalVisible(false)}
-              >
-                <View style={styles.modalOverlay}>
-                  <View
-                    style={[
-                      styles.modalContent,
-                      { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 },
-                    ]}
-                  >
-                    <Text style={[styles.modalTitle, { color: TEXT }]}>Adjuntar Archivo</Text>
-
-                    {selectedFile ? (
-                      <View
-                        style={[
-                          styles.selectedFile,
-                          { backgroundColor: MUTED_BG, borderColor: CARD_BORDER },
-                        ]}
-                      >
-                        <Ionicons name="document-outline" size={24} color={BRAND} />
-                        <View style={styles.fileInfo}>
-                          <Text style={[styles.fileName, { color: TEXT }]}>{selectedFile.name}</Text>
-                          <Text style={[styles.fileSize, { color: SUBTEXT }]}>
-                            {(selectedFile.size / 1024).toFixed(1)} KB
-                          </Text>
-                        </View>
-                        <TouchableOpacity onPress={() => setSelectedFile(null)}>
-                          <Ionicons name="close" size={20} color={SUBTEXT} />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      // Conservamos este botón "dashed" como Touchable por estilo especial
-                      <TouchableOpacity
-                        style={[
-                          styles.pickFileButton,
-                          { borderColor: CARD_BORDER, backgroundColor: isDark ? '#1f1f1f' : undefined },
-                        ]}
-                        onPress={pickDocument}
-                      >
-                        <Ionicons name="cloud-upload-outline" size={32} color={BRAND} />
-                        <Text style={[styles.pickFileText, { color: TEXT }]}>Seleccionar Archivo</Text>
-                        <Text style={[styles.pickFileSubtext, { color: SUBTEXT }]}>
-                          Tamaño máximo: 10MB • Formatos: Todos
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <View style={styles.modalButtons}>
-                      <Button
-                        variant="outline"
-                        title="Cancelar"
-                        onPress={() => {
-                          setAttachModalVisible(false);
-                          setSelectedFile(null);
-                        }}
-                        style={{ flex: 1 }}
-                      />
-                      <Button
-                        title={uploading ? 'Subiendo…' : 'Subir'}
-                        onPress={uploadFile}
-                        disabled={!selectedFile || uploading}
-                        loading={uploading}
-                        style={{ flex: 1 }}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </Modal>
-
-              {/* Comentarios */}
-              <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Comentarios</Text>
-              {(task.comments || []).map((c: any) => (
-                <View key={c.id} style={styles.commentRow}>
-                  <View style={[styles.avatarPlaceholder, { backgroundColor: BRAND }]}>
-                    <Text style={{ color: '#fff' }}>{c.user?.[0] ?? 'U'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.commentUser, { color: TEXT }]}>
-                      {c.user}{' '}
-                      <Text style={[styles.commentDate, { color: SUBTEXT }]}>· {c.date}</Text>
-                    </Text>
-                    <Text style={[styles.commentText, { color: TEXT }]}>{c.text}</Text>
-                  </View>
-                </View>
-              ))}
-
-              <View style={{ marginTop: 8 }}>
-                <Input
-                  placeholder="Añadir comentario..."
-                  placeholderTextColor={PLACEHOLDER}
-                  value={newComment}
-                  onChangeText={setNewComment}
-                  variant="surface"
-                />
-                <Button title="Comentar" onPress={postComment} style={{ marginTop: 8 }} />
-              </View>
 
               <Button
                 title="Ver historial"
@@ -1179,7 +845,6 @@ useEffect(() => {
           )}
 
           <TouchableOpacity
-            style={styles.sheetCancel}
             onPress={() => setShowTagPicker(false)}
           >
             <Text style={{ color: SUBTEXT }}>Cancelar</Text>
@@ -1283,4 +948,4 @@ const styles = StyleSheet.create({
   },
   sheetText: { fontSize: 15 },
 });
-}
+
