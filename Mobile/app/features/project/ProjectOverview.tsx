@@ -12,7 +12,7 @@ import { usePermissions } from "@/app/features/invitations/hooks/usePermissions"
 import DetailProject from "../project/components/DetailProject";
 import EditProject from "../project/EditProject";
 import { TaskScreen } from "../task/screens/taskscreen";
-import SprintsScreen  from "../task/components/sprintscreen";
+import SprintsScreen  from "../sprints/screens/sprintscreen";
 import { apiFetch } from "@/lib/api-fetch";
 import { ScrollView } from "react-native";
 import ProjectInvitationsScreen from "../invitations/screens/ProjectInvitationsScreen";
