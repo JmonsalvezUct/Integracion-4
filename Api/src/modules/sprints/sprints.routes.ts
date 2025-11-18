@@ -97,7 +97,7 @@ router.post(
  *       404:
  *         description: Sprint no encontrado
  */
-router.put("/:sprintId", roleMiddleware(["admin"]), updateSprint);
+router.put("/:sprintId", projectRoleMiddleware(["admin"]), updateSprint);
 
 /**
  * @swagger
@@ -124,7 +124,7 @@ router.put("/:sprintId", roleMiddleware(["admin"]), updateSprint);
  *       404:
  *         description: Sprint no encontrado
  */
-router.patch("/:sprintId/finalize", roleMiddleware(["admin"]), finalizeSprint);
+router.patch("/:sprintId/finalize", projectRoleMiddleware(["admin"]), finalizeSprint);
 
 /**
  * @swagger
@@ -151,7 +151,12 @@ router.patch("/:sprintId/finalize", roleMiddleware(["admin"]), finalizeSprint);
  *       404:
  *         description: Sprint no encontrado
  */
-router.delete("/:sprintId", roleMiddleware(["admin"]), deleteSprint);
+router.delete(
+  "/:sprintId",
+  projectRoleMiddleware(["admin"]),
+  deleteSprint
+);
+
 
 /**
  * @swagger

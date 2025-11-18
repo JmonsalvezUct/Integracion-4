@@ -99,9 +99,12 @@ export const useSprintDetail = (projectId: number, sprintId: number) => {
                 `/projects/${projectId}/sprints/${sprintId}`,
                 { method: "DELETE" }
               );
+            const raw = await res.text();
+
               if (!res.ok) throw new Error();
 
               DeviceEventEmitter.emit("SPRINT_UPDATED");
+              Alert.alert("Éxito", "El sprint fue eliminado con éxito.");
               router.back();
             } catch {
               Alert.alert("Error", "No se pudo eliminar el sprint.");
