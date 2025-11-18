@@ -11,13 +11,10 @@ import {
   DeviceEventEmitter,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-
+import { TaskTimes } from './TaskTimes';
 import { Ionicons } from '@expo/vector-icons';
-
-import * as WebBrowser from 'expo-web-browser';
 import { normalize, t } from "@/app/utils/format";
 import { useTaskDetail } from "../hooks/useTaskDetail";
-import { getAccessToken } from '@/lib/secure-store';
 import { apiFetch } from '@/lib/api-fetch';
 import { AssignModal } from './assignmodal';
 import { displayDateFromISO, parseDisplayDateToISO } from "@/app/utils/date";
@@ -33,7 +30,6 @@ import { CONTAINER } from '@/constants/spacing';
 import Input from '@/components/ui/input';
 import Button from '@/components/ui/button';
 
-const TASK_UPDATED = 'TASK_UPDATED';
 
 export default function DetailTask() {
   
@@ -86,6 +82,18 @@ export default function DetailTask() {
     setDueDateEditingValue,
     loadAttachments,
     saveEdits,
+    timeModalVisible,
+    setTimeModalVisible,
+    taskTimes,
+    loadingTimes,
+    addingTime,
+    newTimeEntry,
+    setNewTimeEntry,
+    addTimeEntry,
+    deleteTimeEntry,
+    getTotalTime,
+    formatMinutes,
+    loadTaskTimes,
   } = useTaskDetail(taskId, taskDataParam);
 
   // Refs (enfoque)
@@ -151,24 +159,6 @@ export default function DetailTask() {
   }
 };
 
-
-
-  // Función para descargar archivo
-  const downloadAttachment = async (attachment: any) => {
-    if (!task?.projectId) return;
-    
-    try {
-      // ✅ RUTA CORREGIDA: usar projectId + attachmentId
-      const downloadUrl = `https://integracion-4.onrender.com/api/attachments/projects/${task.projectId}/attachments/${attachment.id}/download`;
-      
-      // Abrir en el navegador para descarga
-      await WebBrowser.openBrowserAsync(downloadUrl);
-      
-    } catch (error: any) {
-      console.error('Error en descarga:', error);
-      Alert.alert('Error', `No se pudo descargar el archivo: ${error.message}`);
-    }
-  };
 
 // --- Manejadores de edición de título y descripción ---
   if (!taskId)
@@ -470,7 +460,6 @@ console.log("🔵 Render final con task:", task?.id);
                   >
                     <TouchableOpacity
                       style={styles.attachRow}
-                      onPress={() => downloadAttachment(a)}
                     >
                       <Ionicons name="document-attach-outline" size={18} color={SUBTEXT} />
                       <View style={styles.attachmentInfo}>
@@ -562,33 +551,6 @@ console.log("🔵 Render final con task:", task?.id);
                 </View>
               </Modal>
 
-              {/* Comentarios */}
-              <Text style={[styles.sectionLabel, { color: SUBTEXT }]}>Comentarios</Text>
-              {(task?.comments || []).map((c: any) => (
-                <View key={c.id} style={styles.commentRow}>
-                  <View style={[styles.avatarPlaceholder, { backgroundColor: BRAND }]}>
-                    <Text style={{ color: '#fff' }}>{c.user?.[0] ?? 'U'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.commentUser, { color: TEXT }]}>
-                      {c?.user}{' '}
-                      <Text style={[styles.commentDate, { color: SUBTEXT }]}>· {c.date}</Text>
-                    </Text>
-                    <Text style={[styles.commentText, { color: TEXT }]}>{c.text}</Text>
-                  </View>
-                </View>
-              ))}
-
-              <View style={{ marginTop: 8 }}>
-                <Input
-                  placeholder="Añadir comentario..."
-                  placeholderTextColor={PLACEHOLDER}
-                  value={newComment}
-                  onChangeText={setNewComment}
-                  variant="surface"
-                />
-                <Button title="Comentar" onPress={postComment} style={{ marginTop: 8 }} />
-              </View>
 
               <Button
                 title="Ver historial"
@@ -600,6 +562,13 @@ console.log("🔵 Render final con task:", task?.id);
                 }
                 fullWidth
                 style={{ marginTop: 20 }}
+              />
+              <Button
+                title="Ver tiempos"
+                onPress={() => setTimeModalVisible(true)}
+                leftIcon={<Ionicons name="time-outline" size={16} color="#fff" />}
+                fullWidth
+                style={{ marginTop: 12 }}
               />
             </>
           ) : (
@@ -675,6 +644,21 @@ console.log("🔵 Render final con task:", task?.id);
           setEditState((s: any) => ({ ...s, assigneeId: Number(userId) }));
           setAssignModalVisible(false);
         }}
+      />
+
+      {/* modal tiempo trabajado en tareas */}
+
+      <TaskTimes
+        visible={timeModalVisible}
+        onClose={() => setTimeModalVisible(false)}
+        taskId={taskId}
+        projectId={task?.projectId}
+        taskTimes={taskTimes}
+        loadingTimes={loadingTimes}
+        addingTime={addingTime}
+        onAddTime={addTimeEntry}
+        onDeleteTime={deleteTimeEntry}
+        onRefresh={loadTaskTimes}
       />
 
       {/* Picker de Etiquetas */}
