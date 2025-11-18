@@ -111,7 +111,7 @@ export function TaskScreen({ projectId }: { projectId?: string }) {
 
   const handleTaskPress = (task: Task) => {
     router.push({
-      pathname: "/features/task/detail_task",
+      pathname: "/features/task/components/detail_task",
       params: {
         taskId: String(task.id),
         taskData: JSON.stringify(task),
