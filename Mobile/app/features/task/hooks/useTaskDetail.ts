@@ -538,8 +538,12 @@ export function useTaskDetail(taskId?: number | string, taskDataParam?: string) 
   }, [taskId, task?.projectId]);
 
   // Agregar nuevo registro de tiempo
-  const addTimeEntry = async (entry: { durationMinutes: string; date: string; description: string }) => {
-    if (!taskId || !task?.projectId || !entry.durationMinutes) return;
+
+  const addTimeEntry = async (entry: { durationMinutes: string; date: string; description: string }): Promise<boolean> => {
+    if (!taskId || !task?.projectId || !entry.durationMinutes) {
+      console.log(' Faltan datos requeridos');
+      return false;
+    }
 
     setAddingTime(true);
     try {
@@ -560,23 +564,29 @@ export function useTaskDetail(taskId?: number | string, taskDataParam?: string) 
         }
       );
 
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('Error del servidor:', errorText);
+        throw new Error(errorText);
+      }
 
       const created = await res.json();
       
       // Agregar el nuevo registro a la lista
       setTaskTimes(prev => [created, ...prev]);
       
-      Alert.alert("Éxito", "Tiempo registrado correctamente");
-      return true; // Indicar éxito
+      console.log('Tiempo registrado exitosamente');
+      return true; // Siempre retorna boolean
     } catch (err: any) {
       console.error("Error agregando tiempo:", err);
       Alert.alert("Error", err.message || "No se pudo registrar el tiempo");
-      return false; // Indicar error
+      return false; // Siempre retorna boolean
     } finally {
       setAddingTime(false);
     }
   };
+
+
 
   // Eliminar registro de tiempo
   const deleteTimeEntry = async (timeId: number) => {

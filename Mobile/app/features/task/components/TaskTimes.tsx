@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Modal, 
   View, 
@@ -7,9 +7,11 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   ActivityIndicator,
-  Alert 
+  Alert,
+  Platform 
 } from "react-native";
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // 🎨 Hook de tema
 import { useThemedColors } from "@/hooks/use-theme-color";
@@ -33,7 +35,7 @@ interface TaskTimesProps {
   taskTimes: TimeEntry[];
   loadingTimes: boolean;
   addingTime: boolean;
-  onAddTime: (entry: { durationMinutes: string; date: string; description: string }) => void;
+  onAddTime: (entry: { durationMinutes: string; date: string; description: string }) => Promise<boolean>;
   onDeleteTime: (timeId: number) => void;
   onRefresh: () => void;
 }
@@ -53,14 +55,15 @@ export function TaskTimes({
   const { CARD_BG, CARD_BORDER, TEXT, SUBTEXT, BRAND, isDark, MUTED_BG } = useThemedColors();
   
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [newTimeEntry, setNewTimeEntry] = useState({
     durationMinutes: '',
     date: new Date().toISOString(),
     description: ''
   });
 
-
- // 🔄 Cargar tiempos automáticamente cuando el modal se abre
+  //  Cargar tiempos automáticamente cuando el modal se abre
   useEffect(() => {
     if (visible && taskId && projectId) {
       console.log('🔄 Cargando tiempos automáticamente...');
@@ -68,16 +71,42 @@ export function TaskTimes({
     }
   }, [visible, taskId, projectId]);
 
-  // 🔄 También cargar cuando se agrega un nuevo registro y se cierra el formulario
+  // Inicializar la fecha cuando se abre el formulario
   useEffect(() => {
-    if (!showAddForm && visible) {
-      // Recargar para asegurar que tenemos los datos más recientes
-      onRefresh();
+    if (showAddForm) {
+      const now = new Date();
+      setSelectedDate(now);
+      setNewTimeEntry(prev => ({
+        ...prev,
+        date: now.toISOString()
+      }));
     }
-  }, [showAddForm, visible]);
+  }, [showAddForm]);
 
-  
-  const handleAddTime = () => {
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setSelectedDate(selectedDate);
+      setNewTimeEntry(prev => ({
+        ...prev,
+        date: selectedDate.toISOString()
+      }));
+    }
+  };
+
+  const showDatepicker = () => {
+    setShowDatePicker(true);
+  };
+
+  const formatDisplayDate = (date: Date) => {
+    return date.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const handleAddTime = async (): Promise<void> => {
     if (!newTimeEntry.durationMinutes) {
       Alert.alert("Error", "Por favor ingresa la duración en minutos");
       return;
@@ -88,13 +117,41 @@ export function TaskTimes({
       return;
     }
     
-    onAddTime(newTimeEntry);
+    const success = await onAddTime(newTimeEntry);
+    
+    if (success) {
+      // Resetear el formulario
+      setNewTimeEntry({
+        durationMinutes: '',
+        date: new Date().toISOString(),
+        description: ''
+      });
+      setSelectedDate(new Date());
+      setShowAddForm(false);
+      setShowDatePicker(false);
+      
+      // Recargar los tiempos para asegurar sincronización
+      setTimeout(() => {
+        onRefresh();
+      }, 500);
+    }
+  };
+
+  const handleClose = () => {
+    setShowAddForm(false);
+    setShowDatePicker(false);
     setNewTimeEntry({
       durationMinutes: '',
       date: new Date().toISOString(),
       description: ''
     });
-    setShowAddForm(false);
+    setSelectedDate(new Date());
+    onClose();
+  };
+
+  const handleRefresh = () => {
+    console.log('🔄 Refrescando manualmente...');
+    onRefresh();
   };
 
   const formatMinutes = (minutes: number) => {
@@ -110,7 +167,9 @@ export function TaskTimes({
     return new Date(dateString).toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
-      year: 'numeric'
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -134,7 +193,10 @@ export function TaskTimes({
         )}
       </View>
       <TouchableOpacity 
-        onPress={() => onDeleteTime(item.id)}
+        onPress={() => {
+          console.log('🗑️ Eliminando registro:', item.id);
+          onDeleteTime(item.id);
+        }}
         style={styles.deleteButton}
       >
         <Ionicons name="trash-outline" size={16} color="#ff6b6b" />
@@ -147,7 +209,7 @@ export function TaskTimes({
       <Text style={[styles.formTitle, { color: TEXT }]}>Nuevo Registro</Text>
       
       <Input
-        label="Duración (minutos)"
+        label="Duración (minutos)*"
         placeholder="Ej: 120"
         value={newTimeEntry.durationMinutes}
         onChangeText={(text) => setNewTimeEntry(prev => ({ ...prev, durationMinutes: text }))}
@@ -155,6 +217,40 @@ export function TaskTimes({
         variant="surface"
         containerStyle={styles.input}
       />
+
+      <View style={styles.input}>
+        <Text style={[styles.label, { color: SUBTEXT }]}>Fecha*</Text>
+        <TouchableOpacity
+          style={[styles.dateButton, { 
+            borderColor: CARD_BORDER, 
+            backgroundColor: CARD_BG,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingVertical: 12,
+            paddingHorizontal: 12,
+            borderRadius: 8,
+            borderWidth: 1,
+          }]}
+          onPress={showDatepicker}
+        >
+          <View>
+            <Text style={[styles.dateButtonText, { color: TEXT }]}>
+              {formatDisplayDate(selectedDate)}
+            </Text>
+          </View>
+          <Ionicons name="calendar-outline" size={24} color={BRAND} />
+        </TouchableOpacity>
+      </View>
+
+      {showDatePicker && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
 
       <Input
         label="Descripción (opcional)"
@@ -172,8 +268,18 @@ export function TaskTimes({
         <Button
           variant="outline"
           title="Cancelar"
-          onPress={() => setShowAddForm(false)}
+          onPress={() => {
+            setShowAddForm(false);
+            setShowDatePicker(false);
+            setNewTimeEntry({
+              durationMinutes: '',
+              date: new Date().toISOString(),
+              description: ''
+            });
+            setSelectedDate(new Date());
+          }}
           style={{ flex: 1 }}
+          disabled={addingTime}
         />
         <Button
           title={addingTime ? 'Registrando...' : 'Agregar'}
@@ -187,7 +293,7 @@ export function TaskTimes({
   );
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <View style={styles.overlay}>
         <View
           style={[
@@ -197,11 +303,16 @@ export function TaskTimes({
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: TEXT }]}>Registros de Tiempo</Text>
-            {getTotalTime() > 0 && (
-              <Text style={[styles.totalTime, { color: BRAND }]}>
-                Total: {formatMinutes(getTotalTime())}
-              </Text>
-            )}
+            <View style={styles.headerRight}>
+              {getTotalTime() > 0 && (
+                <Text style={[styles.totalTime, { color: BRAND }]}>
+                  Total: {formatMinutes(getTotalTime())}
+                </Text>
+              )}
+              {loadingTimes && (
+                <ActivityIndicator size="small" color={BRAND} style={styles.headerLoader} />
+              )}
+            </View>
           </View>
 
           {!showAddForm ? (
@@ -213,12 +324,20 @@ export function TaskTimes({
                   size="sm"
                   title="Nuevo Registro"
                 />
-                <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-                  <Ionicons name="refresh-outline" size={20} color={BRAND} />
+                <TouchableOpacity 
+                  onPress={handleRefresh} 
+                  style={styles.refreshButton}
+                  disabled={loadingTimes}
+                >
+                  <Ionicons 
+                    name="refresh-outline" 
+                    size={20} 
+                    color={loadingTimes ? SUBTEXT : BRAND} 
+                  />
                 </TouchableOpacity>
               </View>
 
-              {loadingTimes ? (
+              {loadingTimes && taskTimes.length === 0 ? (
                 <ActivityIndicator size="large" color={BRAND} style={styles.loader} />
               ) : taskTimes.length > 0 ? (
                 <FlatList
@@ -227,6 +346,8 @@ export function TaskTimes({
                   renderItem={renderTimeEntry}
                   style={styles.list}
                   showsVerticalScrollIndicator={false}
+                  refreshing={loadingTimes}
+                  onRefresh={handleRefresh}
                 />
               ) : (
                 <View style={styles.emptyState}>
@@ -237,6 +358,11 @@ export function TaskTimes({
                   <Text style={[styles.emptySubtext, { color: SUBTEXT }]}>
                     Agrega tu primer registro de tiempo trabajado
                   </Text>
+                  <Button
+                    title="Agregar primer registro"
+                    onPress={() => setShowAddForm(true)}
+                    style={{ marginTop: 16 }}
+                  />
                 </View>
               )}
             </>
@@ -244,7 +370,11 @@ export function TaskTimes({
             renderAddForm()
           )}
 
-          <TouchableOpacity style={styles.close} onPress={onClose}>
+          <TouchableOpacity 
+            style={[styles.close, { opacity: addingTime ? 0.6 : 1 }]} 
+            onPress={handleClose}
+            disabled={addingTime}
+          >
             <Text style={styles.closeText}>Cerrar</Text>
           </TouchableOpacity>
         </View>
@@ -273,6 +403,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
   title: {
     fontSize: 18,
     fontWeight: "700",
@@ -280,6 +414,10 @@ const styles = StyleSheet.create({
   totalTime: {
     fontSize: 14,
     fontWeight: "600",
+    marginRight: 8,
+  },
+  headerLoader: {
+    marginLeft: 8,
   },
   actions: {
     flexDirection: "row",
@@ -294,7 +432,7 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   loader: {
-    marginVertical: 20,
+    marginVertical: 40,
   },
   timeItem: {
     flexDirection: "row",
@@ -333,6 +471,17 @@ const styles = StyleSheet.create({
   },
   input: {
     marginBottom: 12,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  dateButton: {
+    // Los estilos ahora están inline para seguir exactamente el patrón de StatsDatePicker
+  },
+  dateButtonText: {
+    fontSize: 16,
   },
   formButtons: {
     flexDirection: "row",
