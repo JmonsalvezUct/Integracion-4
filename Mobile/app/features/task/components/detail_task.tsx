@@ -218,7 +218,7 @@ console.log("🔵 Render final con task:", task?.id);
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={{ width: '100%', marginBottom: 12, alignItems: 'flex-start' }}>
+        <View style={{ width: '100%', marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Button
             variant="outline"
             size="sm"
@@ -227,6 +227,12 @@ console.log("🔵 Render final con task:", task?.id);
           >
             Volver
           </Button>
+          {/* Guardar cambios (manual) */}
+          {editing && (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+              <Button title="Guardar" onPress={saveEdits} />
+            </View>
+          )}
         </View>
 
         <View style={[styles.card, { backgroundColor: CARD_BG, borderColor: CARD_BORDER, borderWidth: 1 }]}>
@@ -432,14 +438,6 @@ console.log("🔵 Render final con task:", task?.id);
                   <Text style={{ color: BRAND, fontWeight: "600" }}>+ Agregar etiqueta</Text>
                 </TouchableOpacity>
               </View>
-
-
-              {/* Guardar cambios (manual) */}
-              {editing && (
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                  <Button title="Guardar" onPress={saveEdits} />
-                </View>
-              )}
 
               {/* Adjuntos */}
               <View style={styles.attachmentsHeader}>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { useThemedColors } from '@/hooks/use-theme-color';
 
 interface StatsDatePickerProps {
   label: string;
@@ -10,6 +11,7 @@ interface StatsDatePickerProps {
 }
 
 export function StatsDatePicker({ label, value, onChange }: StatsDatePickerProps) {
+  const { CARD_BG, CARD_BORDER, TEXT, SUBTEXT, BRAND, MUTED_BG } = useThemedColors();
   const [show, setShow] = useState(false);
 
   const onChangeInternal = (event: any, selectedDate?: Date) => {
@@ -27,27 +29,35 @@ export function StatsDatePicker({ label, value, onChange }: StatsDatePickerProps
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
-          paddingVertical: 8,
+          paddingVertical: 12,
           paddingHorizontal: 12,
-          backgroundColor: '#f5f5f5',
+          backgroundColor: CARD_BG,
+          borderColor: CARD_BORDER,
+          borderWidth: 1,
           borderRadius: 8,
         }}
       >
         <View>
-          <Text style={{ color: '#666', fontSize: 12 }}>{label}</Text>
-          <Text style={{ fontSize: 16, marginTop: 4 }}>
-            {value.toLocaleDateString()}
+          <Text style={{ color: SUBTEXT, fontSize: 12, fontWeight: '600' }}>{label}</Text>
+          <Text style={{ fontSize: 16, marginTop: 4, color: TEXT, fontWeight: '500' }}>
+            {value.toLocaleDateString('es-ES', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })}
           </Text>
         </View>
-        <Ionicons name="calendar-outline" size={24} color="#666" />
+        <Ionicons name="calendar-outline" size={24} color={BRAND} />
       </TouchableOpacity>
 
       {show && (
         <DateTimePicker
           value={value}
           mode="date"
-          display="default"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={onChangeInternal}
+          // Para Android, puedes agregar estilos adicionales si es necesario
+          style={Platform.OS === 'ios' ? { backgroundColor: CARD_BG } : undefined}
         />
       )}
     </View>

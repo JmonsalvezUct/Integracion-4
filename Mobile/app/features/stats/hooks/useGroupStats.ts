@@ -29,7 +29,7 @@ export function useGroupStats(projectId: string, from: string, to: string) {
     if (!projectId) return;
 
     setLoading(true);
-
+    console.log("Fetching group stats for project:", projectId, "from:", from, "to:", to);
     apiFetch(`/stats/project/${projectId}/group-stats`, {
       method: 'POST',
       body: JSON.stringify({ from, to }),

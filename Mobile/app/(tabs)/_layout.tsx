@@ -30,7 +30,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: "Home",
+            title: "Inicio",
             tabBarIcon: ({ color, focused }) => (
               <TabBarIcon name={focused ? "home" : "home-outline"} color={color} />
             ),
@@ -48,7 +48,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: "profile",
+            title: "Perfil",
             tabBarIcon: ({ color, focused }) => (
               <TabBarIcon name={focused ? "person" : "person-outline"} color={color} />
             ),

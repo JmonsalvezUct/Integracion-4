@@ -6,16 +6,19 @@ import { useUserStats, UserStats } from '../hooks/useUserStats';
 import { useGroupStats, GroupStats } from '../hooks/useGroupStats';
 import { StatsDatePicker } from '../components/StatsDatePicker';
 import { StatsBurndownChart } from '../components/StatsBurndownChart';
+import { useThemedColors } from '@/hooks/use-theme-color';
+import { Ionicons } from '@expo/vector-icons';
 
 interface StatsProjectScreenProps {
   projectId: string;
 }
 
 export default function StatsProjectScreen({ projectId }: StatsProjectScreenProps) {
+  const { CARD_BG, CARD_BORDER, TEXT, SUBTEXT, BRAND, isDark, MUTED_BG, BG, CHART_BG } = useThemedColors();
   const { members, loading: loadingMembers, error: errorMembers } = useProjectMembers(projectId);
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [isGroupView, setIsGroupView] = useState(false); // 👈 nuevo estado para alternar vista
+  const [isGroupView, setIsGroupView] = useState(false);
   const [fromDate, setFromDate] = useState<Date>(new Date());
   const [toDate, setToDate] = useState<Date>(new Date());
 
@@ -51,7 +54,7 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
   const toggleView = () => setIsGroupView((prev) => !prev);
 
   return (
-    <ScrollView style={{ flex: 1, paddingHorizontal: 8 }}>
+    <ScrollView style={{ flex: 1, paddingHorizontal: 8, backgroundColor: BG }}>
       {/* Fecha */}
       <StatsDatePicker label="Desde" value={fromDate} onChange={setFromDate} />
       <StatsDatePicker label="Hasta" value={toDate} onChange={setToDate} />
@@ -60,13 +63,21 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
       <TouchableOpacity
         onPress={toggleView}
         style={{
-          backgroundColor: '#1976d2',
-          padding: 10,
+          backgroundColor: BRAND,
+          padding: 12,
           borderRadius: 8,
           alignItems: 'center',
           marginVertical: 10,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          gap: 8,
         }}
       >
+        <Ionicons 
+          name={isGroupView ? "people-outline" : "person-outline"} 
+          size={16} 
+          color="white" 
+        />
         <Text style={{ color: 'white', fontWeight: 'bold' }}>
           {isGroupView ? 'Ver estadísticas individuales' : 'Ver estadísticas grupales'}
         </Text>
@@ -75,13 +86,15 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
       {/* Selector de usuario solo si no es vista grupal */}
       {!isGroupView && (
         loadingMembers ? (
-          <ActivityIndicator />
+          <ActivityIndicator color={BRAND} />
         ) : errorMembers ? (
-          <Text>{errorMembers}</Text>
+          <Text style={{ color: TEXT }}>{errorMembers}</Text>
         ) : (
           <View
             style={{
-              backgroundColor: '#f5f5f5',
+              backgroundColor: CARD_BG,
+              borderColor: CARD_BORDER,
+              borderWidth: 1,
               borderRadius: 8,
               marginVertical: 8,
               overflow: 'hidden',
@@ -90,10 +103,21 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
             <Picker
               selectedValue={selectedUserId ?? members[0]?.user?.id}
               onValueChange={(itemValue: number) => setSelectedUserId(itemValue)}
-              style={{ padding: 8 }}
+              style={{ 
+                padding: 8, 
+                color: TEXT,
+                backgroundColor: CARD_BG 
+              }}
+              dropdownIconColor={TEXT}
             >
               {members.map((member) => (
-                <Picker.Item key={member.id} label={member.user.name} value={member.user.id} />
+                <Picker.Item 
+                  key={member.id} 
+                  label={member.user.name} 
+                  value={member.user.id} 
+                  color={TEXT}
+                  style={{ backgroundColor: CARD_BG }}
+                />
               ))}
             </Picker>
           </View>
@@ -102,35 +126,42 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
 
       {/* Contenido de estadísticas */}
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator size="large" color={BRAND} style={{ marginTop: 20 }} />
       ) : error ? (
-        <Text>{error}</Text>
+        <Text style={{ color: TEXT, textAlign: 'center', marginTop: 20 }}>{error}</Text>
       ) : stats ? (
         <View>
           {/* Resumen */}
           <View
             style={{
               marginTop: 16,
-              backgroundColor: '#f5f5f5',
+              backgroundColor: CARD_BG,
+              borderColor: CARD_BORDER,
+              borderWidth: 1,
               padding: 16,
               borderRadius: 8,
             }}
           >
-            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 12 }}>
+            <Text style={{ 
+              fontSize: 18, 
+              fontWeight: 'bold', 
+              marginBottom: 12,
+              color: TEXT 
+            }}>
               {isGroupView ? 'Resumen grupal' : 'Resumen'}
             </Text>
 
             {/* Campos comunes */}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 16 }}>Tareas completadas:</Text>
-              <Text style={{ fontSize: 16, fontWeight: '500' }}>
+              <Text style={{ fontSize: 16, color: TEXT }}>Tareas completadas:</Text>
+              <Text style={{ fontSize: 16, fontWeight: '500', color: TEXT }}>
                 {isGroupView ? groupStats!.completedCount : userStats!.completedTasksCount}
               </Text>
             </View>
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-              <Text style={{ fontSize: 16 }}>Horas trabajadas:</Text>
-              <Text style={{ fontSize: 16, fontWeight: '500' }}>
+              <Text style={{ fontSize: 16, color: TEXT }}>Horas trabajadas:</Text>
+              <Text style={{ fontSize: 16, fontWeight: '500', color: TEXT }}>
                 {isGroupView ? groupStats!.totalHours.toFixed(2) : userStats!.totalHours.toFixed(2)} h
               </Text>
             </View>
@@ -141,30 +172,57 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
             <View
               style={{
                 marginTop: 16,
-                backgroundColor: '#fafafa',
+                backgroundColor: MUTED_BG,
+                borderColor: CARD_BORDER,
+                borderWidth: 1,
                 borderRadius: 8,
                 padding: 12,
               }}
             >
-              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
+              <Text style={{ 
+                fontSize: 18, 
+                fontWeight: 'bold', 
+                marginBottom: 12,
+                color: TEXT 
+              }}>
                 Detalle por integrante
               </Text>
-              {groupStats!.teamMembers.map((m) => (
+              
+              {/* Encabezados de la tabla */}
+              <View style={{ 
+                flexDirection: 'row', 
+                justifyContent: 'space-between',
+                marginBottom: 8,
+                paddingHorizontal: 4 
+              }}>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: SUBTEXT, flex: 1 }}>
+                  Nombre
+                </Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: SUBTEXT, flex: 1, textAlign: 'center' }}>
+                  Tareas
+                </Text>
+                <Text style={{ fontSize: 14, fontWeight: '600', color: SUBTEXT, flex: 1, textAlign: 'right' }}>
+                  Horas
+                </Text>
+              </View>
+
+              {groupStats!.teamMembers.map((m, index) => (
                 <View
                   key={m.userId}
                   style={{
                     flexDirection: 'row',
                     justifyContent: 'space-between',
-                    borderBottomWidth: 0.5,
-                    borderColor: '#ddd',
-                    paddingVertical: 6,
+                    borderBottomWidth: index === groupStats!.teamMembers.length - 1 ? 0 : 1,
+                    borderColor: isDark ? "#2a2a2a" : "#eee",
+                    paddingVertical: 8,
+                    paddingHorizontal: 4,
                   }}
                 >
-                  <Text style={{ fontSize: 14, flex: 1 }}>{m.name}</Text>
-                  <Text style={{ fontSize: 14, flex: 1, textAlign: 'center' }}>
+                  <Text style={{ fontSize: 14, flex: 1, color: TEXT }}>{m.name}</Text>
+                  <Text style={{ fontSize: 14, flex: 1, textAlign: 'center', color: TEXT }}>
                     {m.completedTasks}
                   </Text>
-                  <Text style={{ fontSize: 14, flex: 1, textAlign: 'right' }}>
+                  <Text style={{ fontSize: 14, flex: 1, textAlign: 'right', color: TEXT }}>
                     {m.hours.toFixed(1)}h
                   </Text>
                 </View>
@@ -175,17 +233,15 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
           {/* Gráficos */}
           {stats.burndown && Object.keys(stats.burndown).length > 0 && (
             <View style={{ marginTop: 24 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
+              <Text style={{ 
+                fontSize: 18, 
+                fontWeight: 'bold', 
+                marginBottom: 8,
+                color: TEXT 
+              }}>
                 Tareas completadas acumuladas
               </Text>
-              <View
-                style={{
-                  backgroundColor: '#f5f5f5',
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                }}
-              >
+
                 <StatsBurndownChart
                   data={Object.entries(stats.burndown)
                     .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
@@ -196,26 +252,25 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
                       acc.push({ x: date, y: sum });
                       return acc;
                     }, [] as { x: string; y: number }[])}
-                  color="#1976d2"
+                  color={BRAND}
                   label="Tareas Completadas"
+                  type='bar'
                 />
-              </View>
+
             </View>
           )}
 
           {stats.timeBurndown && Object.keys(stats.timeBurndown).length > 0 && (
             <View style={{ marginTop: 24, marginBottom: 24 }}>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
+              <Text style={{ 
+                fontSize: 18, 
+                fontWeight: 'bold', 
+                marginBottom: 8,
+                color: TEXT 
+              }}>
                 Horas trabajadas por día
               </Text>
-              <View
-                style={{
-                  backgroundColor: '#f5f5f5',
-                  padding: 12,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                }}
-              >
+
                 <StatsBurndownChart
                   data={Object.entries(stats.timeBurndown)
                     .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
@@ -226,7 +281,7 @@ export default function StatsProjectScreen({ projectId }: StatsProjectScreenProp
                   color="#388e3c"
                   label="Horas"
                 />
-              </View>
+
             </View>
           )}
         </View>

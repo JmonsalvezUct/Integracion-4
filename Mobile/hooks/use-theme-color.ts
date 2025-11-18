@@ -25,6 +25,7 @@ export function useThemedColors() {
     INPUT_BORDER: isDark ? "#3a3a3a" : "#ddd",
     PLACEHOLDER: isDark ? "#9aa0a6" : "#666",
     SUBTEXT: isDark ? "#b3b3b3" : "#666",
+    CHART_BG: isDark ? "#3a3a3a" : "#ffffff", // BG de tu paleta
 
     // Extras útiles para badges/listas
     LIST_DIVIDER: isDark ? "#222" : "#f0f0f0",

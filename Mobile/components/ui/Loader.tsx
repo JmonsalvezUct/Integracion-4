@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, useColorScheme } from "react-native";
 // @ts-ignore
 import { BallIndicator } from "react-native-indicators"; 
-
+import { useThemedColors } from "@/hooks/use-theme-color";
 type LoaderProps = {
   text?: string;
   color?: string;
@@ -12,9 +12,9 @@ type LoaderProps = {
 export default function Loader({ color = "#0a7ea4", size = 40 }: LoaderProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
-
+  const { CARD_BG} = useThemedColors();
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? "#0f172a" : "#fff" }]}>
+    <View style={[styles.container, { backgroundColor: CARD_BG }]}>
       <BallIndicator color={color} size={size} />
     </View>
   );
