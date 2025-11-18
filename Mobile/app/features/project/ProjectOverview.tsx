@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getAccessToken } from "@/lib/secure-store";
 import { usePermissions } from "@/app/features/invitations/hooks/usePermissions";
-import DetailProject from "../project/DetailProject";
+import DetailProject from "../project/components/DetailProject";
 import EditProject from "../project/EditProject";
 import { TaskScreen } from "../task/screens/taskscreen";
 import SprintsScreen  from "../task/components/sprintscreen";
