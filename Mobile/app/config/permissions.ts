@@ -2,7 +2,7 @@ export const Permissions = {
   project: {
     view: ["admin", "developer", "guest"],
     edit: ["admin"],          // Editar proyecto
-    stats: ["admin"],         // Ver estadísticas
+    stats: ["admin", "developer", "guest"],         // Ver estadísticas
     manageTags: ["admin"],    // Tags
     viewMembers: ["admin", "developer", "guest"], // TODOS ven miembros
     manageMembers: ["admin"], // SOLO admin puede invitar / cambiar roles
@@ -19,5 +19,6 @@ export const Permissions = {
     view: ["admin", "developer", "guest"],
     edit: ["admin", "developer"],
     delete: ["admin"],
-  }
+  },
+
 } as const;

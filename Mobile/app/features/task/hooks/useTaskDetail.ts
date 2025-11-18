@@ -499,6 +499,148 @@ export function useTaskDetail(taskId?: number | string, taskDataParam?: string) 
 
 
   // ---------------------------------------------------------
+  // 4) TASK TIMES - NUEVOS ESTADOS
+  // ---------------------------------------------------------
+  const [taskTimes, setTaskTimes] = useState<any[]>([]);
+  const [loadingTimes, setLoadingTimes] = useState(false);
+  const [addingTime, setAddingTime] = useState(false);
+  const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const [newTimeEntry, setNewTimeEntry] = useState({
+    durationMinutes: '',
+    date: new Date().toISOString(),
+    description: ''
+  });
+
+
+  const loadTaskTimes = useCallback(async () => {
+    if (!taskId || !task?.projectId) return;
+    
+    setLoadingTimes(true);
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(
+        `/task-times/projects/${task.projectId}/tasks/${taskId}/times`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!res.ok) throw new Error(await res.text());
+      
+      const times = await res.json();
+      setTaskTimes(times);
+    } catch (err) {
+      console.error("Error cargando registros de tiempo:", err);
+      Alert.alert("Error", "No se pudieron cargar los registros de tiempo");
+    } finally {
+      setLoadingTimes(false);
+    }
+  }, [taskId, task?.projectId]);
+
+  // Agregar nuevo registro de tiempo
+
+  const addTimeEntry = async (entry: { durationMinutes: string; date: string; description: string }): Promise<boolean> => {
+    if (!taskId || !task?.projectId || !entry.durationMinutes) {
+      console.log(' Faltan datos requeridos');
+      return false;
+    }
+
+    setAddingTime(true);
+    try {
+      const token = await getAccessToken();
+      const res = await apiFetch(
+        `/task-times/projects/${task.projectId}/tasks/${taskId}/times`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            durationMinutes: Number(entry.durationMinutes),
+            date: entry.date,
+            description: entry.description,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.log('Error del servidor:', errorText);
+        throw new Error(errorText);
+      }
+
+      const created = await res.json();
+      
+      // Agregar el nuevo registro a la lista
+      setTaskTimes(prev => [created, ...prev]);
+      
+      console.log('Tiempo registrado exitosamente');
+      return true; // Siempre retorna boolean
+    } catch (err: any) {
+      console.error("Error agregando tiempo:", err);
+      Alert.alert("Error", err.message || "No se pudo registrar el tiempo");
+      return false; // Siempre retorna boolean
+    } finally {
+      setAddingTime(false);
+    }
+  };
+
+
+
+  // Eliminar registro de tiempo
+  const deleteTimeEntry = async (timeId: number) => {
+    if (!task?.projectId) return;
+
+    Alert.alert(
+      "Eliminar registro",
+      "¿Estás seguro de que quieres eliminar este registro de tiempo?",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const token = await getAccessToken();
+              const res = await apiFetch(
+                `/task-times/projects/${task.projectId}/times/${timeId}`,
+                {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+
+              if (!res.ok) throw new Error(await res.text());
+
+              // Remover el registro de la lista
+              setTaskTimes(prev => prev.filter(time => time.id !== timeId));
+              
+              Alert.alert("Éxito", "Registro eliminado correctamente");
+            } catch (err: any) {
+              console.error("Error eliminando registro:", err);
+              Alert.alert("Error", err.message || "No se pudo eliminar el registro");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Calcular tiempo total
+  const getTotalTime = () => {
+    return taskTimes.reduce((total, time) => total + (time.durationMinutes || 0), 0);
+  };
+
+  // Formatear minutos a horas y minutos
+  const formatMinutes = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+
+  // ---------------------------------------------------------
   // 12) RETORNO DEL HOOK
   // ---------------------------------------------------------
 
@@ -558,5 +700,18 @@ export function useTaskDetail(taskId?: number | string, taskDataParam?: string) 
     updateTaskStatusOnly,
     persistTaskPatch,
     saveEdits,
+
+    taskTimes,
+    loadingTimes,
+    addingTime,
+    timeModalVisible,
+    setTimeModalVisible,
+    newTimeEntry,
+    setNewTimeEntry,
+    addTimeEntry,
+    deleteTimeEntry,
+    getTotalTime,
+    formatMinutes,
+    loadTaskTimes,
   };
 }
