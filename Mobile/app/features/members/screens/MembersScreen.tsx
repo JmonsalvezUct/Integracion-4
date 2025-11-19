@@ -9,7 +9,8 @@ import { StorageKey } from "@/lib/secure-store";
 export default function MembersScreen({ projectId }: { projectId: number }) {
   const { members, loading, updateRole, removeMember } = useProjectMembers(projectId);
   const { can } = usePermissions(projectId);
-  const { TEXT, BRAND } = useThemedColors();
+  const { TEXT, BRAND, CARD_BG, CARD_BORDER } = useThemedColors();
+
 
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
   const [openRoleMenu, setOpenRoleMenu] = useState<number | null>(null);
@@ -55,9 +56,9 @@ export default function MembersScreen({ projectId }: { projectId: number }) {
               padding: 14,
               marginBottom: 8,
               borderRadius: 10,
-              backgroundColor: "#1E1E1E", 
+              backgroundColor: CARD_BG,
               borderWidth: 1,
-              borderColor: "rgba(255,255,255,0.08)",
+              borderColor: CARD_BORDER,
             }}
           >
             {/* Nombre + (Tú) */}

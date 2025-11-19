@@ -24,6 +24,8 @@ export function useAuth() {
     ? user.projects[0].role
     : "guest";
 
+
+
   const fetchUser = useCallback(async () => {
     try {
       setLoading(true);
