@@ -27,21 +27,70 @@ export default function MyInvitationsScreen() {
 
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 24, paddingHorizontal: 16 }}
         renderItem={({ item }) => {
+          const isPending = item.status === "PENDING";
+
           const statusColor =
-            item.status === "PENDING" ? BRAND : item.status === "ACCEPTED" ? SUCCESS : DANGER;
+            item.status === "PENDING"
+              ? BRAND
+              : item.status === "ACCEPTED"
+              ? SUCCESS
+              : DANGER;
 
           return (
             <View style={[styles.card, { backgroundColor: CARD_BG, borderColor: CARD_BORDER }]}>
+              {/* Nombre del proyecto */}
               <Text style={[styles.cardTitle, { color: TEXT }]}>
                 {item.project?.name ?? "Proyecto sin nombre"}
               </Text>
-              <Text style={{ color: SUBTEXT, marginTop: 4 }}>Rol: {item.role}</Text>
+
+              {/* Rol */}
+              <Text style={{ color: SUBTEXT, marginTop: 4 }}>
+                Rol: {item.role}
+              </Text>
+
+              {/* Estado */}
               <Text style={{ color: statusColor, marginTop: 2, fontWeight: "600" }}>
                 Estado: {item.status}
               </Text>
+
+              {/* BOTONES SOLO SI ESTÁ PENDIENTE */}
+              {isPending && (
+                <View style={{ flexDirection: "row", marginTop: 12, gap: 10 }}>
+                  <Text
+                    onPress={() => handleAccept(item.id)}
+                    style={{
+                      color: "#fff",
+                      backgroundColor: BRAND,
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Aceptar
+                  </Text>
+
+                  <Text
+                    onPress={() => handleReject(item.id)}
+                    style={{
+                      color: "#fff",
+                      backgroundColor: DANGER,
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      overflow: "hidden",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Rechazar
+                  </Text>
+                </View>
+              )}
             </View>
           );
         }}
+
         ListEmptyComponent={
           <View style={styles.center}>
             <Text style={{ color: SUBTEXT }}>No tienes invitaciones</Text>
