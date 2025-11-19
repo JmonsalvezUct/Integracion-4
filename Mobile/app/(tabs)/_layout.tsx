@@ -45,6 +45,7 @@ export default function TabLayout() {
           }}
         />
 
+
         <Tabs.Screen
           name="profile"
           options={{
@@ -54,7 +55,25 @@ export default function TabLayout() {
             ),
           }}
         />
+
+        <Tabs.Screen
+      name="invitations"
+      options={{
+        title: "Invitaciones",
+        tabBarIcon: ({ color, focused }) => (
+          <TabBarIcon
+            name={focused ? "mail" : "mail-outline"} // aquí defines los íconos
+            color={color}
+          />
+        ),
+      }}
+    />
+
       </Tabs>
+      
+
+      
     </>
+    
   );
 }
